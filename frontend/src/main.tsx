@@ -217,9 +217,17 @@ function App() {
         <header className="topbar">
           <div className="topbar-content">
             <h1>{viewLabels[view]}</h1>
-            <p className="eyebrow">Plataforma de Gestión Ambiental</p>
+            <p className="eyebrow">{session.name} · {session.zone}</p>
           </div>
-          <div className={`status-pill status-${operationalSignal.tone}`}>{operationalSignal.label}</div>
+          <div className="topbar-actions">
+            <div className={`status-pill status-${operationalSignal.tone}`}>{operationalSignal.label}</div>
+            <button className="icon-action" onClick={() => setIsDarkMode(!isDarkMode)} title="Alternar tema" aria-label="Alternar tema">
+              {isDarkMode ? "☀️" : "🌙"}
+            </button>
+            <button className="logout-action" onClick={logout} aria-label="Cerrar sesión">
+              Cerrar sesión
+            </button>
+          </div>
         </header>
         {message && <div className="notice" role="alert">{message}</div>}
         {loading ? (
