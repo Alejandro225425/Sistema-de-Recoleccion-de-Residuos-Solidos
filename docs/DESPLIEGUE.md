@@ -1,0 +1,330 @@
+# 📦 Documentación de Despliegue
+## Sistema Inteligente de Recolección de Residuos Sólidos — Cusco
+
+> **Rama de producción:** `version-1-proyecto`
+> **Repositorio:** [`Alejandro225425/Sistema-de-Recoleccion-de-Residuos-Solidos`](https://github.com/Alejandro225425/Sistema-de-Recoleccion-de-Residuos-Solidos)
+> **Última actualización:** 2026-06-18
+
+---
+
+## Índice
+
+1. [Arquitectura del sistema](#1-arquitectura-del-sistema)
+2. [Opción A — Cloudflare Tunnel (local, temporal)](#2-opción-a--cloudflare-tunnel-local-temporal)
+3. [Opción B — Render + Vercel (cloud, permanente)](#3-opción-b--render--vercel-cloud-permanente)
+4. [Opción C — Railway + Vercel (cloud, alternativa)](#4-opción-c--railway--vercel-cloud-alternativa)
+5. [Variables de entorno](#5-variables-de-entorno)
+6. [Verificación de salud](#6-verificación-de-salud)
+7. [Flujo de actualización](#7-flujo-de-actualización)
+8. [Historial de despliegues](#8-historial-de-despliegues)
+9. [Problemas conocidos y soluciones](#9-problemas-conocidos-y-soluciones)
+10. [Notas y limitaciones](#10-notas-y-limitaciones)
+
+---
+
+## 1. Arquitectura del sistema
+
+El sistema está compuesto por **tres servicios independientes**:
+
+```
+┌──────────────────────────────────────────────────────┐
+│                   INTERNET / USUARIO                 │
+└──────────────────────┬───────────────────────────────┘
+                       │
+         ┌─────────────▼──────────────┐
+         │     FRONTEND (React/Vite)  │
+         │   Vercel / localhost:5173  │
+         └──────┬──────────┬──────────┘
+                │          │
+   ┌────────────▼──┐   ┌───▼───────────────────┐
+   │  API Python   │   │  Servicio Geo (TS)    │
+   │  FastAPI      │   │  Express/TypeScript   │
+   │  puerto 8000  │   │  puerto 3001 / 3100   │
+   └───────────────┘   └───────────────────────┘
+```
+
+| Servicio       | Tecnología              | Puerto local | Plataforma cloud recomendada |
+|---------------|------------------------|-------------|------------------------------|
+| Frontend       | React + TypeScript + Vite | 5173     | Vercel                       |
+| Backend Python | FastAPI (Python / uvicorn)| 8000     | Render / Railway             |
+| Backend Geo    | Express (TypeScript)      | 3001–3100| Render                       |
+
+---
+
+## 2. Opción A — Cloudflare Tunnel (local, temporal)
+
+Esta opción expone los servicios locales a internet **sin abrir puertos del router ni crear cuentas**.
+Las URLs **cambian** cada vez que se reinicia `cloudflared`.
+
+### Requisitos previos
+
+- `cloudflared.exe` descargado en `scripts\cloudflared.exe` (incluido en el repositorio).
+- Los tres servicios corriendo localmente.
+- PowerShell con política de ejecución habilitada:
+  ```powershell
+  Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser -Force
+  ```
+
+### Iniciar todos los servicios y túneles (script automático)
+
+```powershell
+powershell -ExecutionPolicy Bypass -File "scripts\deploy-cloudflare.ps1"
+```
+
+El script levanta los tres servicios y abre tres túneles. Las URLs quedan guardadas en `CLOUDFLARE-URLS.txt`.
+
+### Iniciar manualmente (alternativa)
+
+```powershell
+# Terminal 1 — Backend Python
+cd backend-python
+..\.venv\Scripts\activate
+uvicorn app.main:app --reload --port 8000
+
+# Terminal 2 — Backend Geo (TypeScript)
+cd backend-typescript
+npm run dev
+
+# Terminal 3 — Frontend
+cd frontend
+npm run dev
+
+# Terminal 4 — Túnel Frontend
+scripts\cloudflared.exe tunnel --url http://localhost:5173
+
+# Terminal 5 — Túnel API Python
+scripts\cloudflared.exe tunnel --url http://localhost:8000
+
+# Terminal 6 — Túnel Geo TS
+scripts\cloudflared.exe tunnel --url http://localhost:3001
+```
+
+### URLs obtenidas en la sesión del 2026-06-18
+
+```
+FRONTEND:   https://concern-waters-criticism-shared.trycloudflare.com
+API Python: https://experiencing-styles-emails-nutritional.trycloudflare.com
+            /docs      → Swagger UI
+            /api/health → health check
+Geo TS:     https://except-associates-stops-rays.trycloudflare.com
+            /api/truck-locations
+```
+
+> ⚠️ URLs **temporales**. Cambian al reiniciar `cloudflared` y solo funcionan mientras el equipo esté encendido.
+
+---
+
+## 3. Opción B — Render + Vercel (cloud, permanente)
+
+La configuración `render.yaml` define los dos servicios backend automáticamente.
+
+### 3.1 Backend en Render
+
+1. Ir a https://dashboard.render.com/ → **New Blueprint**.
+2. Conectar el repositorio `Alejandro225425/Sistema-de-Recoleccion-de-Residuos-Solidos`.
+3. Render detecta `render.yaml` y crea:
+   - `sir-cusco-api` — Python/FastAPI (root: `backend-python`)
+   - `sir-cusco-geo` — Node.js/TypeScript (root: `backend-typescript`)
+4. Esperar estado **Live** en ambos servicios.
+5. Anotar las URLs públicas (ejemplo):
+   ```
+   https://sir-cusco-api.onrender.com
+   https://sir-cusco-geo.onrender.com
+   ```
+
+**Verificar:**
+```
+GET https://sir-cusco-api.onrender.com/api/health
+GET https://sir-cusco-geo.onrender.com/health
+```
+
+### 3.2 Frontend en Vercel
+
+1. Ir a https://vercel.com/new → importar el mismo repositorio.
+2. Rama: `version-1-proyecto`.
+3. Vercel usa `vercel.json` automáticamente (ya configurado).
+4. Agregar variables de entorno **antes de desplegar**:
+   ```
+   VITE_API_URL = https://sir-cusco-api.onrender.com/api
+   VITE_GEO_URL = https://sir-cusco-geo.onrender.com
+   ```
+5. Clic en **Deploy**.
+
+URL final esperada:
+```
+https://sistema-de-recoleccion-de-residuos-solidos.vercel.app
+```
+
+---
+
+## 4. Opción C — Railway + Vercel (cloud, alternativa)
+
+Railway se usa si Koyeb pide tarjeta de crédito. El backend Python ya tiene `railway.toml` configurado.
+
+### 4.1 Backend en Railway
+
+1. Ir a https://railway.app/ → **New Project → Deploy from GitHub**.
+2. Seleccionar el repositorio y la rama `version-1-proyecto`.
+3. Railway detecta `backend-python/railway.toml` automáticamente.
+4. Configurar variable de entorno:
+   ```
+   CORS_ORIGIN_REGEX = https://.*\.vercel\.app
+   ```
+5. Desplegar → Railway genera una URL tipo:
+   ```
+   https://sir-cusco-api.up.railway.app
+   ```
+
+### 4.2 Frontend en Vercel
+
+Mismos pasos que en la Opción B, usando las URLs de Railway:
+```
+VITE_API_URL = https://sir-cusco-api.up.railway.app/api
+VITE_GEO_URL = https://sir-cusco-api.up.railway.app
+```
+
+> **Nota:** `backend-python/railway.toml` y `backend-python/railway.json` ya están en el repositorio (pusheados el 2026-06-18).
+
+---
+
+## 5. Variables de entorno
+
+### Backend Python
+
+| Variable            | Descripción                                   | Valor en producción                   |
+|--------------------|-----------------------------------------------|---------------------------------------|
+| `CORS_ORIGINS`      | Lista de URLs permitidas (separadas por `,`)  | `http://localhost:5173`               |
+| `CORS_ORIGIN_REGEX` | Regex para permitir dominios de Vercel        | `https://.*\.vercel\.app`             |
+| `DATABASE_URL`      | URL de PostgreSQL (opcional)                  | `postgresql://user:pass@host/db`      |
+
+### Frontend (`frontend/.env` o variables en Vercel)
+
+| Variable       | Descripción                      | Valor de ejemplo                               |
+|---------------|----------------------------------|------------------------------------------------|
+| `VITE_API_URL` | URL base de la API Python        | `https://sir-cusco-api.onrender.com/api`       |
+| `VITE_GEO_URL` | URL del servicio Geo             | `https://sir-cusco-geo.onrender.com`           |
+
+---
+
+## 6. Verificación de salud
+
+Después de cualquier despliegue, verificar estos endpoints:
+
+```
+# API Python
+GET /api/health           → { "status": "ok" }
+GET /docs                 → Swagger UI interactivo
+GET /alerts               → Lista de alertas
+
+# Servicio Geo (TypeScript)
+GET /api/truck-locations  → Posiciones GPS de camiones en tiempo real
+
+# Frontend
+Abrir la URL en el navegador → Dashboard del sistema
+```
+
+---
+
+## 7. Flujo de actualización
+
+```powershell
+git add .
+git commit -m "descripcion del cambio"
+git push origin version-1-proyecto
+```
+
+| Plataforma          | Comportamiento ante un push        |
+|--------------------|------------------------------------|
+| **Vercel**          | Redespliega automáticamente       |
+| **Render**          | Redespliega automáticamente       |
+| **Railway**         | Redespliega automáticamente       |
+| **Cloudflare Tunnel** | Requiere reiniciar el script manualmente |
+
+---
+
+## 8. Historial de despliegues
+
+### 2026-06-18 — Sesión 1: Configuración inicial (Railway + Vercel)
+
+- **Archivos creados y pusheados:**
+  - `backend-python/railway.toml` (configuración nixpacks)
+  - `backend-python/railway.json`
+  - `KOYEB-DEPLOYMENT.md`
+  - `DEPLOYMENT.md`
+- **Commits:**
+  - `69593a8` — Agregar guia Koyeb y actualizar archivos para despliegue
+  - `e60e53d` — Agregar railway.toml para despliegue del backend en Railway
+- **Estado:** ✅ Código listo y en GitHub. Despliegue manual en Railway/Vercel pendiente de ejecutar.
+
+---
+
+### 2026-06-18 — Sesión 2: Cloudflare Tunnel (frontend solamente)
+
+- **Archivos creados:**
+  - `frontend/vite.config.ts` — añadido `allowedHosts: true` para permitir hosts externos
+  - `cloudflared.exe` descargado en `Downloads\`
+- **Resultado:** ✅ Frontend en vivo:
+  ```
+  https://maps-difference-predicted-solar.trycloudflare.com
+  ```
+  (puerto 5175 — 5173 y 5174 estaban ocupados)
+
+---
+
+### 2026-06-18 — Sesión 3: Cloudflare Tunnel (los tres servicios)
+
+- **Archivos creados:**
+  - `scripts/deploy-cloudflare.ps1` (v1 y v2 corregida)
+  - `scripts/cloudflared.exe` (~25 MB, descargado de GitHub releases)
+  - `CLOUDFLARE-URLS.txt` con las tres URLs
+- **Resultado:** ✅ Todos los servicios en vivo:
+
+  | Servicio     | URL pública                                                          |
+  |-------------|----------------------------------------------------------------------|
+  | Frontend     | `https://concern-waters-criticism-shared.trycloudflare.com`          |
+  | API Python   | `https://experiencing-styles-emails-nutritional.trycloudflare.com`   |
+  | Swagger UI   | `https://experiencing-styles-emails-nutritional.trycloudflare.com/docs` |
+  | Geo TS       | `https://except-associates-stops-rays.trycloudflare.com`             |
+
+---
+
+## 9. Problemas conocidos y soluciones
+
+| Problema | Causa | Solución aplicada |
+|---------|-------|-------------------|
+| `cloudflared` no encontrado en PATH | Instalado con `winget` pero sesión de PowerShell no refrescada | Descargar `.exe` directamente a `scripts\` |
+| `npm` bloqueado por PowerShell | Política de ejecución restrictiva | `Set-ExecutionPolicy RemoteSigned -Scope CurrentUser` |
+| Puerto 5173/5174 ocupado | Procesos anteriores de Vite activos | Vite auto-seleccionó puerto 5175 |
+| Vite bloquea host externo | `allowedHosts` no configurado | Añadir `allowedHosts: true` en `vite.config.ts` |
+| Script falla con ruta con espacios | El nombre de la carpeta del proyecto contiene espacios y tildes | Script v2: copiar `cloudflared.exe` a `%TEMP%` y usar scripts helper en carpeta sin espacios |
+| Koyeb pide tarjeta de crédito | Verificación de cuenta en plan gratuito | Alternativas: Render (sin tarjeta) o Railway |
+
+---
+
+## 10. Notas y limitaciones
+
+### Cloudflare Tunnel
+- Completamente **gratuito y sin registro** (modo Quick Tunnel con `trycloudflare.com`).
+- URLs aleatorias y temporales — **cambian** cada vez que se reinicia `cloudflared`.
+- Requiere que el equipo local **esté encendido y con conexión** permanente.
+- Ideal para demostraciones rápidas o compartir por WhatsApp temporalmente.
+
+### Render (plan gratuito)
+- Los servicios se **duermen** tras 15 min de inactividad.
+- La primera petición tras el sueño tarda **30–60 segundos**.
+- Para mantenerlos activos: usar https://uptimerobot.com/ con ping cada 5 min.
+
+### Railway (plan gratuito)
+- Incluye $5 de crédito mensual — suficiente para uso ligero.
+- Sin límite de sueño (siempre activo dentro del crédito).
+
+### Koyeb (plan gratuito)
+- Puede requerir **tarjeta de crédito** para validación.
+- Si no se quiere ingresar tarjeta, usar **Render** o **Railway**.
+
+### Base de datos
+- El backend opera en **modo demo / memoria** si `DATABASE_URL` no está configurada.
+- Para persistencia real: usar [Supabase](https://supabase.com/), [Neon](https://neon.tech/) o [Railway PostgreSQL](https://railway.app/).
+
+### CORS
+- Al agregar un dominio propio, actualizar `CORS_ORIGINS` en la plataforma del backend con la URL definitiva del frontend.
