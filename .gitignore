@@ -7,6 +7,7 @@ backend-typescript/node_modules/
 dist/
 build/
 frontend/dist/
+frontend/.vite/
 
 # Environment
 .env

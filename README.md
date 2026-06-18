@@ -1,106 +1,197 @@
-# 🌍 Sistema Inteligente de Recolección de Residuos Sólidos - Cusco
+# EcoCusco - Gestion Ambiental Urbana
 
-**MVP funcional al 50%+** | MVP web de recolección de residuos segregados optimizado para Cusco.
+Sistema inteligente para la recoleccion de residuos solidos segregados en la ciudad del Cusco. El proyecto integra un frontend React, una API principal en FastAPI y un microservicio TypeScript para alertas/geolocalizacion.
 
-**Tech Stack:** React/TypeScript • Python/FastAPI • OpenStreetMap • PostgreSQL (opcional)
+## Estado
 
-## Estructura del proyecto
+- MVP funcional en modo demo sin base de datos.
+- Interfaz responsive para computadora, tablet y celular.
+- API preparada para trabajar con PostgreSQL mediante `DATABASE_URL`.
+- Mapa operativo con Leaflet/OpenStreetMap.
+
+## Arquitectura
 
 ```text
-backend/
-  # carpeta legacy vacia
 backend-python/
-  app/main.py        API REST principal con FastAPI
+  app/main.py              API REST principal con FastAPI
+  requirements.txt         Dependencias Python
+
 backend-typescript/
-  src/server.ts      Servicio auxiliar de geolocalizacion y alertas
-database/
-  schema.sql         Estructura PostgreSQL
-  seed.sql           Datos iniciales de Cusco
+  src/server.ts            Servicio auxiliar de alertas y ETA
+
 frontend/
-  index.html         Entrada Vite
-  src/
-    main.tsx         App React TypeScript
-    styles.css       Estilos de la aplicacion
-docs/
-  entrega-2.md       Documento base para la segunda entrega
+  src/main.tsx             Aplicacion React
+  src/styles.css           Estilos responsive EcoCusco
+  vite.config.ts           Proxy local hacia API y servicio geo
+
+database/
+  schema.sql               Esquema PostgreSQL principal
+  seed.sql                 Datos iniciales
+  docker-compose.yml       PostgreSQL local opcional
+
+scripts/
+  start-all.ps1            Inicio de los tres servicios
 ```
 
-## Funcionalidades implementadas
+## Requisitos
 
-- Registro e inicio de sesion simulado por rol: ciudadano, operador, administrador y conductor.
-- Recuperacion de contrasena simulada.
-- Consulta de horarios de recoleccion por zona.
-- Notificacion visible de camion cercano.
-- Reporte ciudadano de incidencias y seguimiento de estado.
-- Guia de clasificacion de residuos: organicos, reciclables y no reciclables.
-- Visualizacion de mapa operativo y rutas con ETA.
-- Registro visual de camiones, zonas asignadas y estados.
-- Gestion basica de incidencias desde el panel administrativo.
-- Historial de recolecciones, confirmaciones y estadisticas del servicio.
+- Python 3.9 o superior
+- Node.js 18 o superior
+- npm 9 o superior
+- PowerShell en Windows
 
-## 🚀 Inicio Rápido
+Puertos usados por defecto:
 
-### Requisitos
-- Node.js v18+
-- Python 3.9+
+| Servicio | Puerto | URL |
+| --- | ---: | --- |
+| Frontend Vite | 5173 | `http://localhost:5173` |
+| API FastAPI | 8000 | `http://localhost:8000` |
+| Geo/Alertas TS | 3100 | `http://localhost:3100` |
 
-### Instalación & Ejecución
+## Instalacion
 
-```bash
-# 1. Frontend
-cd frontend && npm install
+Desde la raiz del proyecto:
 
-# 2. Backend Python
-cd ../backend-python
-pip install -r requirements.txt
-
-# 3. Ejecutar (desde raíz del proyecto)
-cd ../backend-python && python -m uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
-# En otra terminal:
-cd frontend && npm run dev
+```powershell
+npm --prefix frontend install
+npm --prefix backend-typescript install
+py -m venv .venv
+.\.venv\Scripts\python.exe -m pip install -r backend-python\requirements.txt
 ```
 
-**Acceso:**
-- 🌐 Frontend: http://localhost:5173
-- 🔌 API: http://localhost:8000
-- 📍 Health: http://localhost:8000/api/health
+## Ejecucion
 
-## 📚 Características Principales
+Opcion rapida:
 
-✅ Autenticación multi-rol (ciudadano, operador, administrador, conductor)  
-✅ Consulta de horarios por zona  
-✅ Reportes ciudadanos con seguimiento  
-✅ Mapa operativo con rutas y camiones  
-✅ Gestión de incidencias  
-✅ Estadísticas del servicio  
-✅ Responsive (móvil & desktop)  
-✅ Modo memoria (sin PostgreSQL)  
-
-## 🛠️ Stack Tecnológico
-
-- **Frontend:** React + TypeScript + Vite
-- **Backend:** Python/FastAPI + OpenStreetMap/Leaflet
-- **Base de datos:** PostgreSQL (opcional)
-- **Autenticación:** Simulada por sesión
-
-## 🔌 API Endpoints
-
-```
-GET  /api/bootstrap           → Datos iniciales (zonas, rutas, camiones)
-GET  /api/zones               → Zonas de recolección
-GET  /api/schedules           → Horarios por zona
-GET  /api/trucks              → Camiones activos
-GET  /api/routes              → Rutas y ETA
-GET  /api/reports             → Incidencias ciudadanas
-GET  /api/collections         → Historial de recolecciones
-GET  /api/analytics/summary   → Indicadores del servicio
-POST /api/auth/login          → Autenticación
-POST /api/reports             → Crear incidencia
-PATCH /api/reports/:id/resolve → Resolver incidencia
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts\start-all.ps1
 ```
 
-## 📝 Historias de Usuario
+Opcion manual, en tres terminales:
 
-**Cobertura:** 25 de 30 historias implementadas (83%)
+```powershell
+.\.venv\Scripts\python.exe -m uvicorn app.main:app --reload --app-dir backend-python --host 0.0.0.0 --port 8000
+```
 
-Incluye registro, autenticación, consulta de horarios, reportes de incidencias, seguimiento GPS simulado, gestión de rutas, estadísticas y clasificación de residuos.
+```powershell
+npm --prefix backend-typescript run dev
+```
+
+```powershell
+npm --prefix frontend run dev
+```
+
+Luego abre `http://localhost:5173`.
+
+## Modo Demo
+
+El sistema funciona sin PostgreSQL. Si no existe `DATABASE_URL` o la base de datos no esta disponible, FastAPI responde con datos en memoria para poder probar login, horarios, rutas, reportes, mapa y estadisticas.
+
+Para iniciar sesion en demo:
+
+- Nombre: cualquier nombre
+- Email: cualquier correo valido
+- Rol: ciudadano, operador, admin o conductor
+- Zona: una zona disponible del formulario
+
+## PostgreSQL Opcional
+
+Si necesitas persistencia real:
+
+```powershell
+psql -U postgres -c "CREATE DATABASE sir_cusco;"
+psql -U postgres -d sir_cusco -f database\schema.sql
+psql -U postgres -d sir_cusco -f database\seed.sql
+```
+
+Configura la variable:
+
+```powershell
+$env:DATABASE_URL="postgresql://postgres:postgres@localhost:5432/sir_cusco"
+```
+
+Reinicia el backend despues de configurar la variable.
+
+## Endpoints Principales
+
+API FastAPI:
+
+| Metodo | Ruta | Descripcion |
+| --- | --- | --- |
+| GET | `/api/health` | Estado de la API y modo de base de datos |
+| GET | `/api/bootstrap` | Datos iniciales para el frontend |
+| POST | `/api/auth/login` | Login/registro demo por rol |
+| GET | `/api/zones` | Zonas de recoleccion |
+| GET | `/api/schedules` | Horarios |
+| GET | `/api/trucks` | Camiones |
+| GET | `/api/routes` | Rutas activas |
+| GET | `/api/reports` | Reportes ciudadanos |
+| POST | `/api/reports` | Crear reporte |
+| PATCH | `/api/reports/{id}/resolve` | Resolver reporte |
+| GET | `/api/collections` | Historial de recolecciones |
+| GET | `/api/analytics/summary` | Resumen estadistico |
+
+Servicio Geo/Alertas:
+
+| Metodo | Ruta | Descripcion |
+| --- | --- | --- |
+| GET | `/health` | Estado del servicio |
+| GET | `/truck-locations` | Ubicaciones simuladas |
+| GET | `/alerts` | Alertas de ETA |
+| GET | `/eta?truck=C-01` | ETA por camion |
+
+## Funcionalidades
+
+- Login demo multirol.
+- Consulta de horarios por zona.
+- Registro y seguimiento de incidencias.
+- Resolucion de incidencias desde administracion.
+- Mapa operativo con zonas, camiones y rutas.
+- Panel de metricas y estadisticas.
+- Guia de clasificacion de residuos.
+- Exportacion CSV en vistas con listados.
+- Tema claro/oscuro.
+- Diseno responsive para escritorio y celular.
+
+## Verificacion
+
+```powershell
+npm --prefix frontend run build
+npm --prefix backend-typescript run build
+.\.venv\Scripts\python.exe -m py_compile backend-python\app\main.py
+```
+
+Tambien puedes ejecutar:
+
+```powershell
+python verify_system.py
+```
+
+## Pruebas Manuales Recomendadas
+
+1. Abrir `http://localhost:5173`.
+2. Iniciar sesion con un correo valido.
+3. Revisar el panel principal y confirmar que el mapa carga.
+4. Ir a Horarios y probar busqueda/filtros.
+5. Ir a Reportes, registrar una incidencia y confirmar que aparece en seguimiento.
+6. Ir a Administracion y marcar una incidencia como resuelta.
+7. Probar la vista en ancho movil, por ejemplo 390 px, y confirmar que no haya scroll horizontal.
+
+## Troubleshooting
+
+| Problema | Solucion |
+| --- | --- |
+| `ModuleNotFoundError: uvicorn` | Instala dependencias con `.\.venv\Scripts\python.exe -m pip install -r backend-python\requirements.txt` |
+| Puerto 8000 ocupado | Deten el proceso anterior o cambia `--port 8001` |
+| Puerto 5173 ocupado | Vite suele elegir otro puerto; revisa la terminal |
+| El mapa no carga | Verifica conexion a internet para tiles de OpenStreetMap |
+| No conecta con API | Revisa `http://localhost:8000/api/health` y el proxy en `frontend/vite.config.ts` |
+| PostgreSQL falla | El sistema cae a modo demo en memoria; revisa `DATABASE_URL` |
+
+## Documentacion Conservada
+
+- `docs/entrega-2.md`: documento academico base de la entrega.
+- `docs/diagrama-casos-uso.puml` y `docs/diagrama-clases.puml`: diagramas UML editables.
+- `database/schema.sql` y `database/seed.sql`: referencia tecnica de la base de datos PostgreSQL.
+
+La documentacion duplicada de resumen, guias rapidas y previews fue consolidada aqui para mantener el proyecto mas limpio.

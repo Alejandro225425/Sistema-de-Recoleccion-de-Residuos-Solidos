@@ -14,24 +14,36 @@ function json(data: unknown, status = 200) {
     body: JSON.stringify(data),
     headers: {
       "content-type": "application/json; charset=utf-8",
-      "access-control-allow-origin": "*"
+      "access-control-allow-origin": "*",
+      "access-control-allow-methods": "GET, OPTIONS",
+      "access-control-allow-headers": "content-type"
     }
   };
 }
 
 const server = createServer(async (req, res) => {
+  if (req.method === "OPTIONS") {
+    res.writeHead(204, {
+      "access-control-allow-origin": "*",
+      "access-control-allow-methods": "GET, OPTIONS",
+      "access-control-allow-headers": "content-type"
+    });
+    res.end();
+    return;
+  }
+
   const url = new URL(req.url ?? "/", `http://${req.headers.host}`);
   let response: ReturnType<typeof json>;
 
-  if (url.pathname === "/health") {
+  if (url.pathname === "/health" || url.pathname === "/api/health") {
     response = json({ status: "ok", service: "geo-alerts" });
-  } else if (url.pathname === "/truck-locations") {
+  } else if (url.pathname === "/truck-locations" || url.pathname === "/api/truck-locations") {
     response = json({ trucks });
-  } else if (url.pathname === "/alerts") {
+  } else if (url.pathname === "/alerts" || url.pathname === "/api/alerts") {
     response = json({
       alerts: trucks.map(truck => `${truck.code} llegara a ${truck.zone} en ${truck.etaMinutes} min`)
     });
-  } else if (url.pathname === "/eta") {
+  } else if (url.pathname === "/eta" || url.pathname === "/api/eta") {
     const code = url.searchParams.get("truck");
     const truck = trucks.find(item => item.code === code) ?? trucks[0];
     response = json({ truck: truck.code, etaMinutes: truck.etaMinutes, eta: `${truck.etaMinutes} min` });

@@ -13,31 +13,24 @@ except Exception:  # pragma: no cover - allows demo mode before installing DB de
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel, EmailStr
-
-app = FastAPI(title="SIR Cusco API", version="1.0.0")
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=os.getenv("CORS_ORIGINS", "http://localhost:5173,http://127.0.0.1:5173").split(","),
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
+from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
 class LoginRequest(BaseModel):
-    name: str
+    model_config = ConfigDict(str_strip_whitespace=True)
+
+    name: str = Field(min_length=2, max_length=120)
     email: EmailStr
     role: str
-    zone: str
+    zone: str = Field(min_length=2, max_length=80)
 
 
 class ReportCreate(BaseModel):
-    citizen: str
-    zone: str
-    type: str
-    detail: str
+    model_config = ConfigDict(str_strip_whitespace=True)
+
+    citizen: str = Field(min_length=2, max_length=120)
+    zone: str = Field(min_length=2, max_length=80)
+    type: str = Field(min_length=2, max_length=80)
+    detail: str = Field(min_length=8, max_length=600)
 
 
 class MemoryStore:
@@ -88,11 +81,50 @@ class MemoryStore:
         }
 
 
+def cors_origins() -> list[str]:
+    return [
+        origin.strip()
+        for origin in os.getenv("CORS_ORIGINS", "http://localhost:5173,http://127.0.0.1:5173").split(",")
+        if origin.strip()
+    ]
+
+
+app = FastAPI(title="SIR Cusco API", version="1.0.0")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=cors_origins(),
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+
 memory = MemoryStore()
 
 
 def database_url() -> Optional[str]:
     return os.getenv("DATABASE_URL")
+
+
+def database_mode() -> str:
+    if database_url() and psycopg is not None:
+        return "postgresql"
+    if database_url() and psycopg is None:
+        return "memory (psycopg no instalado)"
+    return "memory"
+
+
+def memory_payload() -> dict[str, Any]:
+    return {
+        "zones": memory.zones,
+        "schedules": memory.schedules,
+        "trucks": memory.trucks,
+        "routes": memory.routes,
+        "reports": memory.reports,
+        "collections": memory.collections,
+        "analytics": memory.analytics(),
+    }
 
 
 def fetch_all(query: str, params: tuple[Any, ...] = ()) -> list[dict[str, Any]]:
@@ -151,26 +183,18 @@ def bootstrap() -> dict[str, Any]:
         }
         rows["analytics"] = analytics_from(rows)
         return rows
-    except RuntimeError:
-        return {
-            "zones": memory.zones,
-            "schedules": memory.schedules,
-            "trucks": memory.trucks,
-            "routes": memory.routes,
-            "reports": memory.reports,
-            "collections": memory.collections,
-            "analytics": memory.analytics(),
-        }
+    except Exception:
+        return memory_payload()
 
 
 @app.get("/api/health")
 def health() -> dict[str, str]:
-    db_status = "postgresql" if database_url() and psycopg else "memory"
+    db_status = database_mode()
     return {
         "status": "ok",
         "database": db_status,
         "version": "1.0.0",
-        "mode": "demo" if db_status == "memory" else "production"
+        "mode": "production" if db_status == "postgresql" else "demo"
     }
 
 
@@ -192,7 +216,9 @@ def login(payload: LoginRequest) -> dict[str, Any]:
             (payload.name, payload.email, payload.role, payload.zone),
         )
         return {"ok": True, "session": row}
-    except RuntimeError:
+    except Exception as exc:
+        if isinstance(exc, HTTPException):
+            raise
         user = payload.model_dump()
         user["id"] = len(memory.users) + 1
         memory.users.append(user)
@@ -231,7 +257,9 @@ def create_report(payload: ReportCreate) -> dict[str, Any]:
             "insert into reports (citizen, zone, type, detail, status) values (%s, %s, %s, %s, 'Pendiente') returning id, citizen, zone, type, detail, status",
             (payload.citizen, payload.zone, payload.type, payload.detail),
         )
-    except RuntimeError:
+    except Exception as exc:
+        if isinstance(exc, HTTPException):
+            raise
         report = payload.model_dump()
         report["id"] = max([item["id"] for item in memory.reports], default=0) + 1
         report["status"] = "Pendiente"
@@ -246,7 +274,9 @@ def resolve_report(report_id: int) -> dict[str, Any]:
             "update reports set status = 'Resuelto' where id = %s returning id, citizen, zone, type, detail, status",
             (report_id,),
         )
-    except RuntimeError:
+    except Exception as exc:
+        if isinstance(exc, HTTPException):
+            raise
         for report in memory.reports:
             if report["id"] == report_id:
                 report["status"] = "Resuelto"
