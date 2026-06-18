@@ -29,7 +29,8 @@ on conflict (id) do update set progress = excluded.progress, eta = excluded.eta,
 
 insert into reports (id, citizen, zone, type, detail, status) values
   (1, 'Ana Quispe', 'Wanchaq', 'Acumulacion de basura', 'Contenedor lleno cerca al mercado.', 'En revision'),
-  (2, 'Jose Huaman', 'Santiago', 'Retraso', 'No paso el camion en el horario indicado.', 'Pendiente')
+  (2, 'Jose Huaman', 'Santiago', 'Retraso', 'No paso el camion en el horario indicado.', 'Pendiente'),
+  (3, 'Maria Ccahuana', 'Centro Historico', 'Contenedor lleno', 'Contenedor saturado cerca de la Plaza San Francisco.', 'Pendiente')
 on conflict (id) do update set citizen = excluded.citizen, zone = excluded.zone, type = excluded.type, detail = excluded.detail, status = excluded.status;
 
 insert into collections (id, zone_id, truck_id, kg, status, date) values

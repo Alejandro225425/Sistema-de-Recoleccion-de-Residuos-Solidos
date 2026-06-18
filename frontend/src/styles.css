@@ -199,7 +199,8 @@ button.btn-secondary:hover {
 
 /* Barra Lateral (Sidebar) */
 .sidebar {
-  min-height: 100vh;
+  height: 100vh;
+  height: 100dvh;
   padding: 28px 20px;
   background: linear-gradient(135deg, #0f5230 0%, #1b7345 100%);
   color: white;
@@ -583,6 +584,7 @@ textarea {
   display: flex;
   flex-direction: column;
   gap: 4px;
+  min-width: 0;
 }
 
 .topbar h1 {
@@ -609,6 +611,45 @@ textarea {
   font-size: 0.9rem;
   white-space: nowrap;
   box-shadow: 0 2px 8px rgba(27, 115, 69, 0.1);
+}
+
+.topbar-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  min-width: 0;
+}
+
+.icon-action,
+.logout-action {
+  flex-shrink: 0;
+}
+
+.icon-action {
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  background: var(--panel);
+  color: var(--ink);
+  border: 1.5px solid var(--line);
+}
+
+.icon-action:hover:not(:disabled) {
+  color: var(--eco-primary);
+  background: var(--eco-secondary);
+}
+
+.logout-action {
+  background: var(--error);
+  white-space: nowrap;
+}
+
+.logout-action:hover:not(:disabled) {
+  background: #a93b2c;
+  box-shadow: 0 8px 16px rgba(201, 71, 53, 0.22);
 }
 
 .status-warning {
@@ -1141,6 +1182,7 @@ textarea {
     align-items: center;
     justify-content: space-between;
     padding: 16px;
+    height: auto;
     min-height: auto;
     gap: 16px;
     overflow-x: auto;
@@ -1170,7 +1212,12 @@ textarea {
   }
   .session-card button { margin-top: 0; }
   .shell { grid-column: 1; }
-  .topbar { flex-direction: column; gap: 16px; align-items: flex-start; }
+  .topbar { gap: 16px; align-items: flex-start; }
+  .topbar-actions {
+    width: 100%;
+    justify-content: flex-start;
+    flex-wrap: wrap;
+  }
   .status-pill { align-self: flex-start; }
   .metrics-grid { 
     grid-template-columns: repeat(2, minmax(140px, 1fr));
@@ -1276,6 +1323,23 @@ textarea {
   }
   .divider { display: none; }
   .topbar { padding: 16px; }
+  .topbar-actions {
+    display: grid;
+    grid-template-columns: 1fr 44px;
+    gap: 8px;
+  }
+  .topbar-actions .status-pill {
+    grid-column: 1;
+    grid-row: 1;
+  }
+  .topbar-actions .logout-action {
+    grid-column: 1 / -1;
+  }
+  .icon-action {
+    grid-column: 2;
+    grid-row: 1;
+    width: 44px;
+  }
   .topbar h1 { font-size: 1.4rem; }
   .eyebrow { font-size: 0.7rem; }
   .notice { margin: 12px 16px 0; }

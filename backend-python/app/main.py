@@ -94,6 +94,7 @@ app = FastAPI(title="SIR Cusco API", version="1.0.0")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=cors_origins(),
+    allow_origin_regex=os.getenv("CORS_ORIGIN_REGEX"),
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -125,6 +126,29 @@ def memory_payload() -> dict[str, Any]:
         "collections": memory.collections,
         "analytics": memory.analytics(),
     }
+
+
+def eta_minutes(route: dict[str, Any]) -> int:
+    eta = str(route.get("eta", "0 min")).split()[0]
+    try:
+        return int(eta)
+    except ValueError:
+        return 0
+
+
+def geo_trucks() -> list[dict[str, Any]]:
+    routes = bootstrap()["routes"]
+    return [
+        {
+            "code": route["truck"],
+            "zone": route["zone"],
+            "latitude": route["latitude"],
+            "longitude": route["longitude"],
+            "progress": route["progress"],
+            "etaMinutes": eta_minutes(route),
+        }
+        for route in routes
+    ]
 
 
 def fetch_all(query: str, params: tuple[Any, ...] = ()) -> list[dict[str, Any]]:
@@ -240,9 +264,38 @@ def get_trucks() -> list[dict[str, Any]]:
     return bootstrap()["trucks"]
 
 
+@app.get("/truck-locations")
+@app.get("/api/truck-locations")
+def get_truck_locations() -> dict[str, list[dict[str, Any]]]:
+    return {"trucks": geo_trucks()}
+
+
 @app.get("/api/routes")
 def get_routes() -> list[dict[str, Any]]:
     return bootstrap()["routes"]
+
+
+@app.get("/alerts")
+@app.get("/api/alerts")
+def get_alerts() -> dict[str, list[str]]:
+    return {
+        "alerts": [
+            f'{truck["code"]} llegara a {truck["zone"]} en {truck["etaMinutes"]} min'
+            for truck in geo_trucks()
+        ]
+    }
+
+
+@app.get("/eta")
+@app.get("/api/eta")
+def get_eta(truck: str | None = None) -> dict[str, Any]:
+    trucks = geo_trucks()
+    selected = next((item for item in trucks if item["code"] == truck), trucks[0])
+    return {
+        "truck": selected["code"],
+        "etaMinutes": selected["etaMinutes"],
+        "eta": f'{selected["etaMinutes"]} min',
+    }
 
 
 @app.get("/api/reports")

@@ -39,6 +39,7 @@ scripts/
 - Node.js 18 o superior
 - npm 9 o superior
 - PowerShell en Windows
+- Docker Desktop opcional, solo si se usara PostgreSQL en contenedor
 
 Puertos usados por defecto:
 
@@ -111,6 +112,86 @@ $env:DATABASE_URL="postgresql://postgres:postgres@localhost:5432/sir_cusco"
 ```
 
 Reinicia el backend despues de configurar la variable.
+
+## PostgreSQL con Docker
+
+El proyecto incluye `database/docker-compose.yml` para levantar PostgreSQL local sin instalarlo manualmente.
+
+Primero verifica que Docker este instalado:
+
+```powershell
+docker --version
+docker compose version
+```
+
+Luego confirma que Docker Desktop este encendido:
+
+```powershell
+docker info
+```
+
+Si el comando muestra una seccion `Server`, Docker esta funcionando. Si aparece un error con `dockerDesktopLinuxEngine`, abre Docker Desktop y espera a que termine de iniciar.
+
+Para iniciar PostgreSQL:
+
+```powershell
+cd database
+docker compose up -d
+```
+
+El contenedor crea automaticamente la base `sir_cusco` y carga `schema.sql` y `seed.sql` en el primer arranque. Los datos quedan guardados en el volumen Docker `sir_cusco_data`.
+
+Verifica que el contenedor este activo:
+
+```powershell
+docker ps
+```
+
+Debe aparecer un contenedor llamado `sir_cusco_postgres`.
+
+Configura FastAPI para usar la base de datos. Ejecuta esto en la misma terminal donde levantaras el backend:
+
+```powershell
+$env:DATABASE_URL="postgresql://postgres:postgres@localhost:5432/sir_cusco"
+```
+
+Si estas dentro de `database`, vuelve a la raiz del proyecto antes de iniciar FastAPI:
+
+```powershell
+cd ..
+python -m uvicorn app.main:app --reload --app-dir backend-python --host 0.0.0.0 --port 8000
+```
+
+Si no tienes el entorno virtual activado, usa la ruta explicita desde la raiz:
+
+```powershell
+.\.venv\Scripts\python.exe -m uvicorn app.main:app --reload --app-dir backend-python --host 0.0.0.0 --port 8000
+```
+
+Para comprobar que la API usa PostgreSQL, abre:
+
+```text
+http://localhost:8000/api/health
+```
+
+La respuesta debe indicar:
+
+```json
+{
+  "database": "postgresql",
+  "mode": "production"
+}
+```
+
+Nota: `0.0.0.0` se usa para que FastAPI escuche conexiones, pero en el navegador se debe abrir `localhost` o `127.0.0.1`.
+
+Para volver al modo demo en memoria:
+
+```powershell
+Remove-Item Env:DATABASE_URL -ErrorAction SilentlyContinue
+```
+
+Luego reinicia FastAPI.
 
 ## Endpoints Principales
 
@@ -187,6 +268,9 @@ python verify_system.py
 | El mapa no carga | Verifica conexion a internet para tiles de OpenStreetMap |
 | No conecta con API | Revisa `http://localhost:8000/api/health` y el proxy en `frontend/vite.config.ts` |
 | PostgreSQL falla | El sistema cae a modo demo en memoria; revisa `DATABASE_URL` |
+| `dockerDesktopLinuxEngine` no existe | Docker Desktop esta instalado pero apagado; abre Docker Desktop y ejecuta `docker info` otra vez |
+| `.\.venv\Scripts\python.exe` no se reconoce desde `database` | Vuelve a la raiz con `cd ..` o usa `python` si el entorno virtual esta activado |
+| `ERR_ADDRESS_INVALID` en `http://0.0.0.0:8000/` | Abre `http://localhost:8000/api/health`; `0.0.0.0` no se usa como URL del navegador |
 
 ## Documentacion Conservada
 
