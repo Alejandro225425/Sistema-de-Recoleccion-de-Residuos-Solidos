@@ -12,7 +12,8 @@
 - Se preparó la configuración de despliegue en producción: se actualizó `render.yaml` con `JWT_SECRET`, se completó `backend-python/.env.example` y `.env`, se actualizó `docs/DESPLIEGUE.md` con la nueva variable y el historial, y se documentó el estado en `README.md` y `docs/entrega-2.md`.
 - Se creó la rama `v2.0.0-deploy-config` con commit `v2.0.0: lista para despliegue en produccion...` y se subió a GitHub.
 - Se actualizó `VERSION.md` a versión 2.0.0 y `README.md` con la rama de producción actual.
-- Se añadió a `docs/DESPLIEGUE.md` la “Sesión 5: Checklist de despliegue real en producción” con pasos detallados para Render+Vercel y Railway+Vercel, incluyendo configuración de variables y verificación post-despliegue.
+- Se añadió a `docs/DESPLIEGUE.md` la “Sesión 5: Checklist de despliegue real en producción” con pasos detallados para Render+Vercel (Web Services manuales, sin Blueprint) y Railway+Vercel, incluyendo configuración de variables y verificación post-despliegue.
+- Se actualizó `docs/DESPLIEGUE.md` para evitar Blueprint (de pago) y usar Web Services manuales gratuitos en Render.
 
 ## 2026-07-28
 

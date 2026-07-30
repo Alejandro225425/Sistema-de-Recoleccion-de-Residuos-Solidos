@@ -117,32 +117,82 @@ Geo TS:     https://except-associates-stops-rays.trycloudflare.com
 
 ## 3. Opción B — Render + Vercel (cloud, permanente, recomendada)
 
-La configuración `render.yaml` define los dos servicios backend automáticamente. Render ofrece servicios web y PostgreSQL gratuitos sin tarjeta de crédito.
+Render permite crear **Web Services manuales** gratuitos sin tarjeta de crédito. No uses Blueprint (es de pago); sigue estos pasos manuales.
 
-### 3.1 Backend en Render
+### 3.1 PostgreSQL en Render (opcional pero recomendado)
 
-1. Ir a https://dashboard.render.com/ → **New Blueprint**.
-2. Conectar el repositorio `Alejandro225425/Sistema-de-Recoleccion-de-Residuos-Solidos`.
+1. Entra a https://dashboard.render.com/ → **New** → **PostgreSQL**.
+2. Nombre: `sir-cusco-db`.
+3. Plan: **Free**.
+4. Crea la base de datos.
+5. Anota la **Internal Database URL**, por ejemplo:
+   ```
+   postgresql://sir_cusco_user:password@host:5432/sir_cusco_db
+   ```
+6. Render ofrece 90 MB de almacenamiento y 10 conexiones en plan gratuito.
+
+### 3.2 Backend Python en Render (Web Service)
+
+1. Entra a https://dashboard.render.com/ → **New** → **Web Service**.
+2. Conecta el repositorio `Alejandro225425/Sistema-de-Recoleccion-de-Residuos-Solidos`.
 3. Rama: `v2.0.0-deploy-config`.
-4. Render detecta `render.yaml` y crea:
-   - `sir-cusco-api` — Python/FastAPI (root: `backend-python`)
-   - `sir-cusco-geo` — Node.js/TypeScript (root: `backend-typescript`)
-5. Esperar estado **Live** en ambos servicios.
-6. Anotar las URLs públicas (ejemplo):
+4. Nombre: `sir-cusco-api`.
+5. Runtime: **Python 3**.
+6. Plan: **Free**.
+7. Build Command:
+   ```bash
+   pip install -r backend-python/requirements.txt
    ```
-   https://sir-cusco-api.onrender.com
-   https://sir-cusco-geo.onrender.com
+8. Start Command:
+   ```bash
+   uvicorn app.main:app --app-dir backend-python --host 0.0.0.0 --port $PORT
    ```
+9. En **Environment**, agrega:
+   - `JWT_SECRET`: genera un string robusto único (mínimo 32 caracteres aleatorios).
+   - `DATABASE_URL`: pega la Internal Database URL del paso 3.1 si creaste PostgreSQL.
+   - `CORS_ORIGIN_REGEX`: `https://.*\.vercel\.app`
+   - `CORS_ORIGINS`: `http://localhost:5173,http://127.0.0.1:5173`
+10. Crea el servicio y espera a que quede **Live**.
+11. Anota la URL pública:
+    ```
+    https://sir-cusco-api.onrender.com
+    ```
 
 **Verificar:**
 ```
 GET https://sir-cusco-api.onrender.com/api/health
+```
+
+### 3.3 Backend Geo en Render (Web Service)
+
+1. Entra a https://dashboard.render.com/ → **New** → **Web Service**.
+2. Conecta el mismo repositorio.
+3. Rama: `v2.0.0-deploy-config`.
+4. Nombre: `sir-cusco-geo`.
+5. Runtime: **Node.js**.
+6. Plan: **Free**.
+7. Build Command:
+   ```bash
+   cd backend-typescript && npm install && npm run build
+   ```
+8. Start Command:
+   ```bash
+   cd backend-typescript && npm start
+   ```
+9. Crea el servicio y espera a que quede **Live**.
+10. Anota la URL pública:
+    ```
+    https://sir-cusco-geo.onrender.com
+    ```
+
+**Verificar:**
+```
 GET https://sir-cusco-geo.onrender.com/health
 ```
 
-### 3.2 Frontend en Vercel
+### 3.4 Frontend en Vercel
 
-1. Ir a https://vercel.com/new → importar el mismo repositorio.
+1. Entra a https://vercel.com/new → importa el mismo repositorio.
 2. Rama: `v2.0.0-deploy-config`.
 3. Vercel usa `vercel.json` automáticamente (ya configurado).
 4. Agregar variables de entorno **antes de desplegar**:
@@ -151,13 +201,21 @@ GET https://sir-cusco-geo.onrender.com/health
    VITE_GEO_URL = https://sir-cusco-geo.onrender.com
    ```
 5. Clic en **Deploy**.
+6. Anota la URL final de Vercel, por ejemplo:
+   ```
+   https://sistema-de-recoleccion-de-residuos-solidos.vercel.app
+   ```
 
-URL final esperada:
-```
-https://sistema-de-recoleccion-de-residuos-solidos.vercel.app
-```
+### 3.5 Ajustar CORS en Render
 
-> **Nota:** Render en plan gratis puede dormir los servicios tras 15 min de inactividad; la primera carga puede tardar 30-60 segundos. No requiere tarjeta de crédito.
+1. Ve a `sir-cusco-api` → **Environment**.
+2. Actualiza `CORS_ORIGINS` con la URL final de Vercel:
+   ```
+   https://sistema-de-recoleccion-de-residuos-solidos.vercel.app
+   ```
+3. Guarda cambios y espera el redeploy automático.
+
+---
 
 ---
 
