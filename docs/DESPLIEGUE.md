@@ -363,59 +363,97 @@ git push origin version-1-proyecto
 
 ## 8. Historial de despliegues
 
-### 2026-06-18 — Sesión 1: Configuración inicial (Railway + Vercel)
+### 2026-07-30 — Sesión 4: Configuración de despliegue lista para v2.0.0
 
-- **Archivos creados y pusheados:**
-  - `backend-python/railway.toml` (configuración nixpacks)
-  - `backend-python/railway.json`
-  - `KOYEB-DEPLOYMENT.md`
-  - `DEPLOYMENT.md`
-- **Commits:**
-  - `69593a8` — Agregar guia Koyeb y actualizar archivos para despliegue
-  - `e60e53d` — Agregar railway.toml para despliegue del backend en Railway
-- **Estado:** ✅ Código listo y en GitHub. Despliegue manual en Railway/Vercel pendiente de ejecutar.
-
----
-
-### 2026-06-18 — Sesión 2: Cloudflare Tunnel (frontend solamente)
-
-- **Archivos creados:**
-  - `frontend/vite.config.ts` — añadido `allowedHosts: true` para permitir hosts externos
-  - `cloudflared.exe` descargado en `Downloads\`
-- **Resultado:** ✅ Frontend en vivo:
-  ```
-  https://maps-difference-predicted-solar.trycloudflare.com
-  ```
-  (puerto 5175 — 5173 y 5174 estaban ocupados)
-
----
-
-### 2026-06-18 — Sesión 3: Cloudflare Tunnel (los tres servicios)
-
-- **Archivos creados:**
-  - `scripts/deploy-cloudflare.ps1` (v1 y v2 corregida)
-  - `scripts/cloudflared.exe` (~25 MB, descargado de GitHub releases)
-  - `CLOUDFLARE-URLS.txt` con las tres URLs
-- **Resultado:** ✅ Todos los servicios en vivo:
-
-  | Servicio     | URL pública                                                          |
-  |-------------|----------------------------------------------------------------------|
-  | Frontend     | `https://concern-waters-criticism-shared.trycloudflare.com`          |
-  | API Python   | `https://experiencing-styles-emails-nutritional.trycloudflare.com`   |
-  | Swagger UI   | `https://experiencing-styles-emails-nutritional.trycloudflare.com/docs` |
-  | Geo TS       | `https://except-associates-stops-rays.trycloudflare.com`             |
-
----
-
-### 2026-07-30 — Sesión 4: Configuración de despliegue lista
-
+- **Rama:** `v2.0.0-deploy-config`
+- **Versión:** `2.0.0`
 - **Archivos actualizados:**
   - `render.yaml` — se añadió `JWT_SECRET` como variable de entorno (`sync: false`) para el servicio `sir-cusco-api`.
   - `backend-python/.env.example` — se incluyó `JWT_SECRET` para referencia de producción.
   - `backend-python/.env` — se añadió `JWT_SECRET` con valor de desarrollo.
   - `docs/DESPLIEGUE.md` — se actualizó la tabla de variables de entorno y el historial de despliegues.
   - `CHANGELOG.md` — se registró el hito.
+  - `README.md` — se actualizó la versión y el estado de despliegue.
+  - `VERSION.md` — se registró la versión 2.0.0.
 - **Estado:** ✅ Configuración de despliegue lista. Pendiente ejecutar despliegue manual en Render/Vercel o Railway/Vercel y configurar `JWT_SECRET` y `DATABASE_URL` seguros en producción.
+
+### 2026-07-30 — Sesión 5: Checklist de despliegue real en producción
+
+Esta sesión documenta el paso a paso para completar el despliegue de la rama `v2.0.0-deploy-config`.
+
+#### Plataforma A: Render + Vercel (recomendada)
+
+**Backend Python (Render):**
+1. Ir a https://dashboard.render.com/ → **New Blueprint**.
+2. Conectar el repositorio `Alejandro225425/Sistema-de-Recoleccion-de-Residuos-Solidos`.
+3. Rama: `v2.0.0-deploy-config`.
+4. Render detecta `render.yaml` y crea:
+   - `sir-cusco-api` — Python/FastAPI (root: `backend-python`)
+   - `sir-cusco-geo` — Node.js/TypeScript (root: `backend-typescript`)
+5. En `sir-cusco-api` → **Environment**, configurar:
+   - `JWT_SECRET`: generar un string robusto único (mínimo 32 caracteres, aleatorio).
+   - `DATABASE_URL`: URL de PostgreSQL si se desea persistencia (opcional para modo demo).
+   - `CORS_ORIGINS`: agregar la URL final de Vercel cuando esté lista.
+   - `CORS_ORIGIN_REGEX`: `https://.*\.vercel\.app`
+6. Esperar estado **Live** en ambos servicios.
+7. Anotar las URLs públicas:
+   ```
+   https://sir-cusco-api.onrender.com
+   https://sir-cusco-geo.onrender.com
+   ```
+
+**Frontend (Vercel):**
+1. Ir a https://vercel.com/new → importar el mismo repositorio.
+2. Rama: `v2.0.0-deploy-config`.
+3. Vercel usa `vercel.json` automáticamente.
+4. Agregar variables de entorno **antes de desplegar**:
+   ```
+   VITE_API_URL = https://sir-cusco-api.onrender.com/api
+   VITE_GEO_URL = https://sir-cusco-geo.onrender.com
+   ```
+5. Clic en **Deploy**.
+6. Anotar URL final de Vercel:
+   ```
+   https://sir-cusco.vercel.app
+   ```
+
+**Post-despliegue:**
+1. Actualizar `CORS_ORIGINS` en Render con la URL final de Vercel.
+2. Verificar `/api/health` → debe devolver `"mode": "production"` si `DATABASE_URL` está configurada.
+3. Verificar login, reportes, panel administrativo y mapa en la URL de Vercel.
+
+#### Plataforma B: Railway + Vercel (alternativa)
+
+**Backend Python (Railway):**
+1. Ir a https://railway.app/ → **New Project → Deploy from GitHub**.
+2. Seleccionar el repositorio y la rama `v2.0.0-deploy-config`.
+3. Railway detecta `backend-python/railway.toml` automáticamente.
+4. Configurar variables de entorno:
+   - `JWT_SECRET`: string robusto único.
+   - `DATABASE_URL`: opcional.
+   - `CORS_ORIGIN_REGEX`: `https://.*\.vercel\.app`
+5. Desplegar → Railway genera URL tipo:
+   ```
+   https://sir-cusco-api.up.railway.app
+   ```
+
+**Frontend (Vercel):**
+1. Mismos pasos que en Plataforma A, usando URLs de Railway:
+   ```
+   VITE_API_URL = https://sir-cusco-api.up.railway.app/api
+   VITE_GEO_URL = https://sir-cusco-api.up.railway.app
+   ```
+
+#### Checklist de verificación post-despliegue
+
+- [ ] `/api/health` devuelve `"status": "ok"` y `"mode": "production"` (si `DATABASE_URL` está configurada).
+- [ ] Login con `admin@ecocusco.pe` / `admin123` funciona correctamente.
+- [ ] Frontend carga el dashboard, mapa y paneles sin errores.
+- [ ] Reportes se pueden crear y listar.
+- [ ] Panel administrativo carga zonas, horarios, camiones y mantenimiento.
+- [ ] Filtros de búsqueda por conductor y por estado funcionan.
+- [ ] Exportación a CSV y PDF funciona desde reportes y analytics.
+- [ ] CORS permite el dominio de Vercel (no hay errores en consola del navegador).
 
 ---
 

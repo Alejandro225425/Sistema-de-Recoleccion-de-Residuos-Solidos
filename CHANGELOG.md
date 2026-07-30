@@ -10,6 +10,9 @@
 - Se actualizaron las listas del panel administrativo a elementos semánticos `<ul>/<li>` y se asociaron `id`/`htmlFor` en formularios para mejorar la lectura por lectores de pantalla.
 - Se verificó el build del frontend (`npx vite build`) y las pruebas automatizadas (`11 passed` frontend, `16 passed` backend).
 - Se preparó la configuración de despliegue en producción: se actualizó `render.yaml` con `JWT_SECRET`, se completó `backend-python/.env.example` y `.env`, se actualizó `docs/DESPLIEGUE.md` con la nueva variable y el historial, y se documentó el estado en `README.md` y `docs/entrega-2.md`.
+- Se creó la rama `v2.0.0-deploy-config` con commit `v2.0.0: lista para despliegue en produccion...` y se subió a GitHub.
+- Se actualizó `VERSION.md` a versión 2.0.0 y `README.md` con la rama de producción actual.
+- Se añadió a `docs/DESPLIEGUE.md` la “Sesión 5: Checklist de despliegue real en producción” con pasos detallados para Render+Vercel y Railway+Vercel, incluyendo configuración de variables y verificación post-despliegue.
 
 ## 2026-07-28
 
@@ -64,4 +67,4 @@
 
 ### Próximos pasos
 - ~~Validar accesibilidad y experiencia móvil en el panel administrativo~~ Completado el 2026-07-30.
-- Preparar despliegue en producción con variables de entorno seguras para `JWT_SECRET` y `DATABASE_URL` (configuración de archivos lista; pendiente ejecutar despliegue en Render/Vercel o Railway/Vercel).
+- Ejecutar despliegue manual en Render/Vercel o Railway/Vercel usando la rama `v2.0.0-deploy-config` y configurar `JWT_SECRET` y `DATABASE_URL` seguros en producción (checklist detallado en `docs/DESPLIEGUE.md`).
