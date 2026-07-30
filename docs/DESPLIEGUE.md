@@ -599,3 +599,41 @@ Si el error persiste:
 
 ### CORS
 - Al agregar un dominio propio, actualizar `CORS_ORIGINS` en la plataforma del backend con la URL definitiva del frontend.
+
+---
+
+## 9.2 Troubleshooting Vercel
+
+### Error: build falla con TypeScript (`Property 'performance' does not exist on type 'Bootstrap'`)
+
+- **Causa:** El tipo `Bootstrap` no incluye la propiedad `performance`, pero el dashboard/analytics la usa.
+- **Solución aplicada:** Se corrigió `frontend/src/types.ts` agregando `performance` como propiedad opcional en `Bootstrap`.
+- **Estado:** Corregido en commit `f43ea0c` y listo para redeploy en Vercel.
+
+### Error: Vercel no detecta el framework correctamente
+
+- **Causa:** Vercel intenta instalar dependencias en la raíz en vez de en `frontend/`.
+- **Solución:** Asegúrate de que `vercel.json` esté en la raíz con:
+  ```json
+  {
+    "installCommand": "npm --prefix frontend install",
+    "buildCommand": "npm --prefix frontend run build",
+    "outputDirectory": "frontend/dist",
+    "framework": "vite"
+  }
+  ```
+- Si el problema persiste, crea el proyecto en Vercel eligiendo **Framework Preset: Vite** y **Root Directory: `frontend`**.
+
+### Error: `npm run build` falla en Vercel pero funciona localmente
+
+- **Causa:** Dependencias distintas o lockfile desactualizado.
+- **Solución:** Asegúrate de que `frontend/package-lock.json` esté subido al repositorio. Si no existe, ejecuta `npm install` en `frontend/` y haz commit del lockfile.
+
+### Logs para diagnosticar
+
+1. Ve al proyecto en Vercel → **Deployments** → clic en el deployment fallido.
+2. Revisa la pestaña **Build Logs**.
+3. Busca líneas que empiecen con `ERROR` o `Failed`.
+4. Si el error es de TypeScript, revisa que no haya tipos desactualizados después de cambios recientes.
+
+---
