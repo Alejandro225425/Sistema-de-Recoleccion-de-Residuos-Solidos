@@ -3,7 +3,7 @@
 
 > **Rama de producción:** `version-1-proyecto`
 > **Repositorio:** [`Alejandro225425/Sistema-de-Recoleccion-de-Residuos-Solidos`](https://github.com/Alejandro225425/Sistema-de-Recoleccion-de-Residuos-Solidos)
-> **Última actualización:** 2026-06-18
+> **Última actualización:** 2026-07-30
 
 ---
 
@@ -196,6 +196,7 @@ VITE_GEO_URL = https://sir-cusco-api.up.railway.app
 | `CORS_ORIGINS`      | Lista de URLs permitidas (separadas por `,`)  | `http://localhost:5173`               |
 | `CORS_ORIGIN_REGEX` | Regex para permitir dominios de Vercel        | `https://.*\.vercel\.app`             |
 | `DATABASE_URL`      | URL de PostgreSQL (opcional)                  | `postgresql://user:pass@host/db`      |
+| `JWT_SECRET`        | Secreto para firmar tokens JWT (obligatorio en producción) | Genera un string robusto único |
 
 ### Frontend (`frontend/.env` o variables en Vercel)
 
@@ -204,6 +205,116 @@ VITE_GEO_URL = https://sir-cusco-api.up.railway.app
 | `VITE_API_URL` | URL base de la API Python        | `https://sir-cusco-api.onrender.com/api`       |
 | `VITE_GEO_URL` | URL del servicio Geo             | `https://sir-cusco-geo.onrender.com`           |
 
+### 5.1 Backup y restauración de PostgreSQL
+
+Si usas PostgreSQL local o Docker para persistencia, respalda la base antes de hacer cambios críticos.
+
+> Antes de ejecutar backup/restore, asegúrate de que PostgreSQL esté en ejecución.
+> Si usas Docker, ejecuta:
+>
+> ```powershell
+> cd database
+> docker compose up -d
+> ```
+>
+> Verifica el estado con:
+>
+> ```powershell
+> docker ps
+> ```
+>
+> Si usas PostgreSQL local, confirma que el servicio está activo y escuchando en el puerto `5432`.
+>
+> Si `docker ps` falla con "cannot connect to the docker API", inicia Docker Desktop o el servicio de Docker antes de continuar.
+>
+> Si el contenedor PostgreSQL se detiene al iniciar, revisa los logs con:
+>
+> ```powershell
+> cd database
+> docker compose logs --no-color --tail 50
+> ```
+>
+> Un fallo común es que `database/seed.sql` inserte notificaciones antes de crear el usuario referenciado.
+
+#### Respaldar la base de datos
+
+Con PostgreSQL instalado localmente:
+
+```powershell
+pg_dump -U postgres -Fc -d sir_cusco -f database\backup\sir_cusco-$(Get-Date -Format yyyyMMddHHmmss).dump
+```
+
+Con Docker:
+
+```powershell
+docker exec -i sir_cusco_postgres pg_dump -U postgres -Fc -d sir_cusco -f /tmp/sir_cusco.dump
+docker cp sir_cusco_postgres:/tmp/sir_cusco.dump database\backup\sir_cusco.dump
+```
+
+> Alternativa: usa el script de respaldo incluido:
+>
+> ```powershell
+> .\scripts\db-backup.ps1
+> .\scripts\db-backup.ps1 -UseDocker
+> ```
+>
+> El respaldo se guarda en `database/backup/`.
+>
+> En PowerShell, si PostgreSQL solicita contraseña, define la variable de entorno así:
+>
+> ```powershell
+> $env:PGPASSWORD = 'postgres'
+> .\scripts\db-backup.ps1 -UseDocker
+> ```
+
+#### Restaurar desde respaldo
+
+Detén el backend antes de restaurar y confirma que `DATABASE_URL` apunte a `sir_cusco`.
+
+Con PostgreSQL local:
+
+```powershell
+psql -U postgres -c "DROP DATABASE IF EXISTS sir_cusco;"
+psql -U postgres -c "CREATE DATABASE sir_cusco;"
+pg_restore -U postgres -d sir_cusco database\backup\sir_cusco.dump
+```
+
+Con Docker:
+
+```powershell
+docker cp database\backup\sir_cusco.dump sir_cusco_postgres:/tmp/sir_cusco.dump
+docker exec -i sir_cusco_postgres pg_restore --clean --if-exists -U postgres -d sir_cusco /tmp/sir_cusco.dump
+```
+
+> Alternativa: usa el script de restauración incluido:
+>
+> ```powershell
+> .\scripts\db-restore.ps1 -File database\backup\sir_cusco.dump -UseDocker
+> ```
+>
+> En PowerShell, define la contraseña así:
+>
+> ```powershell
+> $env:PGPASSWORD = 'postgres'
+> .\scripts\db-restore.ps1 -File database\backup\sir_cusco.dump -UseDocker
+> ```
+
+Si necesitas restaurar el esquema y datos iniciales del proyecto:
+
+```powershell
+psql -U postgres -d sir_cusco -f database\schema.sql
+psql -U postgres -d sir_cusco -f database\seed.sql
+```
+#### Scripts de backup/restore
+
+El proyecto incluye scripts de PowerShell para simplificar el respaldo y la restauración.
+
+```powershell
+.\scripts\db-backup.ps1
+.\scripts\db-backup.ps1 -UseDocker
+.\scripts\db-restore.ps1 -File database\backup\sir_cusco.dump
+.\scripts\db-restore.ps1 -File database\backup\sir_cusco.dump -UseDocker
+```
 ---
 
 ## 6. Verificación de salud
@@ -218,10 +329,17 @@ GET /alerts               → Lista de alertas
 
 # Servicio Geo (TypeScript)
 GET /api/truck-locations  → Posiciones GPS de camiones en tiempo real
+```
+
+## 6.1 Pruebas de despliegue
+
+- Validar el frontend con `npx vitest run`: `11 passed`.
+- Validar el backend Python con `pytest -q`: `16 passed`.
+- Ejecutar `npm run build` para confirmar el build de producción del frontend.
+- Confirmar envíos operativos y CRUD administrativos a través de la UI del panel de administración.
 
 # Frontend
 Abrir la URL en el navegador → Dashboard del sistema
-```
 
 ---
 
@@ -285,6 +403,18 @@ git push origin version-1-proyecto
   | API Python   | `https://experiencing-styles-emails-nutritional.trycloudflare.com`   |
   | Swagger UI   | `https://experiencing-styles-emails-nutritional.trycloudflare.com/docs` |
   | Geo TS       | `https://except-associates-stops-rays.trycloudflare.com`             |
+
+---
+
+### 2026-07-30 — Sesión 4: Configuración de despliegue lista
+
+- **Archivos actualizados:**
+  - `render.yaml` — se añadió `JWT_SECRET` como variable de entorno (`sync: false`) para el servicio `sir-cusco-api`.
+  - `backend-python/.env.example` — se incluyó `JWT_SECRET` para referencia de producción.
+  - `backend-python/.env` — se añadió `JWT_SECRET` con valor de desarrollo.
+  - `docs/DESPLIEGUE.md` — se actualizó la tabla de variables de entorno y el historial de despliegues.
+  - `CHANGELOG.md` — se registró el hito.
+- **Estado:** ✅ Configuración de despliegue lista. Pendiente ejecutar despliegue manual en Render/Vercel o Railway/Vercel y configurar `JWT_SECRET` y `DATABASE_URL` seguros en producción.
 
 ---
 

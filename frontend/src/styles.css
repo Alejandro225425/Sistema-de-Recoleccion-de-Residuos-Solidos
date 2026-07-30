@@ -14,7 +14,7 @@
   
   /* Colores Generales */
   --ink: #1d2730;
-  --muted: #66727d;
+  --muted: #5a6670;
   --line: #e0e7e3;
   --bg: #f0f5f2;
   --panel: #ffffff;
@@ -90,6 +90,35 @@ html[data-theme="dark"] {
 
 * { box-sizing: border-box; }
 
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.skip-link {
+  position: absolute;
+  top: -40px;
+  left: 0;
+  background: var(--eco-primary);
+  color: white;
+  padding: 8px 16px;
+  z-index: 10000;
+  text-decoration: none;
+  font-weight: 600;
+  border-radius: 0 0 8px 0;
+}
+
+.skip-link:focus {
+  top: 0;
+}
+
 html { scroll-behavior: smooth; }
 
 body {
@@ -140,6 +169,21 @@ button:hover:not(:disabled) {
 
 button:active:not(:disabled) {
   transform: translateY(0);
+}
+
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: 3px solid var(--eco-primary);
+  outline-offset: 2px;
+}
+
+button:focus:not(:focus-visible),
+input:focus:not(:focus-visible),
+select:focus:not(:focus-visible),
+textarea:focus:not(:focus-visible) {
+  outline: none;
 }
 
 button:focus {
@@ -848,9 +892,10 @@ textarea {
   grid-template-columns: minmax(0, 1.2fr) minmax(280px, .8fr); 
   gap: 16px;
   padding: 24px 32px 32px;
+  overflow-x: hidden;
 }
 
-.list { display: grid; gap: 12px; }
+.list { display: grid; gap: 12px; overflow-x: hidden; }
 
 .item {
   display: grid;
@@ -861,6 +906,7 @@ textarea {
   border-radius: 8px;
   transition: all 0.2s ease;
   min-width: 0;
+  overflow-x: hidden;
 }
 
 .item:hover {
@@ -1138,7 +1184,8 @@ textarea {
 }
 
 .filter-btn {
-  padding: 8px 14px;
+  min-height: 44px;
+  padding: 10px 16px;
   font-size: 0.85rem;
   border-radius: 6px;
   background: var(--line);
@@ -1146,6 +1193,9 @@ textarea {
   border: none;
   cursor: pointer;
   transition: all 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .filter-btn:hover,

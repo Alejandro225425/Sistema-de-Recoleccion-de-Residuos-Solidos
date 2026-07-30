@@ -12,5 +12,10 @@ export default defineConfig({
         rewrite: path => path.replace(/^\/geo/, "")
       }
     }
+  },
+  test: {
+    environment: "jsdom",
+    globals: true,
+    setupFiles: "./src/vitest.setup.ts"
   }
 });
