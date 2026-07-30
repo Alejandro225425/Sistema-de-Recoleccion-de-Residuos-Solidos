@@ -32,7 +32,7 @@ Sistema inteligente para la recoleccion de residuos solidos segregados en la ciu
 - Seguridad reforzada con un valor por defecto de `JWT_SECRET` más robusto y recomendación de usar una variable de entorno segura en producción.
 - Validación completa: build del frontend verificado localmente con `npm run build`, pruebas de backend con `16 passed` y pruebas de frontend con `11 passed` en la suite de integración real del panel administrativo.
 - Accesibilidad mejorada en el panel administrativo: contraste WCAG AA, navegación por teclado con skip-link y focus-visible, touch targets mínimos de 44px y prevención de scroll horizontal en móvil.
-- Configuración de despliegue lista para producción: `render.yaml`, `railway.toml`, `vercel.json` y variables de entorno documentadas. Solo falta ejecutar el despliegue en la plataforma cloud elegida y configurar `JWT_SECRET` y `DATABASE_URL`.
+- Configuración de despliegue lista para producción: `render.yaml`, `railway.toml`, `vercel.json` y variables de entorno documentadas. Ruta recomendada: Render + Vercel (gratis sin tarjeta de crédito). Solo falta ejecutar el despliegue siguiendo el checklist de `docs/DESPLIEGUE.md`.
 
 ## Progreso implementado hasta ahora
 

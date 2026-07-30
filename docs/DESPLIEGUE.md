@@ -115,19 +115,20 @@ Geo TS:     https://except-associates-stops-rays.trycloudflare.com
 
 ---
 
-## 3. Opción B — Render + Vercel (cloud, permanente)
+## 3. Opción B — Render + Vercel (cloud, permanente, recomendada)
 
-La configuración `render.yaml` define los dos servicios backend automáticamente.
+La configuración `render.yaml` define los dos servicios backend automáticamente. Render ofrece servicios web y PostgreSQL gratuitos sin tarjeta de crédito.
 
 ### 3.1 Backend en Render
 
 1. Ir a https://dashboard.render.com/ → **New Blueprint**.
 2. Conectar el repositorio `Alejandro225425/Sistema-de-Recoleccion-de-Residuos-Solidos`.
-3. Render detecta `render.yaml` y crea:
+3. Rama: `v2.0.0-deploy-config`.
+4. Render detecta `render.yaml` y crea:
    - `sir-cusco-api` — Python/FastAPI (root: `backend-python`)
    - `sir-cusco-geo` — Node.js/TypeScript (root: `backend-typescript`)
-4. Esperar estado **Live** en ambos servicios.
-5. Anotar las URLs públicas (ejemplo):
+5. Esperar estado **Live** en ambos servicios.
+6. Anotar las URLs públicas (ejemplo):
    ```
    https://sir-cusco-api.onrender.com
    https://sir-cusco-geo.onrender.com
@@ -142,7 +143,7 @@ GET https://sir-cusco-geo.onrender.com/health
 ### 3.2 Frontend en Vercel
 
 1. Ir a https://vercel.com/new → importar el mismo repositorio.
-2. Rama: `version-1-proyecto`.
+2. Rama: `v2.0.0-deploy-config`.
 3. Vercel usa `vercel.json` automáticamente (ya configurado).
 4. Agregar variables de entorno **antes de desplegar**:
    ```
@@ -155,6 +156,8 @@ URL final esperada:
 ```
 https://sistema-de-recoleccion-de-residuos-solidos.vercel.app
 ```
+
+> **Nota:** Render en plan gratis puede dormir los servicios tras 15 min de inactividad; la primera carga puede tardar 30-60 segundos. No requiere tarjeta de crédito.
 
 ---
 
