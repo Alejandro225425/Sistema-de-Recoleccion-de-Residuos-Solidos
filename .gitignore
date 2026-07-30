@@ -34,6 +34,9 @@ env/
 *.log
 npm-debug.log*
 
+database/backup/*.dump
+!database/backup/.gitkeep
+
 # OS
 .DS_Store
 Thumbs.db
@@ -41,3 +44,4 @@ Thumbs.db
 # Temp
 *.tmp
 *.temp
+.vercel
