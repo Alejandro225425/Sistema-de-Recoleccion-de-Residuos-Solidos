@@ -531,6 +531,47 @@ Esta sesión documenta el paso a paso para completar el despliegue de la rama `v
 
 ---
 
+## 9.1 Troubleshooting Render
+
+### Error: `Exited with status 1 while building your code`
+
+Este error ocurre cuando el build falla en Render. Causas y soluciones:
+
+**Causa 1: Runtime de Python incorrecto**
+- **Síntoma:** El build falla inmediatamente con error de Python.
+- **Solución:** En el Web Service manual, configura **Runtime** como `Python 3.11` (no `Python` genérico). Render necesita una versión específica.
+
+**Causa 2: Root Directory o comandos mal escritos**
+- **Síntoma:** Render no encuentra `requirements.txt` o `app/main.py`.
+- **Solución:** Asegúrate de que **Root Directory** esté vacío (por defecto) o sea `.` (raíz del repo). Los comandos deben ser exactamente:
+  - Build Command: `pip install -r backend-python/requirements.txt`
+  - Start Command: `uvicorn app.main:app --app-dir backend-python --host 0.0.0.0 --port $PORT`
+
+**Causa 3: Variables de entorno faltantes**
+- **Síntoma:** El build pasa pero el servicio no inicia.
+- **Solución:** Verifica que `JWT_SECRET` esté configurado. Sin esta variable, el backend puede fallar al iniciar.
+
+**Causa 4: Plan Free sin recursos**
+- **Síntoma:** Build lento o timeout.
+- **Solución:** Render Free tiene límites. Si el build tarda más de 15 minutos, prueba a usar una región más cercana o reduce dependencias.
+
+### Logs para diagnosticar
+
+1. Ve al servicio en Render → **Logs**
+2. Filtra por **Build logs**
+3. Busca líneas que empiecen con `ERROR` o `Failed`
+4. Si ves `ModuleNotFoundError`, faltan dependencias
+5. Si ves `FileNotFoundError`, revisa las rutas de archivos
+
+### Solución rápida: recrear el Web Service
+
+Si el error persiste:
+1. Elimina el servicio de Render
+2. Crea uno nuevo siguiendo exactamente los pasos de la sección 3.2
+3. Asegúrate de copiar los comandos **exactamente** como están escritos arriba
+
+---
+
 ## 10. Notas y limitaciones
 
 ### Cloudflare Tunnel
