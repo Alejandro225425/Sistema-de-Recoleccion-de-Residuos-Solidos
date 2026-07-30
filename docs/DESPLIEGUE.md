@@ -1,7 +1,8 @@
 # 📦 Documentación de Despliegue
 ## Sistema Inteligente de Recolección de Residuos Sólidos — Cusco
 
-> **Rama de producción:** `version-1-proyecto`
+> **Rama de producción:** `v2.0.0-deploy-config`
+> **Versión:** `2.0.0`
 > **Repositorio:** [`Alejandro225425/Sistema-de-Recoleccion-de-Residuos-Solidos`](https://github.com/Alejandro225425/Sistema-de-Recoleccion-de-Residuos-Solidos)
 > **Última actualización:** 2026-07-30
 

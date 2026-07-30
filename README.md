@@ -2,6 +2,13 @@
 
 Sistema inteligente para la recoleccion de residuos solidos segregados en la ciudad del Cusco. El proyecto integra un frontend React, una API principal en FastAPI y un microservicio TypeScript para alertas/geolocalizacion.
 
+## Version actual
+
+- **Version:** `2.0.0-deploy-config`
+- **Rama:** `v2.0.0-deploy-config`
+- **Repositorio:** `Alejandro225425/Sistema-de-Recoleccion-de-Residuos-Solidos`
+- **Estado:** Configuracion de despliegue lista. Pendiente ejecutar despliegue en produccion.
+
 ## Estado
 
 - Plataforma funcional en modo demo y con autenticación real.
