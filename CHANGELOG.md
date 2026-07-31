@@ -16,7 +16,7 @@
 - Se actualizó `docs/DESPLIEGUE.md` para evitar Blueprint (de pago) y usar Web Services manuales gratuitos en Render.
 - Se corrigió `render.yaml` con runtimes explícitos (`python-3.11`, `node-20`) para evitar errores de build en Render.
 - Se corrigió un error de TypeScript en `frontend/src/main.tsx` que bloqueaba el build en Vercel: se agregó `performance` como propiedad opcional en el tipo `Bootstrap` de `frontend/src/types.ts`.
-- Se corrigió `vercel.json` para evitar la ruta duplicada `frontend/frontend/package.json` que causaba fallo en `npm --prefix frontend install` dentro de Vercel.
+- Se corrigió `vercel.json` para evitar la ruta duplicada `frontend/frontend/package.json` que causaba fallo en `npm --prefix frontend install` dentro de Vercel, usando `rootDirectory: "frontend"` en vez de `cd frontend`.
 - Se verificó el build del frontend (`npx vite build`) y las pruebas automatizadas (`11 passed` frontend, `16 passed` backend). El proyecto está listo para despliegue en producción.
 
 ## 2026-07-28
