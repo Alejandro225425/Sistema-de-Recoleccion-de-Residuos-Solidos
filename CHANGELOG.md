@@ -38,14 +38,14 @@
 - Se corrigieron inconsistencias en `docs/DESPLIEGUE.md`: headers duplicados (9.2), referencias obsoletas a `vercel.json`, y actualización de CORS_ORIGIN_REGEX.
 
 ### En progreso
-- Despliegue en Vercel: pendiente importar el repositorio y configurar variables `VITE_API_URL` y `VITE_GEO_URL` desde el dashboard.
-- Despliegue en Render: pendiente crear Web Services o Blueprint y configurar `JWT_SECRET` como variable de entorno.
+- Pendiente ejecutar el despliegue manual en Render y Vercel siguiendo `docs/DESPLIEGUE.md` (Sesión 5).
+- Pendiente configurar `JWT_SECRET` y `DATABASE_URL` seguros en el dashboard de Render.
 
 ### Próximos pasos
-- Configurar el proyecto de Vercel desde el dashboard: Framework Preset `Vite`, Root Directory `frontend`, Build Command `npm run build`, Output Directory `frontend/dist`.
-- Crear servicios backend en Render (Blueprint con `render.yaml` o Web Services manuales) y configurar variables de entorno (`JWT_SECRET`, `DATABASE_URL`, `CORS_ORIGIN_REGEX`, `CORS_ORIGINS`).
-- Importar el frontend en Vercel y conectar con Render actualizando `VITE_API_URL` y `VITE_GEO_URL`.
-- Verificar `/api/health` y flujos principales en producción.
+- Importar el backend en Render (Blueprint con `render.yaml` o Web Services manuales) y configurar variables de entorno (`JWT_SECRET`, `DATABASE_URL`, `CORS_ORIGIN_REGEX`, `CORS_ORIGINS`).
+- Importar el frontend en Vercel desde el dashboard: Framework Preset `Vite`, Root Directory `frontend`, Build Command `npm run build`, Output Directory `frontend/dist`.
+- Configurar variables `VITE_API_URL` y `VITE_GEO_URL` en Vercel con las URLs reales de Render.
+- Verificar `/api/health`, login con `admin@ecocusco.pe` / `admin123` y flujos principales en producción.
 
 ### Hitos completados
 - Se integró el CRUD operativo de zonas, horarios, camiones y mantenimiento en la API FastAPI con endpoints protegidos para administradores.
