@@ -37,15 +37,20 @@ npm-debug.log*
 database/backup/*.dump
 !database/backup/.gitkeep
 
-# OS
-.DS_Store
-Thumbs.db
-
 # Test reports
 vitest-report.json
 frontend/vitest-report.json
+
+# OS
+.DS_Store
+Thumbs.db
 
 # Temp
 *.tmp
 *.temp
 .vercel
+
+# Binaries
+*.exe
+*.bin
+scripts/cloudflared.exe

@@ -2,6 +2,17 @@
 
 ## 2026-07-30
 
+### Versión 3.0.0 — Organización y consolidación
+- **Limpieza del repositorio**: eliminado `scripts/cloudflared.exe` (binario de 54 MB que se descarga dinámicamente en `scripts/deploy-cloudflare.ps1`).
+- **Limpieza del repositorio**: eliminado `CLOUDFLARE-URLS.txt` (URLs temporales de Cloudflare Tunnel obsoletas de 2026-06-18).
+- **Corrección `.vercelignore`**: removida referencia a `nixpacks.toml` (archivo inexistente en el repositorio).
+- **Refuerzo de `.gitignore`**: agregadas reglas para excluir binarios `*.exe`, `*.bin` y `scripts/cloudflared.exe`.
+- **Versiones sincronizadas a 3.0.0**: `package.json` raíz, `frontend/package.json`, `backend-typescript/package.json`, `backend-python/app/main.py` (FastAPI `version` y health endpoint) y `backend-python/tests/test_operational_logic.py` (assert de versión).
+- **Documentación actualizada**: `README.md`, `VERSION.md`, `CHANGELOG.md`, `docs/DESPLIEGUE.md`, `DEPLOYMENT.md`, `NETLIFY-DEPLOYMENT.md`, `RAILWAY-VERCEL-DEPLOYMENT.md`, `KOYEB-DEPLOYMENT.md`, `docs/entrega-2.md` y `frontend/README.md` actualizados a la versión 3.0.0.
+- **Corrección `verify_system.py`**: remplazada referencia a `GUIA_EJECUCION.md` (inexistente) por `README.md`.
+- **Creación de rama `version-3`** como etiqueta de versión 3.0.0 consolidada.
+- **Estado**: ✅ Proyecto organizado, documentación consolidada y listo para despliegue en producción.
+
 ### Hitos completados — Sesión 7: Configuración definitiva Render + Vercel
 - Se actualizó `render.yaml` añadiendo `DATABASE_URL` como variable `sync: false` (opcional para PostgreSQL en producción).
 - Se actualizó `frontend/.env.production` con URLs de referencia de Render para Vercel.
@@ -31,7 +42,7 @@
 ### Hitos completados — Sesión 6 (2026-07-30): Despliegue Render + Netlify
 - Se creó `netlify.toml` en la raíz del repositorio con configuración de build para el frontend (`base = "frontend"`, `publish = "dist"`) y redirects SPA para rutas client-side.
 - Se actualizó `render.yaml` con `CORS_ORIGIN_REGEX` que permite tanto dominios de Netlify como Vercel: `https://.*(\.vercel\.app|\.netlify\.app)`.
-- Se creó `NETLIFY-DEPLOYMENT.md` con guía paso a paso para desplegar el frontend en Netlify (alternativa gratuita a Vercel).
+- Se creó `NETLIFY-DEPLOYMENT.md` con guía paso a paso para despliegue en Netlify (alternativa gratuita a Vercel).
 - Se actualizó `DEPLOYMENT.md` con opción Netlify como plataforma de frontend.
 - Se actualizó `docs/DESPLIEGUE.md` con la Opción B (Render + Netlify, recomendada) y Opción D (Railway + Netlify), además de troubleshooting para Netlify.
 - Se actualizó `README.md` y `VERSION.md` con el estado de despliegue y las rutas recomendadas.
@@ -56,9 +67,9 @@
 - Se completó la integración de pruebas de frontend en `frontend/src/App.test.tsx` para ejecutar la aplicación contra un backend FastAPI real y validar los flujos de autenticación, carga de datos, monitor operativo y actualización de operaciones.
 - Se actualizaron `README.md`, `docs/DESPLIEGUE.md` y `docs/entrega-2.md` para documentar la búsqueda por conductor en reportes administrativos y los filtros de reporte por estado y zona.
 - Se corrigieron advertencias de React `key` en `frontend/src/components/Admin.tsx` y se verificó la suite de frontend con `npx vitest run` (`11 passed`).
-- Se verificaron las pruebas automatizadas de backend con `16 passed` y las pruebas de frontend con `11 passed`, incluidas pruebas de edición, eliminación y filtrado en el panel administrativo, así como la validación de eventos operativos y actualizaciones en tiempo real.
+- Se verificaron las pruebas automatizadas de backend con `16 passed` y las pruebas de frontend con `11 passed`, incluyendo pruebas de edición, eliminación y filtrado en el panel administrativo, así como la validación de eventos operativos y actualizaciones en tiempo real.
 - Se implementó registro de recolecciones por conductor y confirmación de recolección por ciudadano (endpoints y UI).
-- Se añadió la vista de “Mis reportes” para usuarios ciudadanos, mostrando únicamente sus propios reportes en la UI.
+- Se añadió la vista de "Mis reportes" para usuarios ciudadanos, mostrando únicamente sus propios reportes en la UI.
 - Se habilitó la resolución de reportes pendientes para operadores y administradores desde la vista de reportes.
 - Se integró exportación de reportes y métricas a CSV desde los paneles de reportes y analytics.
 - Se implementó exportación a PDF para reportes y métricas mediante impresión en PDF desde la UI.

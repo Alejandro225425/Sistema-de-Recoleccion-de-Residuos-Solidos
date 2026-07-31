@@ -100,7 +100,7 @@ def main():
     if all_passed:
         print("\n✅ Sistema listo. Ejecuta: python scripts/start-all.ps1")
     else:
-        print("\n⚠️ Hay problemas. Consulta GUIA_EJECUCION.md para instrucciones.")
+        print("\n⚠️ Hay problemas. Consulta README.md para instrucciones.")
     
     return 0 if all_passed else 1
 

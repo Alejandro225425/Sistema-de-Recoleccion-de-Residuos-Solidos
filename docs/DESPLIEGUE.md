@@ -2,10 +2,10 @@
 ## Sistema Inteligente de Recolección de Residuos Sólidos — Cusco
 
 > **Rama de producción:** `main`
-> **Versión:** `2.0.0`
+> **Versión:** `3.0.0`
 > **Repositorio:** [`Alejandro225425/Sistema-de-Recoleccion-de-Residuos-Solidos`](https://github.com/Alejandro225425/Sistema-de-Recoleccion-de-Residuos-Solidos)
 > **Última actualización:** 2026-07-30
-> **Estado actual:** Configuración lista. Render + Vercel (recomendado). Cloudflare Tunnel para demos temporales.
+> **Estado actual:** Proyecto organizado y documentación consolidada. Render + Vercel (recomendado). Cloudflare Tunnel para demos temporales.
 
 ---
 
@@ -126,7 +126,7 @@ Esta es la combinación principal del proyecto.
 
 1. Entra a https://dashboard.render.com/ → **New** → **Web Service**.
 2. Conecta el repositorio `Alejandro225425/Sistema-de-Recoleccion-de-Residuos-Solidos`.
-3. Rama: `main` (o `v2.0.0`).
+3. Rama: `main` (o `version-3`).
 4. Nombre: `sir-cusco-api`.
 5. Runtime: **Python 3.11**.
 6. Plan: **Free**.
@@ -158,7 +158,7 @@ GET https://sir-cusco-api.onrender.com/api/health
 
 1. Entra a https://dashboard.render.com/ → **New** → **Web Service**.
 2. Conecta el mismo repositorio.
-3. Rama: `main` (o `v2.0.0`).
+3. Rama: `main` (o `version-3`).
 4. Nombre: `sir-cusco-geo`.
 5. Runtime: **Node.js 20**.
 6. Plan: **Free**.
@@ -184,7 +184,7 @@ GET https://sir-cusco-geo.onrender.com/health
 ### 3.3 Frontend en Vercel
 
 1. Entra a https://vercel.com/new → importa el repositorio.
-2. Rama: `main` (o `v2.0.0`).
+2. Rama: `main` (o `version-3`).
 3. Vercel usará `.vercelignore` para excluir el backend. Configura desde el dashboard (no uses `vercel.json`, fue eliminado del repo para evitar conflictos):
    - **Framework Preset**: `Vite`
    - **Root Directory**: `frontend`
@@ -224,7 +224,7 @@ los pasos de la sección 3.1 y 3.2.
 
 1. Entra a https://app.netlify.com/ → **Add new site** → **Import an existing project**.
 2. Conecta tu cuenta de GitHub y selecciona el repositorio.
-3. Rama a desplegar: `main` (o `v2.0.0`).
+3. Rama a desplegar: `main` (o `version-3`).
 4. Netlify detectará `netlify.toml` automáticamente. El build command será:
    ```
    npm install && npm run build
@@ -323,7 +323,7 @@ GET /api/truck-locations  → Posiciones GPS de camiones en tiempo real
 git add .
 git commit -m "descripcion del cambio"
 git push origin main
-git push origin v2.0.0
+git push origin version-3
 ```
 
 | Plataforma          | Comportamiento ante un push        |
@@ -337,6 +337,19 @@ git push origin v2.0.0
 ---
 
 ## 9. Historial de despliegues
+
+### 2026-07-30 — Sesión 8: Versión 3.0.0 — Organización y consolidación
+
+- **Rama de producción:** `main` y `version-3`
+- **Versión:** `3.0.0`
+- **Acciones completadas:**
+  - Eliminado `scripts/cloudflared.exe` (54 MB) y `CLOUDFLARE-URLS.txt` (URLs obsoletas)
+  - Corregido `.vercelignore` (removida referencia a `nixpacks.toml` inexistente)
+  - Reforzado `.gitignore` con exclusiones de binarios (`*.exe`, `*.bin`)
+  - Versiones sincronizadas a `3.0.0` en `package.json` (raíz, frontend, backend-typescript), `backend-python/app/main.py` y `backend-python/tests/test_operational_logic.py`
+  - Actualizada toda la documentación a versión 3.0.0
+  - Creada rama `version-3` en GitHub
+- **Estado:** ✅ Proyecto organizado, documentación consolidada y listo para despliegue.
 
 ### 2026-07-30 — Sesión 7: Configuración definitiva Render + Vercel
 
@@ -384,7 +397,7 @@ git push origin v2.0.0
 
 ### 2026-07-30 — Sesión 5: Checklist de despliegue en producción
 
-Checklist para completar el despliegue de la rama `main`:
+Checklist para completar el despliegue de la rama `main` (o `version-3`):
 
 #### Plataforma A: Render (backend) + Vercel (frontend) — RECOMENDADA
 

@@ -41,7 +41,7 @@ Confirma que tus cambios están en GitHub antes de importar:
 git add .
 git commit -m "Prepare public deployment"
 git push origin main
-git push origin v2.0.0
+git push origin version-3
 ```
 
 ## 2. Backend en Render
@@ -55,7 +55,7 @@ El archivo `render.yaml` ya está configurado para crear dos servicios:
 1. Entra a https://dashboard.render.com/
 2. Haz clic en **New** → **Blueprint**
 3. Conecta el repositorio `Alejandro225425/Sistema-de-Recoleccion-de-Residuos-Solidos`
-4. Selecciona la rama `main` (o `v2.0.0`).
+4. Selecciona la rama `main` (o `version-3`).
 5. Render detectará `render.yaml` y creará ambos servicios automáticamente
 6. En el paso de configuración, establece la variable de entorno:
    - `JWT_SECRET` → una cadena larga y aleatoria (ej: `openssl rand -hex 32`)
@@ -75,7 +75,7 @@ https://sir-cusco-geo.onrender.com/health
 1. Entra a https://app.netlify.com/
 2. Haz clic en **Add new site** → **Import an existing project**
 3. Conecta tu cuenta de GitHub y selecciona el repositorio
-4. En **Branch to deploy**, escribe: `main` (o `v2.0.0`).
+4. En **Branch to deploy**, escribe: `main` (o `version-3`).
 5. Netlify detectará `netlify.toml` automáticamente
 6. Antes de desplegar, agrega las variables de entorno (Build & deploy settings → Environment):
 
@@ -120,7 +120,7 @@ https://sir-cusco.netlify.app
 git add .
 git commit -m "descripcion del cambio"
 git push origin main
-git push origin v2.0.0
+git push origin version-3
 ```
 
 - **Render:** redeploy automático al detectar el nuevo commit en GitHub.

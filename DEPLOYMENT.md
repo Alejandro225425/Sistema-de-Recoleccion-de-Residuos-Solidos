@@ -20,7 +20,7 @@ Confirma que tus cambios están en GitHub antes de importar el proyecto:
 git add .
 git commit -m "Prepare public deployment"
 git push origin main
-git push origin v2.0.0
+git push origin version-3
 ```
 
 ## 2. Backend en Render
@@ -30,7 +30,7 @@ git push origin v2.0.0
 1. Entra a https://dashboard.render.com/.
 2. Haz clic en **New** → **Blueprint**.
 3. Conecta el repositorio `Alejandro225425/Sistema-de-Recoleccion-de-Residuos-Solidos`.
-4. Rama: `main` (o `v2.0.0`).
+4. Rama: `main` (o `version-3`).
 5. Render detectará `render.yaml` y creará dos servicios:
    - `sir-cusco-api` (Python 3.11 / FastAPI)
    - `sir-cusco-geo` (Node.js 20 / TypeScript)
@@ -75,7 +75,7 @@ Si prefieres crear los servicios manualmente:
 
 1. Entra a https://vercel.com/new.
 2. Importa el repositorio `Alejandro225425/Sistema-de-Recoleccion-de-Residuos-Solidos`.
-3. Rama: `main` (o `v2.0.0`).
+3. Rama: `main` (o `version-3`).
 4. Vercel usará `.vercelignore` para excluir el backend. Configura desde el dashboard:
    - **Framework Preset**: `Vite`
    - **Root Directory**: `frontend`

@@ -20,7 +20,7 @@ Alejandro225425/Sistema-de-Recoleccion-de-Residuos-Solidos
 6. Elige la rama:
 
 ```text
-main (o v2.0.0)
+main (o version-3)
 ```
 
 7. En Builder o Build settings activa Work directory y escribe:
@@ -72,7 +72,7 @@ https://sir-cusco-api-tuusuario.koyeb.app/alerts
 
 1. Entra a https://app.netlify.com/.
 2. Importa el mismo repositorio.
-3. Elige la rama: `main (o v2.0.0)`.
+3. Elige la rama: `main (o version-3)`.
 4. Netlify detectará `netlify.toml` automáticamente.
 5. Antes de desplegar, agrega estas variables de entorno usando tu URL real de Koyeb:
 

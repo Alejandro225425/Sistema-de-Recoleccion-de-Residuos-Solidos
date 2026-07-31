@@ -109,4 +109,5 @@ El proyecto ya dispone de:
 - Extender gestión de incidencias desde el operador.
 - ~~Validar el flujo de backup/restore de PostgreSQL con los scripts incluidos~~ Completado el 2026-07-30.
 - ~~Validar accesibilidad completa y experiencia móvil~~ Completado el 2026-07-30.
-- Desplegar en producción con variables de entorno seguras para `JWT_SECRET` y `DATABASE_URL` (configuración lista; pendiente ejecutar despliegue en Render/Vercel o Railway/Vercel).
+- ~~Desplegar en producción con variables de entorno seguras para `JWT_SECRET` y `DATABASE_URL`~~ Completado el 2026-07-30. Backend en Render, frontend en Vercel. Ver `docs/DESPLIEGUE.md`.
+- ~~Organizar y limpiar el repositorio (eliminar binarios innecesarios, consolidar documentación)~~ Completado el 2026-07-30. Versión 3.0.0.

@@ -167,7 +167,7 @@ railway domain --service "sir-cusco-backend" --json
 
 1. Entra a https://app.netlify.com/ y conecta tu cuenta de GitHub.
 2. Haz clic en **Add new site** → **Import an existing project**.
-3. Selecciona el repositorio y la rama `main` (o `v2.0.0`).
+3. Selecciona el repositorio y la rama `main` (o `version-3`).
 4. Netlify detectará `netlify.toml` automáticamente.
 5. Agrega las variables de entorno **antes de desplegar** (Site settings → Build & deploy → Environment):
 
@@ -227,7 +227,7 @@ El endpoint `/api/health` retorna:
 {
   "status": "ok",
   "database": "memory",
-  "version": "1.0.0",
+    "version": "3.0.0",
   "mode": "demo"
 }
 ```
@@ -265,7 +265,7 @@ peticion, pero nunca se suspende por credito.
 git add .
 git commit -m "descripcion del cambio"
 git push origin main
-git push origin v2.0.0
+git push origin version-3
 
 # Railway: redeploy automatico al detectar nuevo commit en GitHub
 # Netlify: redeploy automatico al detectar nuevo commit en la rama configurada

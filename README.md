@@ -4,10 +4,10 @@ Sistema inteligente para la recoleccion de residuos solidos segregados en la ciu
 
 ## Version actual
 
-- **Version:** `2.0.0`
-- **Rama:** `main` y `v2.0.0`
+- **Version:** `3.0.0`
+- **Rama:** `main` y `version-3`
 - **Repositorio:** `Alejandro225425/Sistema-de-Recoleccion-de-Residuos-Solidos`
-- **Estado:** Configuración de despliegue lista. Backend en Render (`render.yaml`). Frontend en Vercel (dashboard). Ver `docs/DESPLIEGUE.md` y `DEPLOYMENT.md`.
+- **Estado:** Proyecto organizado y documentación consolidada. Configuración de despliegue lista. Backend en Render (`render.yaml`). Frontend en Vercel (dashboard). Ver `docs/DESPLIEGUE.md` y `DEPLOYMENT.md`.
 
 ## Estado
 
@@ -136,7 +136,8 @@ cd backend-python
 - Notificación de cambio de horario y alertas de proximidad en el servicio geo.
 - ~~Validar backup/restore de PostgreSQL usando los scripts incluidos~~ Completado el 2026-07-30.
 - ~~Validación de accesibilidad y experiencia móvil~~ Completado el 2026-07-30.
-- ~~Despliegue en producción con variables de entorno seguras~~ Completado el 2026-07-30. Backend en Render (Blueprint/Web Services), frontend en Vercel (dashboard). Ver `docs/DESPLIEGUE.md`.
+- ~~Despliegue en producción con variables de entorno seguras~~ Completado el 2026-07-30. Backend en Render (Blueprint o Web Services), frontend en Vercel (dashboard). Ver `docs/DESPLIEGUE.md`.
+- ~~Organizar y limpiar el repositorio~~ Completado el 2026-07-30. Versión 3.0.0.
 
 ## Arquitectura
 
@@ -563,10 +564,18 @@ En este momento la aplicación está lista para probar la autenticación, los re
 - `docs/entrega-2.md`: documento academico base de la entrega.
 - `docs/diagrama-casos-uso.puml` y `docs/diagrama-clases.puml`: diagramas UML editables.
 - `database/schema.sql` y `database/seed.sql`: referencia tecnica de la base de datos PostgreSQL.
-- `docs/DESPLIEGUE.md`: guía completa de despliegue (Cloudflare Tunnel, Render+Vercel, Render+Netlify, Railway+Netlify).
+- `docs/DESPLIEGUE.md`: guía completa de despliegue (Cloudflare Tunnel, Render+Vercel, Render+Netlify, Railway+Netlify, Koyeb+Vercel).
 - `DEPLOYMENT.md`: guía rápida de despliegue en Render + Vercel (recomendado) o Render + Netlify.
 - `NETLIFY-DEPLOYMENT.md`: guía paso a paso para despliegue en Netlify (alternativa a Vercel).
 - `RAILWAY-VERCEL-DEPLOYMENT.md`: guía de despliegue en Railway + Netlify/Vercel (alternativa).
 - `KOYEB-DEPLOYMENT.md`: guía de despliegue en Koyeb + Vercel (alternativa).
+- `VERSION.md`: resumen de versiones y características por release.
+- `CHANGELOG.md`: historial detallado de cambios por sesión.
 
-La documentacion duplicada de resumen, guias rapidas y previews fue consolidada aqui para mantener el proyecto mas limpio.
+## Historial de versiones
+
+| Versión | Rama | Estado |
+|---------|------|--------|
+| **3.0.0** | `main`, `version-3` | Proyecto organizado y documentación consolidada |
+| 2.0.0 | `main`, `v2.0.0` | Configuración de despliegue lista para producción |
+| 1.0.0 | `version-1-proyecto` | Estructura base del proyecto |

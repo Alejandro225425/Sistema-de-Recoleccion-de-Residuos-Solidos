@@ -228,7 +228,7 @@ def cors_origins() -> list[str]:
     ]
 
 
-app = FastAPI(title="SIR Cusco API", version="1.0.0")
+app = FastAPI(title="SIR Cusco API", version="3.0.0")
 
 app.add_middleware(
     CORSMiddleware,
@@ -1044,7 +1044,7 @@ def require_role(allowed_roles: set[str]):
 def root() -> dict[str, Any]:
     return {
         "service": "SIR Cusco API",
-        "version": "1.0.0",
+        "version": "3.0.0",
         "status": "ok",
         "endpoints": {
             "health": "/api/health",
@@ -1065,7 +1065,7 @@ def health() -> dict[str, str]:
     return {
         "status": "ok",
         "database": db_status,
-        "version": "1.0.0",
+        "version": "3.0.0",
         "mode": "production" if db_status == "postgresql" else "demo"
     }
 

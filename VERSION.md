@@ -1,8 +1,38 @@
-# Sistema de Recolección de Residuos Sólidos - Versión 2.0.0
+# Sistema de Recolección de Residuos Sólidos - Versión 3.0.0
+
+## Versión 3.0.0 - Proyecto organizado y documentación consolidada
+
+Esta es la **versión 3.0.0** del Sistema Inteligente de Recolección de Residuos Sólidos para la Gestión Ambiental Urbana en la ciudad del Cusco.
+
+### Características de esta versión
+- **Proyecto organizado y ordenado**: eliminados archivos binarios innecesarios (`cloudflared.exe`, 54 MB), URLs temporales obsoletas (`CLOUDFLARE-URLS.txt`) y referencias a archivos inexistentes (`nixpacks.toml` en `.vercelignore`).
+- **`.gitignore` reforzado**: ahora excluye binarios `*.exe`, `*.bin` y `scripts/cloudflared.exe` para evitar commits accidentales de ejecutables.
+- **Versiones sincronizadas**: `package.json` raíz, `frontend/package.json`, `backend-typescript/package.json` y el backend FastAPI (`app/main.py`) reportan versión `3.0.0`. Las pruebas de backend validan la versión del health endpoint.
+- **Configuración de despliegue lista para producción**: `render.yaml` (backend), `.vercelignore` + dashboard Vercel (frontend), `netlify.toml` + `railway.toml` + `Dockerfile` (alternativas). Variables de entorno documentadas.
+- **CORS configurado** para permitir dominios de Vercel y Netlify: `https://.*(\.vercel\.app|\.netlify\.app)`.
+- **Accesibilidad**: contraste WCAG AA, skip-link, focus-visible, touch targets de 44px y prevención de scroll horizontal en móvil.
+- **Exportación a PDF y CSV** para reportes y métricas desde la interfaz.
+- **Validación completa** de backup/restore de PostgreSQL local con scripts PowerShell.
+- **Build del frontend verificado** y pruebas automatizadas (`11 passed` frontend, `16 passed` backend).
+
+### Rutas de despliegue recomendadas
+
+| Opción | Backend | Frontend | Plan gratuito |
+|--------|---------|----------|---------------|
+| **B (recomendada)** | Render | **Vercel** | Ambos permanentes |
+| C | Render | Netlify | Ambos permanentes |
+| D | Railway | Netlify | $5 crédito/mes (Railway) |
+
+### Rama de producción
+- Rama: `main` y `version-3`
+- Repositorio: `Alejandro225425/Sistema-de-Recoleccion-de-Residuos-Solidos`
+
+### Próximos pasos
+- Ejecutar el despliegue en Render (Web Services manuales) y Vercel siguiendo `docs/DESPLIEGUE.md`.
+- Configurar `JWT_SECRET` como variable de entorno segura en el dashboard de Render.
+- Ajustar `CORS_ORIGINS` al dominio final del frontend si se usa dominio propio.
 
 ## Versión 2.0.0 - Lista para despliegue
-
-Esta es la **versión 2.0.0** del Sistema Inteligente de Recolección de Residuos Sólidos para la Gestión Ambiental Urbana en la ciudad del Cusco.
 
 ### Características de esta versión
 - Configuración de despliegue lista para producción: `render.yaml` para backend en Render, `.vercelignore` + dashboard para frontend en Vercel, `netlify.toml` + `railway.toml` + `Dockerfile` para alternativas.

@@ -1,4 +1,4 @@
-# Ignorar backend (se despliega en Railway, no en Vercel)
+# Ignorar backend (se despliega en Render/Railway, no en Vercel)
 backend-python/
 backend-typescript/
 database/
@@ -10,5 +10,4 @@ docs/
 render.yaml
 railway.toml
 Dockerfile
-nixpacks.toml
 verify_system.py
