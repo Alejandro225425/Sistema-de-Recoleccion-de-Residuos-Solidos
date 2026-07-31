@@ -194,7 +194,11 @@ GET https://sir-cusco-geo.onrender.com/health
 
 1. Entra a https://vercel.com/new → importa el mismo repositorio.
 2. Rama: `v2.0.0-deploy-config`.
-3. Vercel usa `vercel.json` automáticamente (ya configurado).
+3. **Configura el proyecto desde el dashboard de Vercel** (no uses `vercel.json`):
+   - **Framework Preset**: `Vite`
+   - **Root Directory**: `frontend`
+   - **Build Command**: `npm run build`
+   - **Output Directory**: `frontend/dist`
 4. Agregar variables de entorno **antes de desplegar**:
    ```
    VITE_API_URL = https://sir-cusco-api.onrender.com/api
