@@ -643,8 +643,17 @@ Si el error persiste:
 ### Error: `npm --prefix frontend install` falla con `frontend/frontend/package.json`
 
 - **Causa:** El comando `--prefix frontend` duplica la ruta si Vercel ya ejecuta desde `frontend/`.
-- **Solución:** Usa `cd frontend && npm install` en vez de `--prefix frontend`.
-- **Estado:** Corregido en `vercel.json` en commit `f8aa844`.
+- **Solución:** Usa `rootDirectory: "frontend"` en `vercel.json` y comandos locales:
+  ```json
+  {
+    "rootDirectory": "frontend",
+    "installCommand": "npm install",
+    "buildCommand": "npm run build",
+    "outputDirectory": "dist",
+    "framework": "vite"
+  }
+  ```
+- **Estado:** Corregido en `vercel.json` en commit `4418dbc`.
 
 ### Error: build falla con TypeScript (`Property 'performance' does not exist on type 'Bootstrap'`)
 
@@ -655,12 +664,13 @@ Si el error persiste:
 ### Error: Vercel no detecta el framework correctamente
 
 - **Causa:** Vercel intenta instalar dependencias en la raíz en vez de en `frontend/`.
-- **Solución:** Asegúrate de que `vercel.json` esté en la raíz con:
+- **Solución:** Asegúrate de que `vercel.json` esté en la raíz con `rootDirectory: "frontend"` y comandos locales:
   ```json
   {
-    "installCommand": "cd frontend && npm install",
-    "buildCommand": "cd frontend && npm run build",
-    "outputDirectory": "frontend/dist",
+    "rootDirectory": "frontend",
+    "installCommand": "npm install",
+    "buildCommand": "npm run build",
+    "outputDirectory": "dist",
     "framework": "vite"
   }
   ```
