@@ -16,10 +16,18 @@
 - Se actualizó `docs/DESPLIEGUE.md` para evitar Blueprint (de pago) y usar Web Services manuales gratuitos en Render.
 - Se corrigió `render.yaml` con runtimes explícitos (`python-3.11`, `node-20`) para evitar errores de build en Render.
 - Se corrigió un error de TypeScript en `frontend/src/main.tsx` que bloqueaba el build en Vercel: se agregó `performance` como propiedad opcional en el tipo `Bootstrap` de `frontend/src/types.ts`.
-- Se corrigió `vercel.json` para evitar la ruta duplicada `frontend/frontend/package.json` que causaba fallo en `npm --prefix frontend install` dentro de Vercel, usando `rootDirectory: "frontend"` en vez de `cd frontend`.
+- Se eliminó `vercel.json` del repositorio para evitar conflictos con la configuración de Vercel. Ahora la configuración se maneja desde el dashboard de Vercel: Framework Preset `Vite`, Root Directory `frontend`, Build Command `npm run build`, Output Directory `frontend/dist`.
 - Se verificó el build del frontend (`npx vite build`) y las pruebas automatizadas (`11 passed` frontend, `16 passed` backend). El proyecto está listo para despliegue en producción.
 
-## 2026-07-28
+### En progreso
+- Despliegue en Vercel: el dashboard está en estado **Building** con configuración pendiente de reconfiguración manual (Framework Preset, Root Directory, Build Command, Output Directory).
+- Despliegue en Render: pendiente crear Web Services manuales para `sir-cusco-api` y `sir-cusco-geo`, y configurar variables de entorno (`JWT_SECRET`, `DATABASE_URL`, `CORS_ORIGIN_REGEX`, `CORS_ORIGINS`).
+
+### Próximos pasos
+- Reconfigurar el proyecto de Vercel desde el dashboard: Framework Preset `Vite`, Root Directory `frontend`, Build Command `npm run build`, Output Directory `frontend/dist`.
+- Crear servicios backend en Render (Web Services manuales) y configurar variables de entorno.
+- Conectar Vercel con Render actualizando `VITE_API_URL` y `VITE_GEO_URL`.
+- Verificar `/api/health` y flujos principales en producción.
 
 ### Hitos completados
 - Se integró el CRUD operativo de zonas, horarios, camiones y mantenimiento en la API FastAPI con endpoints protegidos para administradores.

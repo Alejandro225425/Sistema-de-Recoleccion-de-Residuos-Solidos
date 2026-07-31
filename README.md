@@ -5,9 +5,9 @@ Sistema inteligente para la recoleccion de residuos solidos segregados en la ciu
 ## Version actual
 
 - **Version:** `2.0.0-deploy-config`
-- **Rama:** `v2.0.0-deploy-config`
+- **Rama:** `main`
 - **Repositorio:** `Alejandro225425/Sistema-de-Recoleccion-de-Residuos-Solidos`
-- **Estado:** Configuracion de despliegue lista. Pendiente ejecutar despliegue en produccion.
+- **Estado:** Configuracion de despliegue lista. Pendiente ejecutar despliegue en Vercel y Render.
 
 ## Estado
 

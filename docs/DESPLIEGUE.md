@@ -1,10 +1,11 @@
 # 📦 Documentación de Despliegue
 ## Sistema Inteligente de Recolección de Residuos Sólidos — Cusco
 
-> **Rama de producción:** `v2.0.0-deploy-config`
+> **Rama de producción:** `main`
 > **Versión:** `2.0.0`
 > **Repositorio:** [`Alejandro225425/Sistema-de-Recoleccion-de-Residuos-Solidos`](https://github.com/Alejandro225425/Sistema-de-Recoleccion-de-Residuos-Solidos)
 > **Última actualización:** 2026-07-30
+> **Estado actual:** Configuración lista. Vercel pendiente de reconfiguración manual desde dashboard. Render pendiente de crear Web Services manuales.
 
 ---
 
@@ -193,8 +194,8 @@ GET https://sir-cusco-geo.onrender.com/health
 ### 3.4 Frontend en Vercel
 
 1. Entra a https://vercel.com/new → importa el mismo repositorio.
-2. Rama: `v2.0.0-deploy-config`.
-3. **Configura el proyecto desde el dashboard de Vercel** (no uses `vercel.json`):
+2. Rama: `main`.
+3. **Configura el proyecto desde el dashboard de Vercel** (`vercel.json` fue eliminado del repo para evitar conflictos):
    - **Framework Preset**: `Vite`
    - **Root Directory**: `frontend`
    - **Build Command**: `npm run build`
@@ -608,6 +609,16 @@ Si el error persiste:
 
 ## 9.2 Troubleshooting Vercel
 
+### Error: `cd frontend && npm install` falla con `frontend: No such file or directory`
+
+- **Causa:** Vercel ya se posiciona automáticamente dentro de `frontend/` cuando detecta `framework: "vite"`, por lo que `cd frontend` busca `frontend/frontend/package.json`.
+- **Solución:** Configura el proyecto desde el dashboard de Vercel:
+  - **Framework Preset**: `Vite`
+  - **Root Directory**: `frontend`
+  - **Build Command**: `npm run build`
+  - **Output Directory**: `frontend/dist`
+- Nota: `vercel.json` fue eliminado del repositorio para evitar conflictos con la configuración de Vercel.
+
 ### Error: build falla con TypeScript (`Property 'performance' does not exist on type 'Bootstrap'`)
 
 - **Causa:** El tipo `Bootstrap` no incluye la propiedad `performance`, pero el dashboard/analytics la usa.
@@ -617,16 +628,12 @@ Si el error persiste:
 ### Error: Vercel no detecta el framework correctamente
 
 - **Causa:** Vercel intenta instalar dependencias en la raíz en vez de en `frontend/`.
-- **Solución:** Asegúrate de que `vercel.json` esté en la raíz con:
-  ```json
-  {
-    "installCommand": "npm --prefix frontend install",
-    "buildCommand": "npm --prefix frontend run build",
-    "outputDirectory": "frontend/dist",
-    "framework": "vite"
-  }
-  ```
-- Si el problema persiste, crea el proyecto en Vercel eligiendo **Framework Preset: Vite** y **Root Directory: `frontend`**.
+- **Solución:** Configura el proyecto desde el dashboard de Vercel:
+  - **Framework Preset**: `Vite`
+  - **Root Directory**: `frontend`
+  - **Build Command**: `npm run build`
+  - **Output Directory**: `frontend/dist`
+- Nota: `vercel.json` fue eliminado del repositorio para evitar conflictos con la configuración de Vercel.
 
 ### Error: `npm run build` falla en Vercel pero funciona localmente
 
