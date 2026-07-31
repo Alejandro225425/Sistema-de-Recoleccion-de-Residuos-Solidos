@@ -5,7 +5,7 @@
 > **Versión:** `2.0.0`
 > **Repositorio:** [`Alejandro225425/Sistema-de-Recoleccion-de-Residuos-Solidos`](https://github.com/Alejandro225425/Sistema-de-Recoleccion-de-Residuos-Solidos)
 > **Última actualización:** 2026-07-30
-> **Estado actual:** Configuración lista. Vercel pendiente de reconfiguración manual desde dashboard. Render pendiente de crear Web Services manuales.
+> **Estado actual:** Configuración lista. Render + Vercel (recomendado). Cloudflare Tunnel para demos temporales.
 
 ---
 
@@ -13,14 +13,15 @@
 
 1. [Arquitectura del sistema](#1-arquitectura-del-sistema)
 2. [Opción A — Cloudflare Tunnel (local, temporal)](#2-opción-a--cloudflare-tunnel-local-temporal)
-3. [Opción B — Render + Vercel (cloud, permanente)](#3-opción-b--render--vercel-cloud-permanente)
-4. [Opción C — Railway + Vercel (cloud, alternativa)](#4-opción-c--railway--vercel-cloud-alternativa)
-5. [Variables de entorno](#5-variables-de-entorno)
-6. [Verificación de salud](#6-verificación-de-salud)
-7. [Flujo de actualización](#7-flujo-de-actualización)
-8. [Historial de despliegues](#8-historial-de-despliegues)
-9. [Problemas conocidos y soluciones](#9-problemas-conocidos-y-soluciones)
-10. [Notas y limitaciones](#10-notas-y-limitaciones)
+3. [Opción B — Render (backend) + Vercel (frontend) — RECOMENDADA](#3-opción-b--render-backend--vercel-frontend--recomendada)
+4. [Opción C — Render (backend) + Netlify (frontend)](#4-opción-c--render-backend--netlify-frontend)
+5. [Opción D — Railway (backend) + Netlify (frontend)](#5-opción-d--railway-backend--netlify-frontend)
+6. [Variables de entorno](#6-variables-de-entorno)
+7. [Verificación de salud](#7-verificación-de-salud)
+8. [Flujo de actualización](#8-flujo-de-actualización)
+9. [Historial de despliegues](#9-historial-de-despliegues)
+10. [Problemas conocidos y soluciones](#10-problemas-conocidos-y-soluciones)
+11. [Notas y limitaciones](#11-notas-y-limitaciones)
 
 ---
 
@@ -32,24 +33,24 @@ El sistema está compuesto por **tres servicios independientes**:
 ┌──────────────────────────────────────────────────────┐
 │                   INTERNET / USUARIO                 │
 └──────────────────────┬───────────────────────────────┘
-                       │
-         ┌─────────────▼──────────────┐
-         │     FRONTEND (React/Vite)  │
-         │   Vercel / localhost:5173  │
-         └──────┬──────────┬──────────┘
-                │          │
-   ┌────────────▼──┐   ┌───▼───────────────────┐
-   │  API Python   │   │  Servicio Geo (TS)    │
-   │  FastAPI      │   │  Express/TypeScript   │
-   │  puerto 8000  │   │  puerto 3001 / 3100   │
-   └───────────────┘   └───────────────────────┘
+                        │
+          ┌─────────────▼──────────────┐
+          │     FRONTEND (React/Vite)  │
+          │   Vercel / localhost:5173  │
+          └──────┬──────────┬──────────┘
+                 │          │
+    ┌────────────▼──┐   ┌───▼───────────────────┐
+    │  API Python   │   │  Servicio Geo (TS)    │
+    │  FastAPI      │   │  Express/TypeScript   │
+    │  puerto 8000  │   │  puerto 3001 / 3100   │
+    └───────────────┘   └───────────────────────┘
 ```
 
 | Servicio       | Tecnología              | Puerto local | Plataforma cloud recomendada |
 |---------------|------------------------|-------------|------------------------------|
-| Frontend       | React + TypeScript + Vite | 5173     | Vercel                       |
-| Backend Python | FastAPI (Python / uvicorn)| 8000     | Render / Railway             |
-| Backend Geo    | Express (TypeScript)      | 3001–3100| Render                       |
+| Frontend       | React + TypeScript + Vite | 5173     | **Vercel** (gratis, permanente) |
+| Backend Python | FastAPI (Python / uvicorn)| 8000     | Render (gratis)              |
+| Backend Geo    | Express (TypeScript)      | 3001–3100| Render (gratis)              |
 
 ---
 
@@ -112,33 +113,22 @@ Geo TS:     https://except-associates-stops-rays.trycloudflare.com
             /api/truck-locations
 ```
 
-> ⚠️ URLs **temporales**. Cambian al reiniciar `cloudflared` y solo funcionan mientras el equipo esté encendido.
+> ⚠️ URLs **temporales**. Cambian al reiniciar `cloudflared` y solo funcionan mientras el equipo local esté encendido.
 
 ---
 
-## 3. Opción B — Render + Vercel (cloud, permanente, recomendada)
+## 3. Opción B — Render (backend) + Vercel (frontend) — RECOMENDADA
 
-Render permite crear **Web Services manuales** gratuitos sin tarjeta de crédito. No uses Blueprint (es de pago); sigue estos pasos manuales.
+Render y Vercel ofrecen planes gratuitos permanentes sin necesidad de tarjeta de crédito.
+Esta es la combinación principal del proyecto.
 
-### 3.1 PostgreSQL en Render (opcional pero recomendado)
-
-1. Entra a https://dashboard.render.com/ → **New** → **PostgreSQL**.
-2. Nombre: `sir-cusco-db`.
-3. Plan: **Free**.
-4. Crea la base de datos.
-5. Anota la **Internal Database URL**, por ejemplo:
-   ```
-   postgresql://sir_cusco_user:password@host:5432/sir_cusco_db
-   ```
-6. Render ofrece 90 MB de almacenamiento y 10 conexiones en plan gratuito.
-
-### 3.2 Backend Python en Render (Web Service)
+### 3.1 Backend Python en Render (Web Service)
 
 1. Entra a https://dashboard.render.com/ → **New** → **Web Service**.
 2. Conecta el repositorio `Alejandro225425/Sistema-de-Recoleccion-de-Residuos-Solidos`.
-3. Rama: `v2.0.0-deploy-config`.
+3. Rama: `main` (o `v2.0.0`).
 4. Nombre: `sir-cusco-api`.
-5. Runtime: **Python 3**.
+5. Runtime: **Python 3.11**.
 6. Plan: **Free**.
 7. Build Command:
    ```bash
@@ -150,8 +140,8 @@ Render permite crear **Web Services manuales** gratuitos sin tarjeta de crédito
    ```
 9. En **Environment**, agrega:
    - `JWT_SECRET`: genera un string robusto único (mínimo 32 caracteres aleatorios).
-   - `DATABASE_URL`: pega la Internal Database URL del paso 3.1 si creaste PostgreSQL.
-   - `CORS_ORIGIN_REGEX`: `https://.*\.vercel\.app`
+   - `DATABASE_URL`: pega la Internal Database URL si creaste PostgreSQL (opcional).
+   - `CORS_ORIGIN_REGEX`: `https://.*(\.vercel\.app|\.netlify\.app)`
    - `CORS_ORIGINS`: `http://localhost:5173,http://127.0.0.1:5173`
 10. Crea el servicio y espera a que quede **Live**.
 11. Anota la URL pública:
@@ -164,13 +154,13 @@ Render permite crear **Web Services manuales** gratuitos sin tarjeta de crédito
 GET https://sir-cusco-api.onrender.com/api/health
 ```
 
-### 3.3 Backend Geo en Render (Web Service)
+### 3.2 Backend Geo en Render (Web Service)
 
 1. Entra a https://dashboard.render.com/ → **New** → **Web Service**.
 2. Conecta el mismo repositorio.
-3. Rama: `v2.0.0-deploy-config`.
+3. Rama: `main` (o `v2.0.0`).
 4. Nombre: `sir-cusco-geo`.
-5. Runtime: **Node.js**.
+5. Runtime: **Node.js 20**.
 6. Plan: **Free**.
 7. Build Command:
    ```bash
@@ -191,11 +181,240 @@ GET https://sir-cusco-api.onrender.com/api/health
 GET https://sir-cusco-geo.onrender.com/health
 ```
 
-### 3.4 Frontend en Vercel
+### 3.3 Frontend en Vercel
 
-1. Entra a https://vercel.com/new → importa el mismo repositorio.
+1. Entra a https://vercel.com/new → importa el repositorio.
+2. Rama: `main` (o `v2.0.0`).
+3. Vercel usará `.vercelignore` para excluir el backend. Configura desde el dashboard (no uses `vercel.json`, fue eliminado del repo para evitar conflictos):
+   - **Framework Preset**: `Vite`
+   - **Root Directory**: `frontend`
+   - **Build Command**: `npm run build`
+   - **Output Directory**: `frontend/dist`
+4. Agrega las variables de entorno **antes de desplegar**:
+   ```
+   VITE_API_URL = https://sir-cusco-api.onrender.com/api
+   VITE_GEO_URL = https://sir-cusco-geo.onrender.com
+   ```
+5. Clic en **Deploy**.
+6. Anota la URL final de Vercel:
+   ```
+   https://sir-cusco.vercel.app
+   ```
+
+### 3.4 Ajustar CORS en Render
+
+1. Ve a `sir-cusco-api` → **Environment**.
+2. La variable `CORS_ORIGIN_REGEX` ya está configurada como `https://.*(\.vercel\.app|\.netlify\.app)`.
+3. Si usas un dominio personalizado, actualiza `CORS_ORIGINS` con la URL final del frontend.
+4. Guarda cambios y espera el redeploy automático.
+
+---
+
+## 4. Opción C — Render (backend) + Netlify (frontend)
+
+Si prefieres Netlify para el frontend (también gratis), la configuración es similar. El `render.yaml`
+ya incluye la regex de CORS para ambas plataformas.
+
+### 4.1 Backend en Render (Blueprint o Web Services manuales)
+
+Puedes usar el Blueprint con `render.yaml` o crear Web Services manuales siguiendo
+los pasos de la sección 3.1 y 3.2.
+
+### 4.2 Frontend en Netlify
+
+1. Entra a https://app.netlify.com/ → **Add new site** → **Import an existing project**.
+2. Conecta tu cuenta de GitHub y selecciona el repositorio.
+3. Rama a desplegar: `main` (o `v2.0.0`).
+4. Netlify detectará `netlify.toml` automáticamente. El build command será:
+   ```
+   npm install && npm run build
+   ```
+   y el publish directory será `dist` (relativo a `frontend/`).
+5. Agrega las variables de entorno **antes de desplegar** (Site settings → Build & deploy → Environment):
+   ```
+   VITE_API_URL = https://sir-cusco-api.onrender.com/api
+   VITE_GEO_URL = https://sir-cusco-geo.onrender.com
+   ```
+6. Clic en **Deploy site**.
+7. Anota la URL final de Netlify:
+   ```
+   https://sir-cusco.netlify.app
+   ```
+
+---
+
+## 5. Opción D — Railway (backend) + Netlify (frontend)
+
+Railway se usa como alternativa si Render no está disponible. El backend Python ya tiene `railway.toml` configurado.
+
+### 5.1 Backend en Railway
+
+1. Ir a https://railway.app/ → **New Project → Deploy from GitHub**.
+2. Seleccionar el repositorio y la rama `main`.
+3. Railway detecta `railway.toml` (root) o `backend-python/railway.toml` automáticamente.
+4. Configurar variables de entorno:
+   - `JWT_SECRET`: string robusto único.
+   - `DATABASE_URL`: opcional.
+   - `CORS_ORIGIN_REGEX`: `https://.*(\.vercel\.app|\.netlify\.app)`
+5. Desplegar → Railway genera URL tipo:
+   ```
+   https://sir-cusco-api.up.railway.app
+   ```
+   > **Nota:** Railway incluye $5 de crédito mensual. Si se agota, el servicio se suspende.
+
+### 5.2 Frontend en Netlify
+
+Mismos pasos que en la sección 4.2, usando las URLs de Railway:
+```
+VITE_API_URL = https://sir-cusco-api.up.railway.app/api
+VITE_GEO_URL = https://sir-cusco-api.up.railway.app
+```
+
+> **Nota:** En este setup, el backend FastAPI también sirve las rutas geo (`/api/alerts`, `/api/truck-locations`, `/api/eta`), por lo que `VITE_GEO_URL` apunta a la misma base del API.
+
+---
+
+## 6. Variables de entorno
+
+### Backend Python
+
+| Variable            | Descripción                                   | Valor en producción                   |
+|--------------------|-----------------------------------------------|---------------------------------------|
+| `CORS_ORIGINS`      | Lista de URLs permitidas (separadas por `,`)  | `http://localhost:5173`               |
+| `CORS_ORIGIN_REGEX` | Regex para permitir dominios de Vercel/Netlify | `https://.*(\.vercel\.app\|\.netlify\.app)` |
+| `DATABASE_URL`      | URL de PostgreSQL (opcional)                  | `postgresql://user:pass@host/db`      |
+| `JWT_SECRET`        | Secreto para firmar tokens JWT (obligatorio en producción) | Genera un string robusto único |
+
+### Frontend (`frontend/.env.production` o variables en Vercel)
+
+| Variable       | Descripción                      | Valor de ejemplo                               |
+|---------------|----------------------------------|------------------------------------------------|
+| `VITE_API_URL` | URL base de la API Python        | `https://sir-cusco-api.onrender.com/api`       |
+| `VITE_GEO_URL` | URL del servicio Geo             | `https://sir-cusco-geo.onrender.com`           |
+
+---
+
+## 7. Verificación de salud
+
+Después de cualquier despliegue, verifica estos endpoints:
+
+```
+# API Python
+GET /api/health           → { "status": "ok", "database": "memory", "mode": "demo" }
+GET /docs                 → Swagger UI interactivo
+
+# Servicio Geo (TypeScript)
+GET /health               → { "status": "ok", "service": "geo-alerts" }
+GET /api/truck-locations  → Posiciones GPS de camiones en tiempo real
+```
+
+## 7.1 Pruebas de despliegue
+
+- Validar el frontend con `npx vitest run`: `11 passed`.
+- Validar el backend Python con `pytest -q`: `16 passed`.
+- Ejecutar `npm run build` para confirmar el build de producción del frontend.
+- Confirmar envíos operativos y CRUD administrativos a través de la UI del panel de administración.
+
+---
+
+## 8. Flujo de actualización
+
+```powershell
+git add .
+git commit -m "descripcion del cambio"
+git push origin main
+git push origin v2.0.0
+```
+
+| Plataforma          | Comportamiento ante un push        |
+|--------------------|------------------------------------|
+| **Vercel**          | Redespliega automáticamente       |
+| **Render**          | Redespliega automáticamente       |
+| **Netlify**         | Redespliega automáticamente       |
+| **Railway**         | Redespliega automáticamente       |
+| **Cloudflare Tunnel** | Requiere reiniciar el script manualmente |
+
+---
+
+## 9. Historial de despliegues
+
+### 2026-07-30 — Sesión 7: Configuración definitiva Render + Vercel
+
+- **Rama de producción:** `main` y `v2.0.0`
+- **Versión:** `2.0.0`
+- **Plataformas:** Render (backend) + Vercel (frontend) — **recomendado**
+- **Archivos creados/actualizados:**
+  - `render.yaml` — añadida `DATABASE_URL` como `sync: false` (opcional para PostgreSQL)
+  - `frontend/.env.production` — actualizada con URLs de Render como referencia
+  - `DEPLOYMENT.md` — reescrita con Render + Vercel como estrategia primaria
+  - `docs/DESPLIEGUE.md` — actualizada con Render + Vercel como Opción B (recomendada)
+  - `README.md` — actualizada con estado de despliegue Render + Vercel
+  - `VERSION.md` — actualizada con rutas de despliegue Render + Vercel
+  - `CHANGELOG.md` — registrado el hito
+- **Estado:** ✅ Configuración lista. Render despliega backend vía Blueprint o Web Services. Vercel despliega frontend con configuración de dashboard.
+
+### 2026-07-30 — Sesión 6: Despliegue Render + Netlify (configuración lista)
+
+- **Rama de producción:** `version-1-proyecto`
+- **Versión:** `2.0.0`
+- **Plataformas:** Render (backend) + Netlify (frontend)
+- **Archivos creados/actualizados:**
+  - `render.yaml` — actualizada `CORS_ORIGIN_REGEX` a `https://.*(\.vercel\.app|\.netlify\.app)`
+  - `netlify.toml` — creado con configuración de build y redirects SPA
+  - `NETLIFY-DEPLOYMENT.md` — guía paso a paso para despliegue en Netlify
+  - `DEPLOYMENT.md` — actualizado con opción Netlify
+  - `docs/DESPLIEGUE.md` — actualizado con opciones Render+Netlify y Render+Vercel
+  - `README.md` — actualizado con estado de despliegue
+  - `CHANGELOG.md` — registrado el hito
+- **Estado:** ✅ Configuración lista.
+
+### 2026-07-30 — Sesión 4: Configuración de despliegue lista para v2.0.0
+
+- **Rama:** `v2.0.0-deploy-config`
+- **Versión:** `2.0.0`
+- **Archivos actualizados:**
+  - `render.yaml` — se añadió `JWT_SECRET` como variable de entorno (`sync: false`)
+  - `backend-python/.env.example` — se incluyó `JWT_SECRET` para referencia de producción
+  - `backend-python/.env` — se añadió `JWT_SECRET` con valor de desarrollo
+  - `docs/DESPLIEGUE.md` — se actualizó la tabla de variables de entorno
+  - `CHANGELOG.md` — se registró el hito
+  - `README.md` — se actualizó la versión y el estado de despliegue
+  - `VERSION.md` — se registró la versión 2.0.0
+- **Estado:** ✅ Configuración de despliegue lista.
+
+### 2026-07-30 — Sesión 5: Checklist de despliegue en producción
+
+Checklist para completar el despliegue de la rama `main`:
+
+#### Plataforma A: Render (backend) + Vercel (frontend) — RECOMENDADA
+
+**Backend (Render):**
+1. Ir a https://dashboard.render.com/ → **New** → **Web Service**.
+2. Conectar el repositorio `Alejandro225425/Sistema-de-Recoleccion-de-Residuos-Solidos`.
+3. Rama: `main`.
+4. Nombre: `sir-cusco-api`.
+5. Runtime: **Python 3.11**.
+6. Build Command: `pip install -r backend-python/requirements.txt`
+7. Start Command: `uvicorn app.main:app --app-dir backend-python --host 0.0.0.0 --port $PORT`
+8. Environment → configurar:
+   - `JWT_SECRET`: string robusto único (mínimo 32 caracteres).
+   - `DATABASE_URL`: opcional para persistencia.
+   - `CORS_ORIGIN_REGEX`: `https://.*(\.vercel\.app|\.netlify\.app)`
+   - `CORS_ORIGINS`: `http://localhost:5173,http://127.0.0.1:5173`
+9. Crear servicio y esperar estado **Live**.
+10. Anotar URL pública: `https://sir-cusco-api.onrender.com`
+
+Repetir para `sir-cusco-geo`:
+1. Nombre: `sir-cusco-geo`.
+2. Runtime: **Node.js 20**.
+3. Build Command: `cd backend-typescript && npm install && npm run build`
+4. Start Command: `cd backend-typescript && npm start`
+5. Anotar URL: `https://sir-cusco-geo.onrender.com`
+
+**Frontend (Vercel):**
+1. Ir a https://vercel.com/new → importar el mismo repositorio.
 2. Rama: `main`.
-3. **Configura el proyecto desde el dashboard de Vercel** (`vercel.json` fue eliminado del repo para evitar conflictos):
+3. Configurar desde el dashboard:
    - **Framework Preset**: `Vite`
    - **Root Directory**: `frontend`
    - **Build Command**: `npm run build`
@@ -206,313 +425,17 @@ GET https://sir-cusco-geo.onrender.com/health
    VITE_GEO_URL = https://sir-cusco-geo.onrender.com
    ```
 5. Clic en **Deploy**.
-6. Anota la URL final de Vercel, por ejemplo:
-   ```
-   https://sistema-de-recoleccion-de-residuos-solidos.vercel.app
-   ```
-
-### 3.5 Ajustar CORS en Render
-
-1. Ve a `sir-cusco-api` → **Environment**.
-2. Actualiza `CORS_ORIGINS` con la URL final de Vercel:
-   ```
-   https://sistema-de-recoleccion-de-residuos-solidos.vercel.app
-   ```
-3. Guarda cambios y espera el redeploy automático.
-
----
-
----
-
-## 4. Opción C — Railway + Vercel (cloud, alternativa)
-
-Railway se usa si Koyeb pide tarjeta de crédito. El backend Python ya tiene `railway.toml` configurado.
-
-### 4.1 Backend en Railway
-
-1. Ir a https://railway.app/ → **New Project → Deploy from GitHub**.
-2. Seleccionar el repositorio y la rama `version-1-proyecto`.
-3. Railway detecta `backend-python/railway.toml` automáticamente.
-4. Configurar variable de entorno:
-   ```
-   CORS_ORIGIN_REGEX = https://.*\.vercel\.app
-   ```
-5. Desplegar → Railway genera una URL tipo:
-   ```
-   https://sir-cusco-api.up.railway.app
-   ```
-
-### 4.2 Frontend en Vercel
-
-Mismos pasos que en la Opción B, usando las URLs de Railway:
-```
-VITE_API_URL = https://sir-cusco-api.up.railway.app/api
-VITE_GEO_URL = https://sir-cusco-api.up.railway.app
-```
-
-> **Nota:** `backend-python/railway.toml` y `backend-python/railway.json` ya están en el repositorio (pusheados el 2026-06-18).
-
----
-
-## 5. Variables de entorno
-
-### Backend Python
-
-| Variable            | Descripción                                   | Valor en producción                   |
-|--------------------|-----------------------------------------------|---------------------------------------|
-| `CORS_ORIGINS`      | Lista de URLs permitidas (separadas por `,`)  | `http://localhost:5173`               |
-| `CORS_ORIGIN_REGEX` | Regex para permitir dominios de Vercel        | `https://.*\.vercel\.app`             |
-| `DATABASE_URL`      | URL de PostgreSQL (opcional)                  | `postgresql://user:pass@host/db`      |
-| `JWT_SECRET`        | Secreto para firmar tokens JWT (obligatorio en producción) | Genera un string robusto único |
-
-### Frontend (`frontend/.env` o variables en Vercel)
-
-| Variable       | Descripción                      | Valor de ejemplo                               |
-|---------------|----------------------------------|------------------------------------------------|
-| `VITE_API_URL` | URL base de la API Python        | `https://sir-cusco-api.onrender.com/api`       |
-| `VITE_GEO_URL` | URL del servicio Geo             | `https://sir-cusco-geo.onrender.com`           |
-
-### 5.1 Backup y restauración de PostgreSQL
-
-Si usas PostgreSQL local o Docker para persistencia, respalda la base antes de hacer cambios críticos.
-
-> Antes de ejecutar backup/restore, asegúrate de que PostgreSQL esté en ejecución.
-> Si usas Docker, ejecuta:
->
-> ```powershell
-> cd database
-> docker compose up -d
-> ```
->
-> Verifica el estado con:
->
-> ```powershell
-> docker ps
-> ```
->
-> Si usas PostgreSQL local, confirma que el servicio está activo y escuchando en el puerto `5432`.
->
-> Si `docker ps` falla con "cannot connect to the docker API", inicia Docker Desktop o el servicio de Docker antes de continuar.
->
-> Si el contenedor PostgreSQL se detiene al iniciar, revisa los logs con:
->
-> ```powershell
-> cd database
-> docker compose logs --no-color --tail 50
-> ```
->
-> Un fallo común es que `database/seed.sql` inserte notificaciones antes de crear el usuario referenciado.
-
-#### Respaldar la base de datos
-
-Con PostgreSQL instalado localmente:
-
-```powershell
-pg_dump -U postgres -Fc -d sir_cusco -f database\backup\sir_cusco-$(Get-Date -Format yyyyMMddHHmmss).dump
-```
-
-Con Docker:
-
-```powershell
-docker exec -i sir_cusco_postgres pg_dump -U postgres -Fc -d sir_cusco -f /tmp/sir_cusco.dump
-docker cp sir_cusco_postgres:/tmp/sir_cusco.dump database\backup\sir_cusco.dump
-```
-
-> Alternativa: usa el script de respaldo incluido:
->
-> ```powershell
-> .\scripts\db-backup.ps1
-> .\scripts\db-backup.ps1 -UseDocker
-> ```
->
-> El respaldo se guarda en `database/backup/`.
->
-> En PowerShell, si PostgreSQL solicita contraseña, define la variable de entorno así:
->
-> ```powershell
-> $env:PGPASSWORD = 'postgres'
-> .\scripts\db-backup.ps1 -UseDocker
-> ```
-
-#### Restaurar desde respaldo
-
-Detén el backend antes de restaurar y confirma que `DATABASE_URL` apunte a `sir_cusco`.
-
-Con PostgreSQL local:
-
-```powershell
-psql -U postgres -c "DROP DATABASE IF EXISTS sir_cusco;"
-psql -U postgres -c "CREATE DATABASE sir_cusco;"
-pg_restore -U postgres -d sir_cusco database\backup\sir_cusco.dump
-```
-
-Con Docker:
-
-```powershell
-docker cp database\backup\sir_cusco.dump sir_cusco_postgres:/tmp/sir_cusco.dump
-docker exec -i sir_cusco_postgres pg_restore --clean --if-exists -U postgres -d sir_cusco /tmp/sir_cusco.dump
-```
-
-> Alternativa: usa el script de restauración incluido:
->
-> ```powershell
-> .\scripts\db-restore.ps1 -File database\backup\sir_cusco.dump -UseDocker
-> ```
->
-> En PowerShell, define la contraseña así:
->
-> ```powershell
-> $env:PGPASSWORD = 'postgres'
-> .\scripts\db-restore.ps1 -File database\backup\sir_cusco.dump -UseDocker
-> ```
-
-Si necesitas restaurar el esquema y datos iniciales del proyecto:
-
-```powershell
-psql -U postgres -d sir_cusco -f database\schema.sql
-psql -U postgres -d sir_cusco -f database\seed.sql
-```
-#### Scripts de backup/restore
-
-El proyecto incluye scripts de PowerShell para simplificar el respaldo y la restauración.
-
-```powershell
-.\scripts\db-backup.ps1
-.\scripts\db-backup.ps1 -UseDocker
-.\scripts\db-restore.ps1 -File database\backup\sir_cusco.dump
-.\scripts\db-restore.ps1 -File database\backup\sir_cusco.dump -UseDocker
-```
----
-
-## 6. Verificación de salud
-
-Después de cualquier despliegue, verificar estos endpoints:
-
-```
-# API Python
-GET /api/health           → { "status": "ok" }
-GET /docs                 → Swagger UI interactivo
-GET /alerts               → Lista de alertas
-
-# Servicio Geo (TypeScript)
-GET /api/truck-locations  → Posiciones GPS de camiones en tiempo real
-```
-
-## 6.1 Pruebas de despliegue
-
-- Validar el frontend con `npx vitest run`: `11 passed`.
-- Validar el backend Python con `pytest -q`: `16 passed`.
-- Ejecutar `npm run build` para confirmar el build de producción del frontend.
-- Confirmar envíos operativos y CRUD administrativos a través de la UI del panel de administración.
-
-# Frontend
-Abrir la URL en el navegador → Dashboard del sistema
-
----
-
-## 7. Flujo de actualización
-
-```powershell
-git add .
-git commit -m "descripcion del cambio"
-git push origin version-1-proyecto
-```
-
-| Plataforma          | Comportamiento ante un push        |
-|--------------------|------------------------------------|
-| **Vercel**          | Redespliega automáticamente       |
-| **Render**          | Redespliega automáticamente       |
-| **Railway**         | Redespliega automáticamente       |
-| **Cloudflare Tunnel** | Requiere reiniciar el script manualmente |
-
----
-
-## 8. Historial de despliegues
-
-### 2026-07-30 — Sesión 4: Configuración de despliegue lista para v2.0.0
-
-- **Rama:** `v2.0.0-deploy-config`
-- **Versión:** `2.0.0`
-- **Archivos actualizados:**
-  - `render.yaml` — se añadió `JWT_SECRET` como variable de entorno (`sync: false`) para el servicio `sir-cusco-api`.
-  - `backend-python/.env.example` — se incluyó `JWT_SECRET` para referencia de producción.
-  - `backend-python/.env` — se añadió `JWT_SECRET` con valor de desarrollo.
-  - `docs/DESPLIEGUE.md` — se actualizó la tabla de variables de entorno y el historial de despliegues.
-  - `CHANGELOG.md` — se registró el hito.
-  - `README.md` — se actualizó la versión y el estado de despliegue.
-  - `VERSION.md` — se registró la versión 2.0.0.
-- **Estado:** ✅ Configuración de despliegue lista. Pendiente ejecutar despliegue manual en Render/Vercel o Railway/Vercel y configurar `JWT_SECRET` y `DATABASE_URL` seguros en producción.
-
-### 2026-07-30 — Sesión 5: Checklist de despliegue real en producción
-
-Esta sesión documenta el paso a paso para completar el despliegue de la rama `v2.0.0-deploy-config`.
-
-#### Plataforma A: Render + Vercel (recomendada)
-
-**Backend Python (Render):**
-1. Ir a https://dashboard.render.com/ → **New Blueprint**.
-2. Conectar el repositorio `Alejandro225425/Sistema-de-Recoleccion-de-Residuos-Solidos`.
-3. Rama: `v2.0.0-deploy-config`.
-4. Render detecta `render.yaml` y crea:
-   - `sir-cusco-api` — Python/FastAPI (root: `backend-python`)
-   - `sir-cusco-geo` — Node.js/TypeScript (root: `backend-typescript`)
-5. En `sir-cusco-api` → **Environment**, configurar:
-   - `JWT_SECRET`: generar un string robusto único (mínimo 32 caracteres, aleatorio).
-   - `DATABASE_URL`: URL de PostgreSQL si se desea persistencia (opcional para modo demo).
-   - `CORS_ORIGINS`: agregar la URL final de Vercel cuando esté lista.
-   - `CORS_ORIGIN_REGEX`: `https://.*\.vercel\.app`
-6. Esperar estado **Live** en ambos servicios.
-7. Anotar las URLs públicas:
-   ```
-   https://sir-cusco-api.onrender.com
-   https://sir-cusco-geo.onrender.com
-   ```
-
-**Frontend (Vercel):**
-1. Ir a https://vercel.com/new → importar el mismo repositorio.
-2. Rama: `v2.0.0-deploy-config`.
-3. Vercel usa `vercel.json` automáticamente.
-4. Agregar variables de entorno **antes de desplegar**:
-   ```
-   VITE_API_URL = https://sir-cusco-api.onrender.com/api
-   VITE_GEO_URL = https://sir-cusco-geo.onrender.com
-   ```
-5. Clic en **Deploy**.
-6. Anotar URL final de Vercel:
-   ```
-   https://sir-cusco.vercel.app
-   ```
+6. Anotar URL final: `https://sir-cusco.vercel.app`
 
 **Post-despliegue:**
-1. Actualizar `CORS_ORIGINS` en Render con la URL final de Vercel.
-2. Verificar `/api/health` → debe devolver `"mode": "production"` si `DATABASE_URL` está configurada.
-3. Verificar login, reportes, panel administrativo y mapa en la URL de Vercel.
-
-#### Plataforma B: Railway + Vercel (alternativa)
-
-**Backend Python (Railway):**
-1. Ir a https://railway.app/ → **New Project → Deploy from GitHub**.
-2. Seleccionar el repositorio y la rama `v2.0.0-deploy-config`.
-3. Railway detecta `backend-python/railway.toml` automáticamente.
-4. Configurar variables de entorno:
-   - `JWT_SECRET`: string robusto único.
-   - `DATABASE_URL`: opcional.
-   - `CORS_ORIGIN_REGEX`: `https://.*\.vercel\.app`
-5. Desplegar → Railway genera URL tipo:
-   ```
-   https://sir-cusco-api.up.railway.app
-   ```
-
-**Frontend (Vercel):**
-1. Mismos pasos que en Plataforma A, usando URLs de Railway:
-   ```
-   VITE_API_URL = https://sir-cusco-api.up.railway.app/api
-   VITE_GEO_URL = https://sir-cusco-api.up.railway.app
-   ```
+1. Verificar `/api/health` → debe devolver `"mode": "demo"` (si `DATABASE_URL` no está configurada).
+2. Verificar login con `admin@ecocusco.pe` / `admin123`.
+3. Verificar dashboard, mapa y paneles en la URL de Vercel.
+4. Verificar CORS: no hay errores en consola del navegador.
 
 #### Checklist de verificación post-despliegue
 
-- [ ] `/api/health` devuelve `"status": "ok"` y `"mode": "production"` (si `DATABASE_URL` está configurada).
+- [ ] `/api/health` devuelve `"status": "ok"` y `"mode": "demo"` (si `DATABASE_URL` no está configurada).
 - [ ] Login con `admin@ecocusco.pe` / `admin123` funciona correctamente.
 - [ ] Frontend carga el dashboard, mapa y paneles sin errores.
 - [ ] Reportes se pueden crear y listar.
@@ -523,7 +446,7 @@ Esta sesión documenta el paso a paso para completar el despliegue de la rama `v
 
 ---
 
-## 9. Problemas conocidos y soluciones
+## 10. Problemas conocidos y soluciones
 
 | Problema | Causa | Solución aplicada |
 |---------|-------|-------------------|
@@ -536,7 +459,7 @@ Esta sesión documenta el paso a paso para completar el despliegue de la rama `v
 
 ---
 
-## 9.1 Troubleshooting Render
+## 10.1 Troubleshooting Render
 
 ### Error: `Exited with status 1 while building your code`
 
@@ -568,16 +491,70 @@ Este error ocurre cuando el build falla en Render. Causas y soluciones:
 4. Si ves `ModuleNotFoundError`, faltan dependencias
 5. Si ves `FileNotFoundError`, revisa las rutas de archivos
 
-### Solución rápida: recrear el Web Service
+---
 
-Si el error persiste:
-1. Elimina el servicio de Render
-2. Crea uno nuevo siguiendo exactamente los pasos de la sección 3.2
-3. Asegúrate de copiar los comandos **exactamente** como están escritos arriba
+## 10.2 Troubleshooting Vercel
+
+### Error: Vercel detecta el backend Python y falla el build
+
+- **Causa:** Vercel intenta instalar dependencias de Python en la raíz del repo.
+- **Solución:** Configura el proyecto desde el dashboard de Vercel:
+  - **Framework Preset**: `Vite`
+  - **Root Directory**: `frontend`
+  - **Build Command**: `npm run build`
+  - **Output Directory**: `frontend/dist`
+- Nota: `vercel.json` fue eliminado del repositorio. La configuración se maneja desde el dashboard.
+
+### Error: build falla con TypeScript (`Property 'performance' does not exist on type 'Bootstrap'`)
+
+- **Causa:** El tipo `Bootstrap` no incluye la propiedad `performance`, pero el dashboard/analytics la usa.
+- **Solución aplicada:** Se corrigió `frontend/src/types.ts` agregando `performance` como propiedad opcional en `Bootstrap`.
+- **Estado:** Corregido en commit `f43ea0c` y listo para redeploy en Vercel.
+
+### Error: `npm run build` falla en Vercel pero funciona localmente
+
+- **Causa:** Dependencias distintas o lockfile desactualizado.
+- **Solución:** Asegúrate de que `frontend/package-lock.json` esté subido al repositorio. Si no existe, ejecuta `npm install` en `frontend/` y haz commit del lockfile.
+
+### Error: Variables `VITE_*` no están disponibles en el build
+
+- **Causa:** Las variables de entorno deben estar configuradas **antes** del primer deploy.
+- **Solución:** Ve a Project Settings → Environment Variables. Agrega `VITE_API_URL` y `VITE_GEO_URL`, luego haz clic en **Deploy** nuevamente.
+
+### Logs para diagnosticar
+
+1. Ve al proyecto en Vercel → **Deployments** → clic en el deployment fallido.
+2. Revisa la pestaña **Build Logs**.
+3. Busca líneas que empiecen con `ERROR` o `Failed`.
+4. Si el error es de TypeScript, revisa que no haya tipos desactualizados después de cambios recientes.
 
 ---
 
-## 10. Notas y limitaciones
+## 10.3 Troubleshooting Netlify (alternativa)
+
+### Error: Build falla con `npm install` o `npm run build`
+
+- **Causa:** Dependencias no instaladas o lockfile faltante.
+- **Solución:** Asegúrate de que `frontend/package-lock.json` esté en el repositorio. Si no existe, ejecuta `npm install` en `frontend/` y haz commit.
+
+### Error: `Cannot find module` al importar Leaflet
+
+- **Causa:** Vite no resuelve Leaflet correctamente en build de producción.
+- **Solución:** El `netlify.toml` incluye `[build.processing.javascript] bundle = true` que fuerza el bundling correcto.
+
+### Error: SPA devuelve 404 en rutas client-side
+
+- **Causa:** Netlify no reescribe todas las rutas a `index.html`.
+- **Solución:** El `netlify.toml` incluye el redirect `[[redirects]] from = "/*" to = "/index.html" status = 200`.
+
+### Error: Las variables `VITE_*` no están disponibles en el build
+
+- **Causa:** Las variables de entorno deben estar configuradas **antes** del primer deploy.
+- **Solución:** Ve a Site settings → Build & deploy → Environment → Environment variables. Agrega `VITE_API_URL` y `VITE_GEO_URL`, luego haz clic en **Trigger deploy** → **Deploy site**.
+
+---
+
+## 11. Notas y limitaciones
 
 ### Cloudflare Tunnel
 - Completamente **gratuito y sin registro** (modo Quick Tunnel con `trycloudflare.com`).
@@ -590,6 +567,16 @@ Si el error persiste:
 - La primera petición tras el sueño tarda **30–60 segundos**.
 - Para mantenerlos activos: usar https://uptimerobot.com/ con ping cada 5 min.
 
+### Vercel (plan gratuito)
+- Hospedaje estático **permanente** sin límite de tiempo.
+- Incluye 100 GB de bandwidth y 125,000 build seconds/mes.
+- Deploy automático al hacer push a la rama configurada.
+
+### Netlify (plan gratuito)
+- Hospedaje estático **permanente** sin límite de tiempo.
+- Incluye 100 GB de bandwidth y 300 build minutes/mes.
+- Deploy automático al hacer push a la rama configurada.
+
 ### Railway (plan gratuito)
 - Incluye $5 de crédito mensual — suficiente para uso ligero.
 - Sin límite de sueño (siempre activo dentro del crédito).
@@ -601,102 +588,10 @@ Si el error persiste:
 ### Base de datos
 - El backend opera en **modo demo / memoria** si `DATABASE_URL` no está configurada.
 - Para persistencia real: usar [Supabase](https://supabase.com/), [Neon](https://neon.tech/) o [Railway PostgreSQL](https://railway.app/).
+- Render ofrece PostgreSQL gratuito (90 MB, 10 conexiones) desde su dashboard.
 
 ### CORS
-- Al agregar un dominio propio, actualizar `CORS_ORIGINS` en la plataforma del backend con la URL definitiva del frontend.
-
----
-
-## 9.2 Troubleshooting Vercel
-
-### Error: `cd frontend && npm install` falla con `frontend: No such file or directory`
-
-- **Causa:** Vercel ya se posiciona automáticamente dentro de `frontend/` cuando detecta `framework: "vite"`, por lo que `cd frontend` busca `frontend/frontend/package.json`.
-- **Solución:** Configura el proyecto desde el dashboard de Vercel:
-  - **Framework Preset**: `Vite`
-  - **Root Directory**: `frontend`
-  - **Build Command**: `npm run build`
-  - **Output Directory**: `frontend/dist`
-- Nota: `vercel.json` fue eliminado del repositorio para evitar conflictos con la configuración de Vercel.
-
-### Error: build falla con TypeScript (`Property 'performance' does not exist on type 'Bootstrap'`)
-
-- **Causa:** El tipo `Bootstrap` no incluye la propiedad `performance`, pero el dashboard/analytics la usa.
-- **Solución aplicada:** Se corrigió `frontend/src/types.ts` agregando `performance` como propiedad opcional en `Bootstrap`.
-- **Estado:** Corregido en commit `f43ea0c` y listo para redeploy en Vercel.
-
-### Error: Vercel no detecta el framework correctamente
-
-- **Causa:** Vercel intenta instalar dependencias en la raíz en vez de en `frontend/`.
-- **Solución:** Configura el proyecto desde el dashboard de Vercel:
-  - **Framework Preset**: `Vite`
-  - **Root Directory**: `frontend`
-  - **Build Command**: `npm run build`
-  - **Output Directory**: `frontend/dist`
-- Nota: `vercel.json` fue eliminado del repositorio para evitar conflictos con la configuración de Vercel.
-
-### Error: `npm run build` falla en Vercel pero funciona localmente
-
-- **Causa:** Dependencias distintas o lockfile desactualizado.
-- **Solución:** Asegúrate de que `frontend/package-lock.json` esté subido al repositorio. Si no existe, ejecuta `npm install` en `frontend/` y haz commit del lockfile.
-
-### Logs para diagnosticar
-
-1. Ve al proyecto en Vercel → **Deployments** → clic en el deployment fallido.
-2. Revisa la pestaña **Build Logs**.
-3. Busca líneas que empiecen con `ERROR` o `Failed`.
-4. Si el error es de TypeScript, revisa que no haya tipos desactualizados después de cambios recientes.
-
----
-
-## 9.2 Troubleshooting Vercel
-
-### Error: `npm --prefix frontend install` falla con `frontend/frontend/package.json`
-
-- **Causa:** El comando `--prefix frontend` duplica la ruta si Vercel ya ejecuta desde `frontend/`.
-- **Solución:** Usa `rootDirectory: "frontend"` en `vercel.json` y comandos locales:
-  ```json
-  {
-    "rootDirectory": "frontend",
-    "installCommand": "npm install",
-    "buildCommand": "npm run build",
-    "outputDirectory": "dist",
-    "framework": "vite"
-  }
-  ```
-- **Estado:** Corregido en `vercel.json` en commit `4418dbc`.
-
-### Error: build falla con TypeScript (`Property 'performance' does not exist on type 'Bootstrap'`)
-
-- **Causa:** El tipo `Bootstrap` no incluye la propiedad `performance`, pero el dashboard/analytics la usa.
-- **Solución aplicada:** Se corrigió `frontend/src/types.ts` agregando `performance` como propiedad opcional en `Bootstrap`.
-- **Estado:** Corregido en commit `f43ea0c` y listo para redeploy en Vercel.
-
-### Error: Vercel no detecta el framework correctamente
-
-- **Causa:** Vercel intenta instalar dependencias en la raíz en vez de en `frontend/`.
-- **Solución:** Asegúrate de que `vercel.json` esté en la raíz con `rootDirectory: "frontend"` y comandos locales:
-  ```json
-  {
-    "rootDirectory": "frontend",
-    "installCommand": "npm install",
-    "buildCommand": "npm run build",
-    "outputDirectory": "dist",
-    "framework": "vite"
-  }
-  ```
-- Si el problema persiste, crea el proyecto en Vercel eligiendo **Framework Preset: Vite** y **Root Directory: `frontend`**.
-
-### Error: `npm run build` falla en Vercel pero funciona localmente
-
-- **Causa:** Dependencias distintas o lockfile desactualizado.
-- **Solución:** Asegúrate de que `frontend/package-lock.json` esté subido al repositorio. Si no existe, ejecuta `npm install` en `frontend/` y haz commit del lockfile.
-
-### Logs para diagnosticar
-
-1. Ve al proyecto en Vercel → **Deployments** → clic en el deployment fallido.
-2. Revisa la pestaña **Build Logs**.
-3. Busca líneas que empiecen con `ERROR` o `Failed`.
-4. Si el error es de TypeScript, revisa que no haya tipos desactualizados después de cambios recientes.
+- `render.yaml` incluye `CORS_ORIGIN_REGEX: https://.*(\.vercel\.app|\.netlify\.app)` que permite ambos dominios.
+- Al agregar un dominio propio, actualiza `CORS_ORIGINS` en la plataforma del backend.
 
 ---

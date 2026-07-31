@@ -1,4 +1,7 @@
-# Despliegue con Koyeb + Vercel
+# Despliegue alternativo: Koyeb + Vercel (o Netlify)
+
+> **Nota:** La estrategia de despliegue principal recomendada es **Render + Vercel**.
+> Esta guía documenta Koyeb como alternativa si Render no está disponible.
 
 Koyeb se usara solo para el backend FastAPI. Para mantener el plan gratis, el backend Python tambien responde las rutas del servicio Geo.
 
@@ -17,7 +20,7 @@ Alejandro225425/Sistema-de-Recoleccion-de-Residuos-Solidos
 6. Elige la rama:
 
 ```text
-version-1-proyecto
+main (o v2.0.0)
 ```
 
 7. En Builder o Build settings activa Work directory y escribe:
@@ -41,7 +44,7 @@ uvicorn app.main:app --host 0.0.0.0 --port $PORT
 9. En Environment variables agrega:
 
 ```text
-CORS_ORIGIN_REGEX=https://.*\.vercel\.app
+CORS_ORIGIN_REGEX=https://.*(\.vercel\.app|\.netlify\.app)
 ```
 
 10. En Instance selecciona la opcion gratuita si aparece:
@@ -65,17 +68,12 @@ https://sir-cusco-api-tuusuario.koyeb.app/api/health
 https://sir-cusco-api-tuusuario.koyeb.app/alerts
 ```
 
-## 2. Crear frontend en Vercel
+## 2. Crear frontend en Netlify (gratis, no Vercel)
 
-1. Entra a https://vercel.com/new.
+1. Entra a https://app.netlify.com/.
 2. Importa el mismo repositorio.
-3. Elige la rama:
-
-```text
-version-1-proyecto
-```
-
-4. Vercel usara `vercel.json`.
+3. Elige la rama: `main (o v2.0.0)`.
+4. Netlify detectará `netlify.toml` automáticamente.
 5. Antes de desplegar, agrega estas variables de entorno usando tu URL real de Koyeb:
 
 ```text
@@ -87,10 +85,10 @@ VITE_GEO_URL=https://sir-cusco-api-tuusuario.koyeb.app
 
 ## 3. Link para WhatsApp
 
-Al terminar, Vercel te dara una URL como:
+Al terminar, Netlify te dará una URL como:
 
 ```text
-https://sistema-de-recoleccion-de-residuos-solidos.vercel.app
+https://sir-cusco.netlify.app
 ```
 
 Ese es el link que debes compartir por WhatsApp.

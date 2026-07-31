@@ -35,8 +35,12 @@ const server = createServer(async (req, res) => {
   const url = new URL(req.url ?? "/", `http://${req.headers.host}`);
   let response: ReturnType<typeof json>;
 
-  if (url.pathname === "/health" || url.pathname === "/api/health") {
-    response = json({ status: "ok", service: "geo-alerts" });
+  if (url.pathname === "/" || url.pathname === "/health" || url.pathname === "/api/health") {
+    if (url.pathname === "/") {
+      response = json({ service: "sir-cusco-geo", status: "ok", endpoints: ["/api/health", "/api/truck-locations", "/api/alerts", "/api/eta"] });
+    } else {
+      response = json({ status: "ok", service: "geo-alerts" });
+    }
   } else if (url.pathname === "/truck-locations" || url.pathname === "/api/truck-locations") {
     response = json({ trucks });
   } else if (url.pathname === "/alerts" || url.pathname === "/api/alerts") {

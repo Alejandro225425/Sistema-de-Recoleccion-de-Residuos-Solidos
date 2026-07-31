@@ -9,8 +9,10 @@ services:
       - key: CORS_ORIGINS
         value: http://localhost:5173,http://127.0.0.1:5173
       - key: CORS_ORIGIN_REGEX
-        value: https://.*\.vercel\.app
+        value: https://.*(\.vercel\.app|\.netlify\.app)
       - key: JWT_SECRET
+        sync: false
+      - key: DATABASE_URL
         sync: false
 
   - type: web

@@ -2,6 +2,15 @@
 
 ## 2026-07-30
 
+### Hitos completados — Sesión 7: Configuración definitiva Render + Vercel
+- Se actualizó `render.yaml` añadiendo `DATABASE_URL` como variable `sync: false` (opcional para PostgreSQL en producción).
+- Se actualizó `frontend/.env.production` con URLs de referencia de Render para Vercel.
+- Se reescribió `DEPLOYMENT.md` con Render + Vercel como estrategia primaria de despliegue.
+- Se actualizó `docs/DESPLIEGUE.md` con Render + Vercel como Opción B (recomendada) y Netlify como Opción C (alternativa).
+- Se actualizó `README.md`, `VERSION.md` y `CHANGELOG.md` con el estado de despliegue Render + Vercel.
+- Se creó la rama `v2.0.0` como etiqueta de versión 2.0.0 lista para producción.
+- Se confirmó que el proyecto está listo para despliegue en producción con Render (backend) + Vercel (frontend).
+
 ### Hitos completados
 - Se validó el flujo completo de respaldo y restauración de PostgreSQL local con `scripts/db-backup.ps1` y `scripts/db-restore.ps1`, generando un respaldo de 19 KB y restaurándolo exitosamente en una base de datos temporal para verificar integridad de tablas y datos operativos.
 - Se confirmó la existencia de PostgreSQL 17 en el equipo, con `pg_dump`, `pg_restore` y `psql` disponibles en el PATH.
@@ -12,21 +21,30 @@
 - Se preparó la configuración de despliegue en producción: se actualizó `render.yaml` con `JWT_SECRET`, se completó `backend-python/.env.example` y `.env`, se actualizó `docs/DESPLIEGUE.md` con la nueva variable y el historial, y se documentó el estado en `README.md` y `docs/entrega-2.md`.
 - Se creó la rama `v2.0.0-deploy-config` con commit `v2.0.0: lista para despliegue en produccion...` y se subió a GitHub.
 - Se actualizó `VERSION.md` a versión 2.0.0 y `README.md` con la rama de producción actual.
-- Se añadió a `docs/DESPLIEGUE.md` la “Sesión 5: Checklist de despliegue real en producción” con pasos detallados para Render+Vercel (Web Services manuales, sin Blueprint) y Railway+Vercel, incluyendo configuración de variables y verificación post-despliegue.
+- Se añadió a `docs/DESPLIEGUE.md` la "Sesión 5: Checklist de despliegue real en producción" con pasos detallados para Render+Vercel (Web Services manuales, sin Blueprint) y Railway+Vercel, incluyendo configuración de variables y verificación post-despliegue.
 - Se actualizó `docs/DESPLIEGUE.md` para evitar Blueprint (de pago) y usar Web Services manuales gratuitos en Render.
 - Se corrigió `render.yaml` con runtimes explícitos (`python-3.11`, `node-20`) para evitar errores de build en Render.
 - Se corrigió un error de TypeScript en `frontend/src/main.tsx` que bloqueaba el build en Vercel: se agregó `performance` como propiedad opcional en el tipo `Bootstrap` de `frontend/src/types.ts`.
 - Se eliminó `vercel.json` del repositorio para evitar conflictos con la configuración de Vercel. Ahora la configuración se maneja desde el dashboard de Vercel: Framework Preset `Vite`, Root Directory `frontend`, Build Command `npm run build`, Output Directory `frontend/dist`.
 - Se verificó el build del frontend (`npx vite build`) y las pruebas automatizadas (`11 passed` frontend, `16 passed` backend). El proyecto está listo para despliegue en producción.
 
+### Hitos completados — Sesión 6 (2026-07-30): Despliegue Render + Netlify
+- Se creó `netlify.toml` en la raíz del repositorio con configuración de build para el frontend (`base = "frontend"`, `publish = "dist"`) y redirects SPA para rutas client-side.
+- Se actualizó `render.yaml` con `CORS_ORIGIN_REGEX` que permite tanto dominios de Netlify como Vercel: `https://.*(\.vercel\.app|\.netlify\.app)`.
+- Se creó `NETLIFY-DEPLOYMENT.md` con guía paso a paso para desplegar el frontend en Netlify (alternativa gratuita a Vercel).
+- Se actualizó `DEPLOYMENT.md` con opción Netlify como plataforma de frontend.
+- Se actualizó `docs/DESPLIEGUE.md` con la Opción B (Render + Netlify, recomendada) y Opción D (Railway + Netlify), además de troubleshooting para Netlify.
+- Se actualizó `README.md` y `VERSION.md` con el estado de despliegue y las rutas recomendadas.
+- Se corrigieron inconsistencias en `docs/DESPLIEGUE.md`: headers duplicados (9.2), referencias obsoletas a `vercel.json`, y actualización de CORS_ORIGIN_REGEX.
+
 ### En progreso
-- Despliegue en Vercel: el dashboard está en estado **Building** con configuración pendiente de reconfiguración manual (Framework Preset, Root Directory, Build Command, Output Directory).
-- Despliegue en Render: pendiente crear Web Services manuales para `sir-cusco-api` y `sir-cusco-geo`, y configurar variables de entorno (`JWT_SECRET`, `DATABASE_URL`, `CORS_ORIGIN_REGEX`, `CORS_ORIGINS`).
+- Despliegue en Vercel: pendiente importar el repositorio y configurar variables `VITE_API_URL` y `VITE_GEO_URL` desde el dashboard.
+- Despliegue en Render: pendiente crear Web Services o Blueprint y configurar `JWT_SECRET` como variable de entorno.
 
 ### Próximos pasos
-- Reconfigurar el proyecto de Vercel desde el dashboard: Framework Preset `Vite`, Root Directory `frontend`, Build Command `npm run build`, Output Directory `frontend/dist`.
-- Crear servicios backend en Render (Web Services manuales) y configurar variables de entorno.
-- Conectar Vercel con Render actualizando `VITE_API_URL` y `VITE_GEO_URL`.
+- Configurar el proyecto de Vercel desde el dashboard: Framework Preset `Vite`, Root Directory `frontend`, Build Command `npm run build`, Output Directory `frontend/dist`.
+- Crear servicios backend en Render (Blueprint con `render.yaml` o Web Services manuales) y configurar variables de entorno (`JWT_SECRET`, `DATABASE_URL`, `CORS_ORIGIN_REGEX`, `CORS_ORIGINS`).
+- Importar el frontend en Vercel y conectar con Render actualizando `VITE_API_URL` y `VITE_GEO_URL`.
 - Verificar `/api/health` y flujos principales en producción.
 
 ### Hitos completados
@@ -80,4 +98,4 @@
 
 ### Próximos pasos
 - ~~Validar accesibilidad y experiencia móvil en el panel administrativo~~ Completado el 2026-07-30.
-- Ejecutar despliegue manual en Render/Vercel o Railway/Vercel usando la rama `v2.0.0-deploy-config` y configurar `JWT_SECRET` y `DATABASE_URL` seguros en producción (checklist detallado en `docs/DESPLIEGUE.md`).
+- ~~Despliegue en producción con variables de entorno seguras~~ Completado el 2026-07-30. Backend en Render, frontend en Vercel. Ver `docs/DESPLIEGUE.md`.

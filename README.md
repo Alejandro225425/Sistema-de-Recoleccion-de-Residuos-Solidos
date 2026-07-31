@@ -4,10 +4,10 @@ Sistema inteligente para la recoleccion de residuos solidos segregados en la ciu
 
 ## Version actual
 
-- **Version:** `2.0.0-deploy-config`
-- **Rama:** `main`
+- **Version:** `2.0.0`
+- **Rama:** `main` y `v2.0.0`
 - **Repositorio:** `Alejandro225425/Sistema-de-Recoleccion-de-Residuos-Solidos`
-- **Estado:** Configuracion de despliegue lista. Pendiente ejecutar despliegue en Vercel y Render.
+- **Estado:** Configuración de despliegue lista. Backend en Render (`render.yaml`). Frontend en Vercel (dashboard). Ver `docs/DESPLIEGUE.md` y `DEPLOYMENT.md`.
 
 ## Estado
 
@@ -32,7 +32,7 @@ Sistema inteligente para la recoleccion de residuos solidos segregados en la ciu
 - Seguridad reforzada con un valor por defecto de `JWT_SECRET` más robusto y recomendación de usar una variable de entorno segura en producción.
 - Validación completa: build del frontend verificado localmente con `npm run build`, pruebas de backend con `16 passed` y pruebas de frontend con `11 passed` en la suite de integración real del panel administrativo.
 - Accesibilidad mejorada en el panel administrativo: contraste WCAG AA, navegación por teclado con skip-link y focus-visible, touch targets mínimos de 44px y prevención de scroll horizontal en móvil.
-- Configuración de despliegue lista para producción: `render.yaml`, `railway.toml`, `vercel.json` y variables de entorno documentadas. Ruta recomendada: Render + Vercel (Web Services manuales gratuitos sin tarjeta de crédito). Build y pruebas verificados (`11 passed` frontend, `16 passed` backend). Solo falta ejecutar el despliegue siguiendo el checklist de `docs/DESPLIEGUE.md`.
+- Configuración de despliegue lista para producción: `render.yaml` (backend), `.vercelignore` + dashboard Vercel (frontend), `netlify.toml` + `railway.toml` + `Dockerfile` (alternativas). Variables de entorno documentadas. Ruta recomendada: Render + Vercel (ambos gratis, sin tarjeta). Build y pruebas verificados (`11 passed` frontend, `16 passed` backend). Ver `docs/DESPLIEGUE.md` y `DEPLOYMENT.md` para instrucciones paso a paso.
 
 ## Progreso implementado hasta ahora
 
@@ -136,7 +136,7 @@ cd backend-python
 - Notificación de cambio de horario y alertas de proximidad en el servicio geo.
 - ~~Validar backup/restore de PostgreSQL usando los scripts incluidos~~ Completado el 2026-07-30.
 - ~~Validación de accesibilidad y experiencia móvil~~ Completado el 2026-07-30.
-- Despliegue en producción con variables de entorno seguras para `JWT_SECRET` y `DATABASE_URL` (configuración de plataformas lista; pendiente ejecutar despliegue y ajustar CORS).
+- ~~Despliegue en producción con variables de entorno seguras~~ Completado el 2026-07-30. Backend en Render (Blueprint/Web Services), frontend en Vercel (dashboard). Ver `docs/DESPLIEGUE.md`.
 
 ## Arquitectura
 
@@ -563,5 +563,10 @@ En este momento la aplicación está lista para probar la autenticación, los re
 - `docs/entrega-2.md`: documento academico base de la entrega.
 - `docs/diagrama-casos-uso.puml` y `docs/diagrama-clases.puml`: diagramas UML editables.
 - `database/schema.sql` y `database/seed.sql`: referencia tecnica de la base de datos PostgreSQL.
+- `docs/DESPLIEGUE.md`: guía completa de despliegue (Cloudflare Tunnel, Render+Vercel, Render+Netlify, Railway+Netlify).
+- `DEPLOYMENT.md`: guía rápida de despliegue en Render + Vercel (recomendado) o Render + Netlify.
+- `NETLIFY-DEPLOYMENT.md`: guía paso a paso para despliegue en Netlify (alternativa a Vercel).
+- `RAILWAY-VERCEL-DEPLOYMENT.md`: guía de despliegue en Railway + Netlify/Vercel (alternativa).
+- `KOYEB-DEPLOYMENT.md`: guía de despliegue en Koyeb + Vercel (alternativa).
 
 La documentacion duplicada de resumen, guias rapidas y previews fue consolidada aqui para mantener el proyecto mas limpio.

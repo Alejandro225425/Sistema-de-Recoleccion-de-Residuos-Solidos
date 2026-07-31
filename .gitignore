@@ -41,6 +41,10 @@ database/backup/*.dump
 .DS_Store
 Thumbs.db
 
+# Test reports
+vitest-report.json
+frontend/vitest-report.json
+
 # Temp
 *.tmp
 *.temp

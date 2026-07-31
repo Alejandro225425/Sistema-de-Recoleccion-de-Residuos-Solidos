@@ -1040,6 +1040,25 @@ def require_role(allowed_roles: set[str]):
     return dependency
 
 
+@app.get("/")
+def root() -> dict[str, Any]:
+    return {
+        "service": "SIR Cusco API",
+        "version": "1.0.0",
+        "status": "ok",
+        "endpoints": {
+            "health": "/api/health",
+            "bootstrap": "/api/bootstrap",
+            "auth": "/api/auth/login",
+            "zones": "/api/zones",
+            "trucks": "/api/trucks",
+            "reports": "/api/reports",
+            "collections": "/api/collections",
+            "analytics": "/api/analytics/summary",
+        },
+    }
+
+
 @app.get("/api/health")
 def health() -> dict[str, str]:
     db_status = database_mode()
