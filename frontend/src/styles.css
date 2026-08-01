@@ -311,6 +311,54 @@ button.btn-gold:hover { background: var(--eco-gold-light); box-shadow: 0 6px 20p
   animation: scaleIn 0.4s ease-out;
 }
 
+.auth-tabs {
+  display: flex;
+  gap: 4px;
+  background: var(--line);
+  border-radius: 10px;
+  padding: 4px;
+}
+
+.auth-tab {
+  flex: 1;
+  padding: 9px 12px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.auth-tab:hover {
+  color: var(--ink);
+  background: rgba(255,255,255,0.5);
+}
+
+.auth-tab.active {
+  background: var(--eco-primary);
+  color: white;
+  box-shadow: 0 2px 8px rgba(27,115,69,0.2);
+}
+
+.ghost-link {
+  background: transparent !important;
+  color: var(--eco-primary) !important;
+  border: none !important;
+  padding: 0 !important;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.ghost-link:hover {
+  color: var(--eco-primary-light) !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  transform: none !important;
+}
+
 .form-header { text-align: left; margin-bottom: 4px; }
 .form-header h2 { font-size: 1.5rem; color: var(--ink); margin-bottom: 4px; }
 .form-header p { color: var(--muted); font-size: 0.9rem; }

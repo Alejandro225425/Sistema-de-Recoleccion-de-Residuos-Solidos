@@ -342,7 +342,7 @@ function AuthView({ zones, onLogin, message }: { zones: Zone[]; onLogin: (sessio
       <section className="auth-image-section">
         <div className="auth-overlay">
           <div className="auth-branding">
-            <h1 className="eco-logo">🌿 EcoCusco</h1>
+            <h1 className="eco-logo"><span>🌿</span> EcoCusco</h1>
             <p className="auth-tagline">Gestión Inteligente de Residuos Sólidos</p>
             <div className="eco-features">
               <div className="eco-feature">
@@ -369,10 +369,10 @@ function AuthView({ zones, onLogin, message }: { zones: Zone[]; onLogin: (sessio
             <p>Plataforma de Gestión Ambiental Urbana</p>
           </div>
 
-          <div className="form-actions" style={{ justifyContent: "flex-start", gap: "8px", marginBottom: "12px" }}>
-            <button type="button" className={mode === "login" ? "btn-primary" : "ghost"} onClick={() => setMode("login")}>Iniciar sesión</button>
-            <button type="button" className={mode === "register" ? "btn-primary" : "ghost"} onClick={() => setMode("register")}>Registrarme</button>
-            <button type="button" className={mode === "forgot" ? "btn-primary" : "ghost"} onClick={() => setMode("forgot")}>Recuperar contraseña</button>
+          <div className="auth-tabs">
+            <button type="button" className={`auth-tab ${mode === "login" ? "active" : ""}`} onClick={() => setMode("login")}>Iniciar sesión</button>
+            <button type="button" className={`auth-tab ${mode === "register" ? "active" : ""}`} onClick={() => setMode("register")}>Registrarme</button>
+            <button type="button" className={`auth-tab ${mode === "forgot" ? "active" : ""}`} onClick={() => setMode("forgot")}>Recuperar contraseña</button>
           </div>
 
           {mode === "register" && <div className="form-group">
@@ -414,8 +414,8 @@ function AuthView({ zones, onLogin, message }: { zones: Zone[]; onLogin: (sessio
           </div>}
 
           {mode === "forgot" && <div className="form-group">
-            <label htmlFor="password">Nueva contraseña</label>
-            <input id="password" name="password" type="password" required minLength={8} placeholder="Ingresa una nueva contraseña" />
+            <label htmlFor="new-password">Nueva contraseña</label>
+            <input id="new-password" name="password" type="password" required minLength={8} placeholder="Ingresa una nueva contraseña" />
           </div>}
 
           {mode !== "forgot" && (
@@ -446,7 +446,7 @@ function AuthView({ zones, onLogin, message }: { zones: Zone[]; onLogin: (sessio
           </div>
 
           <div className="form-links">
-            <button type="button" className="ghost" style={{ padding: 0, border: 0, background: "transparent" }} onClick={() => setMode("forgot")}>¿Olvidaste tu contraseña?</button>
+            {mode === "login" && <button type="button" className="ghost-link" onClick={() => setMode("forgot")}>¿Olvidaste tu contraseña?</button>}
             <span className="divider">•</span>
             <a href="#terms">Términos y Condiciones</a>
           </div>
