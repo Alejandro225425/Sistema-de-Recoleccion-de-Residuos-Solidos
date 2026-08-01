@@ -121,6 +121,7 @@ export function App() {
     const saved = localStorage.getItem("eco-dark-mode");
     return saved ? JSON.parse(saved) : window.matchMedia("(prefers-color-scheme: dark)").matches;
   });
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   useEffect(() => {
     localStorage.setItem("eco-dark-mode", JSON.stringify(isDarkMode));
@@ -232,10 +233,15 @@ export function App() {
   return (
     <main className="app-shell">
       <a href="#main-content" className="skip-link">Saltar al contenido principal</a>
-      <aside className="sidebar">
-        <div className="brand">
-          <h1>EcoCusco</h1>
-          <p>{session.name}</p>
+      <button className="hamburger" type="button" onClick={() => setSidebarOpen(true)} aria-label="Abrir menú">☰</button>
+      <div className={`sidebar-overlay ${sidebarOpen ? "active" : ""}`} onClick={() => setSidebarOpen(false)} />
+      <aside className={`sidebar ${sidebarOpen ? "open" : ""}`}>
+        <div className="sidebar-brand">
+          <div className="brand-icon">E</div>
+          <div className="brand-text">
+            <h1>EcoCusco</h1>
+            <small>Gestión Ambiental</small>
+          </div>
         </div>
         <nav className="sidebar-nav">
           {accessibleViews.map(item => (
@@ -243,16 +249,16 @@ export function App() {
               key={item}
               className={view === item ? "active" : ""}
               type="button"
-              onClick={() => setView(item)}
+              onClick={() => { setView(item); setSidebarOpen(false); }}
             >
               {icons[item]} {viewLabels[item]}
             </button>
           ))}
         </nav>
-        <div className="sidebar-actions">
+        <div className="sidebar-footer">
           <button type="button" onClick={logout}>Cerrar sesión</button>
-          <button type="button" onClick={() => setIsDarkMode((value: boolean) => !value)}>
-            {isDarkMode ? "Modo Claro" : "Modo Oscuro"}
+          <button type="button" className="theme-toggle" onClick={() => setIsDarkMode((value: boolean) => !value)}>
+            {isDarkMode ? "☀️ Modo Claro" : "🌙 Modo Oscuro"}
           </button>
         </div>
       </aside>

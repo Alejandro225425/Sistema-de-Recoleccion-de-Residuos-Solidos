@@ -259,7 +259,7 @@ export default function Admin({ data, session, onResolveReport, onOperationUpdat
         {feedback && <p className="hint success" aria-live="polite">{feedback}</p>}
         <ul className="list" aria-label="Lista de usuarios">
           {users.map((user, index) => (
-            <li key={`user-${user.id ?? user.email}-${index}`} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "12px", flexWrap: "wrap", border: "1px solid var(--border)", borderRadius: "12px", padding: "12px" }}>
+            <li key={`user-${user.id ?? user.email}-${index}`} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "12px", flexWrap: "wrap", border: "1px solid var(--line)", borderRadius: "12px", padding: "12px" }}>
               <div>
                 <strong>{user.name}</strong>
                 <div style={{ color: "var(--muted)", fontSize: "0.95rem" }}>{user.email} · {user.zone}</div>
@@ -309,7 +309,7 @@ export default function Admin({ data, session, onResolveReport, onOperationUpdat
         </div>
         <ul className="list" aria-label="Lista de zonas">
           {filteredZones.map(zone => (
-            <li key={zone.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "12px", flexWrap: "wrap", border: "1px solid var(--border)", borderRadius: "12px", padding: "12px" }}>
+            <li key={zone.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "12px", flexWrap: "wrap", border: "1px solid var(--line)", borderRadius: "12px", padding: "12px" }}>
               <div>
                 <strong>{zone.name}</strong>
                 <div style={{ color: "var(--muted)", fontSize: "0.95rem" }}>Criticidad {zone.criticality}</div>
