@@ -2,16 +2,9 @@
 
 ## 2026-08-02
 
-### Mejoras: login y dashboard de autenticación
-- Se revisó por completo la experiencia del login para corregir problemas de accesibilidad, usabilidad y consistencia visual.
-- Se mejoró el diseño del panel de autenticación con un look más moderno, limpio y responsivo en pantallas pequeñas y grandes.
-- Se corrigió el toggle de visibilidad de contraseña para que funcione correctamente con teclado y accesibilidad mejorada.
-- Se documentaron los cambios en esta entrada del changelog y en la documentación del proyecto.
-
 ### Fix: Fondo negro en vista de reportes del dashboard
 
 - **Problema**: el `<body>` en `frontend/index.html` tenía `display: flex; align-items: center; justify-content: center`, lo que centraba el contenido vertical y horizontalmente. En la vista de reportes, al ser más corta que la ventana, se mostraba el fondo oscuro original `#0a1f14` alrededor, dando la sensación de pantalla negra.
-- **Actualización adicional (2026-08-02)**: corregido el fallo que dejaba vacías las vistas de reportes y administración cuando algunos campos llegaban vacíos o `undefined`; ahora la UI renderiza valores por defecto y evita la excepción `toLowerCase()`.
 - **Solución**: eliminado el centrado flex del `<body>`, agregado `#root { min-height: 100vh; }` en `index.html` y reglas CSS en `styles.css` (`html, body, #root { height: 100%; }`, `body { display: block; }`, `.app-shell { background: var(--bg); }`) para restaurar el layout normal de documento.
 - **Archivos modificados**: `frontend/index.html`, `frontend/src/styles.css`.
 

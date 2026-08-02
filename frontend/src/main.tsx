@@ -579,6 +579,9 @@ function Reports({ data, session, onCreateReport, onResolveReport }: { data: Boo
   const [formDetail, setFormDetail] = useState("");
   const [filterStatus, setFilterStatus] = useState("Todos");
   const [searchQuery, setSearchQuery] = useState("");
+  const safeReports = useMemo(() => (Array.isArray(data.reports) ? data.reports : []), [data.reports]);
+  const safeZones = useMemo(() => (Array.isArray(data.zones) ? data.zones : []), [data.zones]);
+  const safeTrucks = useMemo(() => (Array.isArray(data.trucks) ? data.trucks : []), [data.trucks]);
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -602,7 +605,7 @@ function Reports({ data, session, onCreateReport, onResolveReport }: { data: Boo
   const canResolve = session.role === "operador" || session.role === "admin";
 
   const filteredReports = useMemo(() => {
-    let result = data.reports ?? [];
+    let result = safeReports;
     if (filterStatus !== "Todos") {
       result = result.filter(r => r.status === filterStatus);
     }
@@ -617,23 +620,23 @@ function Reports({ data, session, onCreateReport, onResolveReport }: { data: Boo
       });
     }
     return result;
-  }, [data.reports, filterStatus, searchQuery]);
+  }, [safeReports, filterStatus, searchQuery]);
 
   const exportReportsCSV = useCallback(() => {
-    exportToCSV("reportes", filteredReports.length > 0 ? filteredReports : data.reports ?? []);
-  }, [filteredReports, data.reports]);
+    exportToCSV("reportes", filteredReports.length > 0 ? filteredReports : safeReports);
+  }, [filteredReports, safeReports]);
 
   const exportReportsPDF = useCallback(() => {
-    const source = filteredReports.length > 0 ? filteredReports : data.reports ?? [];
+    const source = filteredReports.length > 0 ? filteredReports : safeReports;
     exportToPDF("Reportes", source.map(report => `<div class="report-card"><h2>${report.type}</h2><div class="tag ${statusTone(report.status)}">${report.status}</div><p><strong>Zona:</strong> ${report.zone}</p><p><strong>Ciudadano:</strong> ${report.citizen}</p><p>${report.detail}</p></div>`).join(""));
-  }, [filteredReports, data.reports]);
+  }, [filteredReports, safeReports]);
 
   return (
     <div className="two-col">
       <section className="panel">
         <h2>Registrar incidencia</h2>
         <form className="form-grid" onSubmit={submit}>
-          <label>Zona<select name="zone" value={formZone} onChange={e => setFormZone(e.target.value)}><option value="">Seleccionar zona</option>{(data.zones ?? []).map(zone => <option key={zone.id} value={zone.name ?? "Sin zona"}>{zone.name ?? "Sin zona"}</option>)}</select></label>
+          <label>Zona<select name="zone" value={formZone} onChange={e => setFormZone(e.target.value)}><option value="">Seleccionar zona</option>{safeZones.map(zone => <option key={zone.id} value={zone.name}>{zone.name}</option>)}</select></label>
           <label>Tipo<select name="type" value={formType} onChange={e => setFormType(e.target.value)}><option value="">Seleccionar tipo</option><option>Acumulacion de basura</option><option>Retraso</option><option>Contenedor lleno</option><option>Otro</option></select></label>
           <label className="wide">Detalle<textarea name="detail" required minLength={8} maxLength={600} placeholder="Describe el problema encontrado" value={formDetail} onChange={e => setFormDetail(e.target.value)} /></label>
           <button disabled={submitting}>{submitting ? "Enviando..." : "Enviar reporte"}</button>
@@ -661,7 +664,7 @@ function Reports({ data, session, onCreateReport, onResolveReport }: { data: Boo
             <button key={status} type="button" className={`filter-btn ${filterStatus === status ? "active" : ""}`} onClick={() => setFilterStatus(status)} aria-pressed={filterStatus === status}>{status}</button>
           ))}
         </div>
-        <ReportList reports={filteredReports.length > 0 ? filteredReports : data.reports} trucks={data.trucks} showDriverFilter={!isCitizen} showResolve={canResolve} onResolveReport={onResolveReport} />
+        <ReportList reports={filteredReports.length > 0 ? filteredReports : safeReports} trucks={safeTrucks} showDriverFilter={!isCitizen} showResolve={canResolve} onResolveReport={onResolveReport} />
       </section>
     </div>
   );
@@ -1035,23 +1038,25 @@ export function ReportList({ reports, trucks = [], showDriverFilter = false, sho
   const [filterStatus, setFilterStatus] = useState("Todos");
   const [driverSearch, setDriverSearch] = useState("");
   const [resolvingId, setResolvingId] = useState<number | null>(null);
+  const safeReports = useMemo(() => (Array.isArray(reports) ? reports : []), [reports]);
+  const safeTrucks = useMemo(() => (Array.isArray(trucks) ? trucks : []), [trucks]);
   
   const driverByZone = useMemo(() => {
     const map: Record<string, string> = {};
-    trucks.forEach(truck => {
+    safeTrucks.forEach(truck => {
       const zoneKey = String(truck.zone ?? "").toLowerCase();
       if (!map[zoneKey]) {
         map[zoneKey] = String(truck.driver ?? "").toLowerCase();
       }
     });
     return map;
-  }, [trucks]);
+  }, [safeTrucks]);
 
   const filtered = useMemo(() => {
     const normalizedSearch = search.toLowerCase().trim();
     const normalizedDriver = driverSearch.toLowerCase().trim();
 
-    return reports.filter(r => {
+    return safeReports.filter(r => {
       const zoneKey = String(r.zone ?? "").toLowerCase();
       const reportDriver = driverByZone[zoneKey] ?? "";
       const matchSearch = String(r.type ?? "").toLowerCase().includes(normalizedSearch) || 
@@ -1063,7 +1068,7 @@ export function ReportList({ reports, trucks = [], showDriverFilter = false, sho
       const matchDriver = !normalizedDriver || reportDriver.includes(normalizedDriver);
       return matchSearch && matchStatus && matchDriver;
     });
-  }, [reports, search, filterStatus, driverSearch, driverByZone]);
+  }, [safeReports, search, filterStatus, driverSearch, driverByZone]);
   
   const statuses: Array<"Todos" | ReportStatus> = ["Todos", "Pendiente", "En revision", "Resuelto"];
   

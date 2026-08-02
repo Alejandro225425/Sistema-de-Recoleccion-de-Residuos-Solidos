@@ -143,7 +143,6 @@ Esta es la **versión 4.0.0** del Sistema Inteligente de Recolección de Residuo
 - Endpoint operativo `/api/health` validado y funcionando en modo memoria y con persistencia PostgreSQL cuando `DATABASE_URL` está configurada.
 - Backend Python verificado con `16 passed` en la suite de pruebas.
 - Frontend React validado con pruebas e2e reales contra FastAPI y microservicio TypeScript compilado con éxito.
-- Corregido el fallo de renderizado en reportes y administración por datos vacíos/`undefined`; verificado con `npm test` (12 pruebas) y `npm run build`.
 - Configuración de despliegue preparada para Render + Vercel (recomendado) o Render + Netlify.
 
 | Versión | Rama | Estado |
