@@ -4,8 +4,8 @@ Sistema inteligente para la recoleccion de residuos solidos segregados en la ciu
 
 ## Version actual
 
-- **Version:** `4.0.0`
-- **Rama:** `main` y `version-4`
+- **Version:** `4.5.0`
+- **Rama:** `main` y `version-4.5`
 - **Repositorio:** `Alejandro225425/Sistema-de-Recoleccion-de-Residuos-Solidos`
 - **Estado:** Proyecto organizado y documentación consolidada. Configuración de despliegue lista. Backend en Render (`render.yaml`). Frontend en Vercel (dashboard). Ver `docs/DESPLIEGUE.md` y `DEPLOYMENT.md`.
 
@@ -36,6 +36,7 @@ Sistema inteligente para la recoleccion de residuos solidos segregados en la ciu
 - Diseño visual moderno con paleta verde-dorada, tipografía Inter, sidebar con gradiente, tabs modernos en login, responsive completo con menú hamburguesa para móvil, modo claro/oscuro.
 - Página de login revisada en versión 4.0.0: toggle de visibilidad de contraseña, indicador de fortaleza en registro, token de recuperación visible en demo, ARIA mejorado, auto-enfoque en email, elimando el hack de `window.__password`.
 - Página de login mejorada: tabs de modo (Iniciar sesión / Registrarse / Recuperar), rol y zona solo en registro, enlace fantasma para recuperación de contraseña.
+- Corrección de la vista de administración en versión 4.5: el panel de administración ya no queda en modo negro/blanco sin contenido; ahora usa estilos de fallback y tema aplicado al render inicial para mantener el contenido visible en cualquier modo.
   - Dashboard de reportes revisado en versión 4.0.0: formulario de reportes convertido a controlled components, filtros de estado y búsqueda en la vista de reportes, optimización de rendimiento del dashboard (tick con useRef, effectiveData memoizado, Map signature optimization), corrección de tipos (`Report.status` usa `ReportStatus`), corrección de bug crítico de indentación en backend (`create_collection_record` y `confirm_collection_by_citizen` inaccesibles), estilos inline migados a clases CSS, `statusTone` case-insensitive.
 
 ## Progreso implementado hasta ahora

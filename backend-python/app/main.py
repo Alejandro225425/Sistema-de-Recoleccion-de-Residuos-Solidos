@@ -237,7 +237,7 @@ def cors_origins() -> list[str]:
     ]
 
 
-app = FastAPI(title="SIR Cusco API", version="4.0.0")
+app = FastAPI(title="SIR Cusco API", version="4.5.0")
 
 app.add_middleware(
     CORSMiddleware,

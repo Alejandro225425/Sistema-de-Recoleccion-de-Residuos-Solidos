@@ -1,7 +1,7 @@
 # AGENTS.md - Convenciones del Proyecto SIR Cusco
 
-> **Versión:** 4.0.0
-> **Rama de producción:** `main` y `version-4`
+> **Versión:** 4.5.0
+> **Rama de producción:** `main` y `version-4.5`
 
 ## Estructura del proyecto
 
