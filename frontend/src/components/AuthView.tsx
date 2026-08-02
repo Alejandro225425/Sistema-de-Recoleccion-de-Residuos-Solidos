@@ -60,6 +60,8 @@ export function AuthView({ zones, onLogin, message }: AuthViewProps) {
   const [showPassword, setShowPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [registerPassword, setRegisterPassword] = useState("");
+  const [loginPassword, setLoginPassword] = useState("");
+  const [forgotPassword, setForgotPassword] = useState("");
 
   const emailRef = useRef<HTMLInputElement>(null);
 
@@ -135,6 +137,8 @@ export function AuthView({ zones, onLogin, message }: AuthViewProps) {
     setShowPassword(false);
     setShowNewPassword(false);
     setRegisterPassword("");
+    setLoginPassword("");
+    setForgotPassword("");
     emailRef.current?.focus();
   };
 
@@ -247,8 +251,16 @@ export function AuthView({ zones, onLogin, message }: AuthViewProps) {
                   minLength={8}
                   autoComplete={mode === "login" ? "current-password" : "new-password"}
                   placeholder="Mínimo 8 caracteres"
-                  value={mode === "register" ? registerPassword : undefined}
-                  onChange={mode === "register" ? (e) => setRegisterPassword(e.target.value) : undefined}
+                  value={
+                    mode === "register"
+                      ? registerPassword
+                      : loginPassword
+                  }
+                  onChange={
+                    mode === "register"
+                      ? (e) => setRegisterPassword(e.target.value)
+                      : (e) => setLoginPassword(e.target.value)
+                  }
                 />
                 <button
                   type="button"
@@ -377,11 +389,11 @@ export function AuthView({ zones, onLogin, message }: AuthViewProps) {
               </button>
             )}
             <span className="divider">•</span>
-            <a
-              href="https://www.eccusco.gob.pe/terminos"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
+             <a
+               href="https://www.ecocusco.gob.pe/terminos"
+               target="_blank"
+               rel="noopener noreferrer"
+             >
               Términos y Condiciones
             </a>
           </div>

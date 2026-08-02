@@ -10,12 +10,19 @@ export async function request<T>(path: string, options: RequestInit = {}): Promi
       },
       ...options
     });
-    const payload = await response.json().catch(() => ({}));
+    const contentType = response.headers.get("content-type");
+    const payload = contentType && contentType.includes("application/json")
+      ? await response.json()
+      : await response.text().catch(() => "");
     if (!response.ok) {
-      const detail = payload?.detail ?? payload?.message ?? response.statusText;
+      const detail = typeof payload === "object" && payload !== null ? (payload?.detail ?? payload?.message ?? response.statusText) : (payload || response.statusText);
+      if (response.status === 401 || response.status === 403) {
+        localStorage.removeItem("sir-token");
+        localStorage.removeItem("sir-session");
+      }
       throw new Error(detail || `Error API ${response.status}`);
     }
-    return payload as T;
+    return (typeof payload === "object" && payload !== null) ? payload as T : ({} as T);
   } catch (error) {
     if (error instanceof TypeError && error.message.includes('Failed to fetch')) {
       throw new Error(`No se pudo conectar con el backend. Verifica que esté ejecutándose.`);

@@ -114,10 +114,27 @@ export function App() {
   const [data, setData] = useState<Bootstrap>(emptyBootstrap);
   const [monitor, setMonitor] = useState<Monitor>({});
   const effectiveData = useMemo(() => ({ ...data, ...monitor }) as Bootstrap, [data, monitor]);
-  const [session, setSession] = useState<Session | null>(() => JSON.parse(localStorage.getItem("sir-session") || "null"));
+  const [session, setSession] = useState<Session | null>(() => {
+    try {
+      const raw = localStorage.getItem("sir-session");
+      return raw ? JSON.parse(raw) : null;
+    } catch {
+      localStorage.removeItem("sir-session");
+      return null;
+    }
+  });
   const [view, setView] = useState<View>("dashboard");
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("");
+  const [messageHiding, setMessageHiding] = useState(false);
+
+  useEffect(() => {
+    if (!message) return;
+    setMessageHiding(false);
+    const fadeTimer = window.setTimeout(() => setMessageHiding(true), 4000);
+    const clearTimer = window.setTimeout(() => setMessage(""), 4300);
+    return () => { window.clearTimeout(fadeTimer); window.clearTimeout(clearTimer); };
+  }, [message]);
   const accessibleViews = session?.role === "admin" ? views : views.filter(item => item !== "admin");
 
   const [isDarkMode, setIsDarkMode] = useState(() => {
@@ -271,7 +288,7 @@ export function App() {
           <h2>{viewLabels[view]}</h2>
           <p className={`signal signal-${operationalSignal.tone}`}>{operationalSignal.label}</p>
         </header>
-        {message && <div role="alert" className="app-alert">{message}</div>}
+        {message && <div role="alert" className={`app-alert ${messageHiding ? "hiding" : ""}`}>{message}</div>}
         {loading ? (
           <div className="loading">Cargando datos...</div>
         ) : (
@@ -304,12 +321,6 @@ function Content(props: { data: Bootstrap; monitor: Monitor; session: Session; v
 }
 
 function Dashboard({ data, monitor, session }: { data: Bootstrap; monitor: Monitor; session: Session }) {
-  const [tick, setTick] = useState(0);
-  useEffect(() => {
-    const interval = window.setInterval(() => setTick(value => value + 1), 5000);
-    return () => window.clearInterval(interval);
-  }, []);
-
   const effectiveData = { ...data, ...monitor } as Bootstrap;
 
   const metrics = [
@@ -324,15 +335,26 @@ function Dashboard({ data, monitor, session }: { data: Bootstrap; monitor: Monit
     ] : [])
   ];
 
+  function routeStatus(progress: number | undefined): "Programado" | "En curso" | "Completado" {
+    if (!progress) return "Programado";
+    if (progress >= 100) return "Completado";
+    return "En curso";
+  }
+
   const dispatchBoard = useMemo(() => {
     if (monitor.truck_assignments?.length) {
-      return monitor.truck_assignments.slice(0, 3).map((assignment, index) => ({
-        hour: `${String(8 + index).padStart(2, "0")}:00`,
-        zone: assignment.zone,
-        truck: assignment.truck_code,
-        action: assignment.action ?? `Atender ${assignment.zone}`,
-        status: index === tick % 3 ? "En curso" : index < tick % 3 ? "Completado" : "Programado"
-      }));
+      return monitor.truck_assignments.slice(0, 3).map((assignment, index) => {
+        const route = effectiveData.optimized_routes?.find(r => r.id === assignment.route_id)
+          ?? effectiveData.routes?.find(r => r.id === assignment.route_id);
+        return {
+          hour: `${String(8 + index).padStart(2, "0")}:00`,
+          zone: assignment.zone,
+          truck: assignment.truck_code,
+          action: assignment.action ?? `Atender ${assignment.zone}`,
+          status: routeStatus(route?.progress),
+          delayed: /retraso/i.test(route?.delay ?? ""),
+        };
+      });
     }
 
     const prioritized = [...(effectiveData.prioritized_zones ?? [])].sort((a, b) => b.priority_score - a.priority_score);
@@ -348,11 +370,15 @@ function Dashboard({ data, monitor, session }: { data: Bootstrap; monitor: Monit
       { hour: "10:00", zone: prioritized[2]?.name ?? "Santiago", truck: routes[2]?.truck ?? "C-03", action: "Atención de reporte" }
     ];
 
-    return sequence.map((step, index) => ({
-      ...step,
-      status: index === tick % 3 ? "En curso" : index < tick % 3 ? "Completado" : "Programado"
-    }));
-  }, [monitor.truck_assignments, effectiveData.prioritized_zones, effectiveData.optimized_routes, effectiveData.routes, tick]);
+    return sequence.map((step, index) => {
+      const route = routes[index];
+      return {
+        ...step,
+        status: routeStatus(route?.progress),
+        delayed: /retraso/i.test(route?.delay ?? ""),
+      };
+    });
+  }, [monitor.truck_assignments, effectiveData.prioritized_zones, effectiveData.optimized_routes, effectiveData.routes]);
 
   const alerts = (monitor.alerts ?? []).map((alert, index) => ({
     id: index,
@@ -395,13 +421,14 @@ function Dashboard({ data, monitor, session }: { data: Bootstrap; monitor: Monit
           </div>
           <div className="alerts-list">
             {dispatchBoard.map(step => (
-              <div className={`alert-item alert-${step.status === "En curso" ? "activo" : step.status === "Programado" ? "pendiente" : "resuelto"}`} key={step.hour}>
+              <div className={`alert-item alert-${step.status === "En curso" ? "activo" : step.status === "Programado" ? "pendiente" : "resuelto"}${step.delayed ? " alert-delayed" : ""}`} key={step.hour}>
                 <div className="alert-icon" aria-hidden="true">🚛</div>
                 <div className="alert-content">
                   <h4>{step.hour} · {step.zone}</h4>
                   <p>{step.action} · Camión {step.truck}</p>
                   <span className="alert-time">{step.status}</span>
                 </div>
+                {step.delayed && <span className="alert-delay-badge" aria-label="Ruta con retraso">⏱️</span>}
               </div>
             ))}
           </div>
@@ -925,6 +952,13 @@ function Map({ zones, trucks, routes, prioritizedZones }: { zones: Zone[]; truck
     };
   }, []);
 
+  if (zones.length === 0) {
+    return (
+      <div className="map map-empty">
+        <p>No hay zonas operativas.</p>
+      </div>
+    );
+  }
   return <div className="map" ref={ref} />;
 }
 
