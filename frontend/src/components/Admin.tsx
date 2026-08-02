@@ -57,14 +57,14 @@ export default function Admin({ data, session, onResolveReport, onOperationUpdat
   }, [data.users, data.zones, data.schedules, data.trucks, data.maintenance]);
 
   const filteredZones = useMemo(
-    () => zones.filter(zone => zone.name.toLowerCase().includes(zoneSearch.toLowerCase().trim())),
+    () => zones.filter(zone => String(zone.name ?? "").toLowerCase().includes(String(zoneSearch ?? "").toLowerCase().trim())),
     [zones, zoneSearch]
   );
 
   const filteredTrucks = useMemo(
     () => trucks.filter(truck => {
-      const driver = truck.driver ?? "";
-      const matchesDriver = driver.toLowerCase().includes(truckDriverSearch.toLowerCase().trim());
+      const driver = String(truck.driver ?? "");
+      const matchesDriver = driver.toLowerCase().includes(String(truckDriverSearch ?? "").toLowerCase().trim());
       const matchesStatus = truckStatusFilter === "Todos" || truck.status === truckStatusFilter;
       return matchesDriver && matchesStatus;
     }),
@@ -296,8 +296,8 @@ export default function Admin({ data, session, onResolveReport, onOperationUpdat
           {users.map((user, index) => (
             <li key={`user-${user.id ?? user.email}-${index}`} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "12px", flexWrap: "wrap", border: "1px solid var(--line)", borderRadius: "12px", padding: "12px" }}>
               <div>
-                <strong>{user.name}</strong>
-                <div style={{ color: "var(--muted)", fontSize: "0.95rem" }}>{user.email} · {user.zone}</div>
+                <strong>{user.name ?? "Sin nombre"}</strong>
+                <div style={{ color: "var(--muted)", fontSize: "0.95rem" }}>{user.email} · {user.zone ?? "Sin zona"}</div>
               </div>
               <select value={userRoleDrafts[user.id ?? 0] ?? user.role} onChange={event => {
                 const value = event.target.value as Role;
@@ -346,8 +346,8 @@ export default function Admin({ data, session, onResolveReport, onOperationUpdat
           {filteredZones.map(zone => (
             <li key={zone.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "12px", flexWrap: "wrap", border: "1px solid var(--line)", borderRadius: "12px", padding: "12px" }}>
               <div>
-                <strong>{zone.name}</strong>
-                <div style={{ color: "var(--muted)", fontSize: "0.95rem" }}>Criticidad {zone.criticality}</div>
+                <strong>{zone.name ?? "Sin nombre"}</strong>
+                <div style={{ color: "var(--muted)", fontSize: "0.95rem" }}>Criticidad {zone.criticality ?? "Sin datos"}</div>
               </div>
               <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
                 <button type="button" onClick={() => startEditZone(zone)}>Editar zona</button>

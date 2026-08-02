@@ -30,13 +30,13 @@ Sistema inteligente para la recoleccion de residuos solidos segregados en la ciu
 - Corregido el flujo de actualización de contenedores para que el backend devuelva el nivel de llenado almacenado y genere notificaciones operativas.
 - Dependencias de pruebas actualizadas: `backend-python/requirements.txt` incluye `httpx2` para que `fastapi.testclient` funcione correctamente.
 - Seguridad reforzada con un valor por defecto de `JWT_SECRET` más robusto y recomendación de usar una variable de entorno segura en producción.
-- Validación completa: build del frontend verificado localmente con `npm run build`, pruebas de backend con `16 passed` y pruebas de frontend con `11 passed` en la suite de integración real del panel administrativo.
+- Validación completa: build del frontend verificado localmente con `npm run build`, pruebas de backend con `20 passed` y pruebas de frontend con `11 passed` en la suite de integración real del panel administrativo.
 - Accesibilidad mejorada en el panel administrativo: contraste WCAG AA, navegación por teclado con skip-link y focus-visible, touch targets mínimos de 44px y prevención de scroll horizontal en móvil.
-- Configuración de despliegue lista para producción: `render.yaml` (backend), `.vercelignore` + dashboard Vercel (frontend), `netlify.toml` + `railway.toml` + `Dockerfile` (alternativas). Variables de entorno documentadas. Ruta recomendada: Render + Vercel (ambos gratis, sin tarjeta). Build y pruebas verificados (`11 passed` frontend, `16 passed` backend). Ver `docs/DESPLIEGUE.md` y `DEPLOYMENT.md` para instrucciones paso a paso.
+- Configuración de despliegue lista para producción: `render.yaml` (backend), `.vercelignore` + dashboard Vercel (frontend), `netlify.toml` + `railway.toml` + `Dockerfile` (alternativas). Variables de entorno documentadas. Ruta recomendada: Render + Vercel (ambos gratis, sin tarjeta). Build y pruebas verificados (`11 passed` frontend, `20 passed` backend). Ver `docs/DESPLIEGUE.md` y `DEPLOYMENT.md` para instrucciones paso a paso.
 - Diseño visual moderno con paleta verde-dorada, tipografía Inter, sidebar con gradiente, tabs modernos en login, responsive completo con menú hamburguesa para móvil, modo claro/oscuro.
 - Página de login revisada en versión 4.0.0: toggle de visibilidad de contraseña, indicador de fortaleza en registro, token de recuperación visible en demo, ARIA mejorado, auto-enfoque en email, elimando el hack de `window.__password`.
 - Página de login mejorada: tabs de modo (Iniciar sesión / Registrarse / Recuperar), rol y zona solo en registro, enlace fantasma para recuperación de contraseña.
-- Corregido fondo negro en la vista de reportes del dashboard: eliminado centrado flex del `<body>` en `frontend/index.html` y ajustados estilos CSS en `frontend/src/styles.css` para que el contenido ocupe toda la ventana sin fondos oscuros alrededor.
+  - Dashboard de reportes revisado en versión 4.0.0: formulario de reportes convertido a controlled components, filtros de estado y búsqueda en la vista de reportes, optimización de rendimiento del dashboard (tick con useRef, effectiveData memoizado, Map signature optimization), corrección de tipos (`Report.status` usa `ReportStatus`), corrección de bug crítico de indentación en backend (`create_collection_record` y `confirm_collection_by_citizen` inaccesibles), estilos inline migados a clases CSS, `statusTone` case-insensitive.
 
 ## Progreso implementado hasta ahora
 
@@ -86,6 +86,16 @@ Sistema inteligente para la recoleccion de residuos solidos segregados en la ciu
 - Compilación correcta del frontend React y del microservicio TypeScript.
 - Ejecución local verificada del backend, el servicio geo/alertas y la interfaz web.
 - Pruebas end-to-end de API para validar el flujo completo de actualización de operaciones.
+
+### 7. Revisión completa del Dashboard de Reportes
+- **Formulario de reportes convertido a controlled components**: los campos de zona, tipo y detalle ahora usan estados locales, habilitando validación adecuada y mejorando la experiencia del usuario.
+- **Filtros de estado y búsqueda en la vista de reportes**: se agregaron botones de filtro por estado (Todos/Pendiente/En revision/Resuelto) y un campo de búsqueda de texto para filtrar reportes por tipo, zona, ciudadano o detalle.
+- **Optimización de rendimiento del dashboard**: se usó `useRef` para el contador de ticks del tablero de despacho, `useMemo` para `effectiveData`, y se optimizó la firma del componente `Map` reemplazando `JSON.stringify` por conteos de arrays.
+- **Corrección de tipos**: `Report.status` ahora usa el tipo `ReportStatus` en lugar de `string`, garantizando seguridad de tipos en todo el flujo de reportes.
+- **Corrección de bug crítico en backend**: `create_collection_record` y `confirm_collection_by_citizen` estaban indentados incorrectamente dentro de `delete_maintenance`, haciéndolos inaccesibles desde los endpoints API. Se corrigió la indentación al nivel del módulo.
+- **Estilos inline migados a clases CSS**: se eliminaron estilos inline en los componentes de reportes y se usaron clases CSS existentes para consistencia visual.
+- **`statusTone` case-insensitive**: la función ahora usa `toLowerCase()` para manejar cualquier capitalización del estado del reporte.
+- **Exportaciones memoizadas**: las funciones de exportación CSV y PDF ahora usan `useCallback` para evitar recreaciones innecesarias.
 
 ## Pruebas end-to-end de API
 El backend ahora incluye pruebas de flujo en `backend-python/tests/test_operational_logic.py` que validan:

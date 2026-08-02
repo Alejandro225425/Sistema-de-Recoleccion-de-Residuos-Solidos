@@ -138,6 +138,17 @@ export function AuthView({ zones, onLogin, message }: AuthViewProps) {
     emailRef.current?.focus();
   };
 
+  const handlePasswordToggleKeyDown = (
+    event: React.KeyboardEvent<HTMLButtonElement>,
+    nextValue: boolean,
+    setter: React.Dispatch<React.SetStateAction<boolean>>
+  ) => {
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      setter(nextValue);
+    }
+  };
+
   const submitLabel =
     mode === "login" ? "Iniciar Sesión" : mode === "forgot" ? "Restablecer contraseña" : "Crear cuenta";
 
@@ -146,6 +157,7 @@ export function AuthView({ zones, onLogin, message }: AuthViewProps) {
       <section className="auth-image-section" aria-label="Presentación EcoCusco">
         <div className="auth-overlay">
           <div className="auth-branding">
+            <div className="brand-badge">Gestión inteligente</div>
             <h1 className="eco-logo">
               <span>🌿</span> EcoCusco
             </h1>
@@ -169,9 +181,10 @@ export function AuthView({ zones, onLogin, message }: AuthViewProps) {
       </section>
 
       <section className="auth-form-section">
-        <form className="auth-panel" onSubmit={handleSubmit} noValidate>
+        <form className="auth-panel" onSubmit={handleSubmit} noValidate aria-labelledby="auth-title">
           <div className="form-header">
-            <h2>Bienvenido a EcoCusco</h2>
+            <p className="eyebrow">Acceso seguro</p>
+            <h2 id="auth-title">Bienvenido a EcoCusco</h2>
             <p>Plataforma de Gestión Ambiental Urbana</p>
           </div>
 
@@ -249,17 +262,17 @@ export function AuthView({ zones, onLogin, message }: AuthViewProps) {
                   placeholder="Mínimo 8 caracteres"
                   value={mode === "register" ? registerPassword : undefined}
                   onChange={mode === "register" ? (e) => setRegisterPassword(e.target.value) : undefined}
+                  defaultValue={mode === "register" ? undefined : ""}
                 />
                 <button
                   type="button"
                   className="password-toggle"
                   aria-label={showPassword ? "Ocultar contraseña" : "Mostrar contraseña"}
                   aria-pressed={showPassword}
-                  onClick={() => setShowPassword(!showPassword)}
-                  tabIndex={0}
-                  onKeyDown={(e) => e.key === " " && setShowPassword(!showPassword)}
+                  onClick={() => setShowPassword((value) => !value)}
+                  onKeyDown={(event) => handlePasswordToggleKeyDown(event, !showPassword, setShowPassword)}
                 >
-                  {showPassword ? "👁️" : "👁️‍🗨️"}
+                  <span aria-hidden="true">{showPassword ? "🙈" : "👁️"}</span>
                 </button>
               </div>
 
@@ -312,17 +325,17 @@ export function AuthView({ zones, onLogin, message }: AuthViewProps) {
                   minLength={8}
                   autoComplete="new-password"
                   placeholder="Ingresa una nueva contraseña"
+                  defaultValue=""
                 />
                 <button
                   type="button"
                   className="password-toggle"
                   aria-label={showNewPassword ? "Ocultar contraseña" : "Mostrar contraseña"}
                   aria-pressed={showNewPassword}
-                  onClick={() => setShowNewPassword(!showNewPassword)}
-                  tabIndex={0}
-                  onKeyDown={(e) => e.key === " " && setShowNewPassword(!showNewPassword)}
+                  onClick={() => setShowNewPassword((value) => !value)}
+                  onKeyDown={(event) => handlePasswordToggleKeyDown(event, !showNewPassword, setShowNewPassword)}
                 >
-                  {showNewPassword ? "👁️" : "👁️‍🗨️"}
+                  <span aria-hidden="true">{showNewPassword ? "🙈" : "👁️"}</span>
                 </button>
               </div>
             </div>

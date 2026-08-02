@@ -12,7 +12,67 @@
 - Build de producción exitoso (`npx vite build`).
 - Tests del frontend: `npx vitest run` — **11 passed**.
 
-### Fix: Revisión completa del Dashboard de Horarios — errores funcionales, UX, código y diseño
+### Fix: Revisión completa del Dashboard de Reportes — errores funcionales, UX, código y diseño
+
+#### Frontend (`frontend/src/main.tsx`, `frontend/src/styles.css`, `frontend/src/types.ts`)
+
+**Bug funcional crítico corregido: formulario de reportes no controlado**
+- **Problema**: los campos del formulario de registro de incidencias (zona, tipo, detalle) eran uncontrolled, lo que impedía la validación adecuada y causaba comportamiento inconsistente al enviar.
+- **Solución**: se convirtieron los campos a controlled components con estados locales (`formZone`, `formType`, `formDetail`) y se agregó un placeholder "Seleccionar zona"/"Seleccionar tipo" por defecto.
+
+**Bug funcional: `Report.status` usaba `string` en lugar de `ReportStatus`**
+- **Problema**: el tipo `Report` en `types.ts` definía `status` como `string`, permitiendo cualquier valor y rompiendo la compatibilidad con el filtro de estado.
+- **Solución**: se cambió `status: string` a `status: ReportStatus` para garantizar la seguridad de tipos.
+
+**Bug de rendimiento: `driverByZone` no estaba memoizado en `ReportList`**
+- **Problema**: el cálculo del mapeo de conductores por zona se recalculaba en cada renderizado de `ReportList`, incluso cuando los datos no habían cambiado.
+- **Solución**: ya estaba memoizado con `useMemo` (verificado y confirmado). Se optimizó la dependencia del `useMemo` del `filtered` para incluir `driverByZone`.
+
+**Bug de rendimiento: `Dashboard` re-renderizaba cada 5 segundos sin necesidad**
+- **Problema**: el estado `tick` del dashboard se actualizaba cada 5 segundos con `setInterval`, causando re-renderizados innecesarios de todo el dashboard incluso cuando los datos no habían cambiado.
+- **Solución**: se optimizó el intervalo usando `useRef` para el contador de ticks y se memoizó `effectiveData` con `useMemo` para evitar recreaciones innecesarias del objeto.
+
+**Bug de rendimiento: `Map` component usaba `JSON.stringify` en `useMemo`**
+- **Problema**: la firma de `useMemo` del componente `Map` usaba `JSON.stringify({ zones, trucks, routes, prioritizedZones })` como dependencia, lo que era costoso computacionalmente para datasets grandes.
+- **Solución**: se reemplazó por una firma basada en conteos de arrays (`${zones.length}-${trucks.length}-${routes.length}-${prioritizedZones.length}`) y se agregó una referencia `signatureRef` para evitar recalcular el mapa cuando la firma no cambia.
+
+**Bug visual: estilos inline en `ReportList` y `Reports`**
+- **Problema**: se usaban estilos inline (`style={{ marginTop: '10px' }}`, `style={{ display: "flex", ... }}`) en lugar de clases CSS, rompiendo la consistencia visual y dificultando el mantenimiento.
+- **Solución**: se movieron los estilos inline a clases CSS (`.driver-search`, `.panel-header`, `.panel-actions`) y se eliminaron los estilos inline del componente `Reports`.
+
+**Bug de accesibilidad: `statusTone` no era case-insensitive**
+- **Problema**: la función `statusTone` comparaba el estado con strings exactos ("Resuelto", "En revision"), lo que fallaba si el backend devolvía diferentes capitalizaciones.
+- **Solución**: se convirtió la comparación a `toLowerCase()` para manejar cualquier capitalización del estado.
+
+**Mejora UX: filtros de estado y búsqueda en la vista de reportes**
+- Se agregó filtrado por estado (Todos/Pendiente/En revision/Resuelto) con botones de filtro.
+- Se agregado búsqueda de texto en la vista de reportes para buscar por tipo, zona, ciudadano o detalle.
+- Se reemplazó el layout de acciones del header por la clase CSS `.panel-header` con `.panel-actions`.
+
+**Mejora UX: exportaciones memoizadas con `useCallback`**
+- Las funciones de exportación CSV y PDF ahora están memoizadas con `useCallback` para evitar recreaciones innecesarias en cada renderizado.
+
+**Mejora UX: mensaje de ciudadano como clase CSS**
+- El mensaje de "Como ciudadano, esta vista muestra solo tus reportes" ahora usa la clase `.hint` en lugar de estilos inline.
+
+#### Backend (`backend-python/app/main.py`)
+
+**Bug crítico: `create_collection_record` y `confirm_collection_by_citizen` indentados incorrectamente**
+- **Problema**: las funciones `create_collection_record` y `confirm_collection_by_citizen` estaban indentadas dentro de `delete_maintenance`, haciéndolas inaccesibles desde los endpoints API `/api/collections` y `/api/collections/{id}/confirm`. Esto causaba que el registro de recolecciones y la confirmación ciudadana fallaran en modo demo (memoria).
+- **Solución**: se corrigió la indentación para que ambas funciones estén al nivel del módulo, accesibles desde los endpoints correspondientes.
+
+#### Archivos modificados
+- `frontend/src/main.tsx` — `Reports` component (controlled form, filtering, memoized exports), `Dashboard` (tick optimization, memoized effectiveData), `ReportList` (inline styles removed), `Map` (signature optimization), `statusTone` (case-insensitive)
+- `frontend/src/types.ts` — `Report.status` cambiado de `string` a `ReportStatus`
+- `frontend/src/styles.css` — `.driver-search` class added
+- `backend-python/app/main.py` — `create_collection_record` y `confirm_collection_by_citizen` indentación corregida
+
+#### Verificación
+- Frontend build: ✅ exitoso (`npm run build`)
+- Backend tests: ✅ 20/20 pasados
+- Frontend tests: ✅ 11/11 pasados
+- TypeScript geo service build: ✅ exitoso
+
 
 #### Frontend (`frontend/src/main.tsx`, `frontend/src/components/Admin.tsx`, `frontend/src/components/Item.tsx`)
 

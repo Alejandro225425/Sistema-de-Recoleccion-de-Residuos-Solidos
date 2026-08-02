@@ -923,12 +923,40 @@ def delete_maintenance(maintenance_id: int) -> None:
         memory.maintenance = [item for item in memory.maintenance if item["id"] != maintenance_id]
 
 
-    def create_collection_record(payload: CollectionCreate, created_by: dict[str, Any] | None = None) -> dict[str, Any]:
-        try:
-            row = execute_one(
-                "insert into collections (truck_id, zone_id, kg, status, date, created_by) values (%s, %s, %s, %s, %s, %s) returning id, kg, status, date, truck_id, zone_id",
-                (payload.truck_id, payload.zone_id, payload.kg, payload.status, datetime.now(timezone.utc), created_by and created_by.get("id")),
-            )
+def create_collection_record(payload: CollectionCreate, created_by: dict[str, Any] | None = None) -> dict[str, Any]:
+    try:
+        row = execute_one(
+            "insert into collections (truck_id, zone_id, kg, status, date, created_by) values (%s, %s, %s, %s, %s, %s) returning id, kg, status, date, truck_id, zone_id",
+            (payload.truck_id, payload.zone_id, payload.kg, payload.status, datetime.now(timezone.utc), created_by and created_by.get("id")),
+        )
+        return {
+            "id": row.get("id"),
+            "zone": get_zone_name(row.get("zone_id")),
+            "truck": next((t.get("code") for t in bootstrap().get("trucks", []) if int(t.get("id", 0)) == int(row.get("truck_id", 0))), str(row.get("truck_id"))),
+            "kg": row.get("kg"),
+            "status": row.get("status"),
+            "date": row.get("date"),
+        }
+    except Exception:
+        new_id = max([c["id"] for c in memory.collections], default=0) + 1
+        truck_code = next((t.get("code") for t in memory.trucks if int(t.get("id", 0)) == int(payload.truck_id)), str(payload.truck_id))
+        zone_name = get_zone_name(payload.zone_id) or next((z.get("name") for z in memory.zones if int(z.get("id", 0)) == int(payload.zone_id)), str(payload.zone_id))
+        item = {
+            "id": new_id,
+            "zone": zone_name,
+            "truck": truck_code,
+            "kg": payload.kg,
+            "status": payload.status,
+            "date": datetime.now(timezone.utc).date().isoformat(),
+        }
+        memory.collections.append(item)
+        return item
+
+
+def confirm_collection_by_citizen(collection_id: int, citizen: dict[str, Any]) -> dict[str, Any]:
+    try:
+        if database_mode() == "postgresql":
+            row = execute_one("update collections set status = %s where id = %s returning id, kg, status, date, truck_id, zone_id", ("Confirmada por ciudadano", collection_id))
             return {
                 "id": row.get("id"),
                 "zone": get_zone_name(row.get("zone_id")),
@@ -937,40 +965,12 @@ def delete_maintenance(maintenance_id: int) -> None:
                 "status": row.get("status"),
                 "date": row.get("date"),
             }
-        except Exception:
-            new_id = max([c["id"] for c in memory.collections], default=0) + 1
-            truck_code = next((t.get("code") for t in memory.trucks if int(t.get("id", 0)) == int(payload.truck_id)), str(payload.truck_id))
-            zone_name = get_zone_name(payload.zone_id) or next((z.get("name") for z in memory.zones if int(z.get("id", 0)) == int(payload.zone_id)), str(payload.zone_id))
-            item = {
-                "id": new_id,
-                "zone": zone_name,
-                "truck": truck_code,
-                "kg": payload.kg,
-                "status": payload.status,
-                "date": datetime.now(timezone.utc).date().isoformat(),
-            }
-            memory.collections.append(item)
-            return item
-
-
-    def confirm_collection_by_citizen(collection_id: int, citizen: dict[str, Any]) -> dict[str, Any]:
-        try:
-            if database_mode() == "postgresql":
-                row = execute_one("update collections set status = %s where id = %s returning id, kg, status, date, truck_id, zone_id", ("Confirmada por ciudadano", collection_id))
-                return {
-                    "id": row.get("id"),
-                    "zone": get_zone_name(row.get("zone_id")),
-                    "truck": next((t.get("code") for t in bootstrap().get("trucks", []) if int(t.get("id", 0)) == int(row.get("truck_id", 0))), str(row.get("truck_id"))),
-                    "kg": row.get("kg"),
-                    "status": row.get("status"),
-                    "date": row.get("date"),
-                }
-        except Exception:
-            for col in memory.collections:
-                if int(col.get("id", 0)) == int(collection_id):
-                    col["status"] = "Confirmada por ciudadano"
-                    return col
-            raise HTTPException(status_code=404, detail="Recolección no encontrada")
+    except Exception:
+        for col in memory.collections:
+            if int(col.get("id", 0)) == int(collection_id):
+                col["status"] = "Confirmada por ciudadano"
+                return col
+        raise HTTPException(status_code=404, detail="Recolección no encontrada")
 
 
 def create_password_reset_token(email: str, token: str, expires_at: datetime) -> dict[str, Any]:

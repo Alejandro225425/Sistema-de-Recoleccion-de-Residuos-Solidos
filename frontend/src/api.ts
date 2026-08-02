@@ -1,6 +1,18 @@
+export function getApiBase(): string {
+  const configured = import.meta.env.VITE_API_URL?.trim();
+  if (configured) return configured;
+  return "/api";
+}
+
+export function getGeoBase(): string {
+  const configured = import.meta.env.VITE_GEO_URL?.trim();
+  if (configured) return configured;
+  return "/geo";
+}
+
 export async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   try {
-    const apiBase = import.meta.env.VITE_API_URL ?? "/api";
+    const apiBase = getApiBase();
     const token = localStorage.getItem("sir-token");
     const response = await fetch(`${apiBase}${path}`, {
       headers: {

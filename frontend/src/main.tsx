@@ -1,4 +1,4 @@
-import React, { FormEvent, useEffect, useMemo, useRef, useState } from "react";
+import React, { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
@@ -65,14 +65,15 @@ const emptyBootstrap: Bootstrap = {
   analytics: { zones: 0, active_trucks: 0, open_reports: 0, confirmed_collections: 0, total_kg: 0, compliance: 0 }
 };
 
-function statusTone(status: string) {
-  if (status === "Resuelto") return "blue";
-  if (status === "En revision") return "yellow";
+function statusTone(status: string | undefined | null) {
+  const s = (status ?? "").toString().toLowerCase();
+  if (s === "resuelto") return "blue";
+  if (s === "en revision") return "yellow";
   return "red";
 }
 
 function getOperationalSignal(data: Bootstrap) {
-  const delayedRoutes = data.routes.filter(route => route.delay.toLowerCase().includes("retraso")).length;
+  const delayedRoutes = data.routes.filter(route => String(route.delay ?? "").toLowerCase().includes("retraso")).length;
   if (data.analytics.open_reports > 2 || delayedRoutes > 0) {
     return { label: `${data.analytics.open_reports} incidencias abiertas`, tone: "warning" };
   }
@@ -313,12 +314,22 @@ function Content(props: { data: Bootstrap; monitor: Monitor; session: Session; v
 
 function Dashboard({ data, monitor, session }: { data: Bootstrap; monitor: Monitor; session: Session }) {
   const [tick, setTick] = useState(0);
+  const tickRef = useRef(0);
+  const intervalRef = useRef<number | null>(null);
+
   useEffect(() => {
-    const interval = window.setInterval(() => setTick(value => value + 1), 5000);
-    return () => window.clearInterval(interval);
+    intervalRef.current = window.setInterval(() => {
+      tickRef.current += 1;
+      setTick(tickRef.current);
+    }, 5000);
+    return () => {
+      if (intervalRef.current !== null) {
+        window.clearInterval(intervalRef.current);
+      }
+    };
   }, []);
 
-  const effectiveData = { ...data, ...monitor } as Bootstrap;
+  const effectiveData = useMemo(() => ({ ...data, ...monitor }) as Bootstrap, [data, monitor]);
 
   const metrics = [
     [effectiveData.analytics.zones, "Zonas Activas", "🗺️"],
@@ -362,14 +373,14 @@ function Dashboard({ data, monitor, session }: { data: Bootstrap; monitor: Monit
     }));
   }, [monitor.truck_assignments, effectiveData.prioritized_zones, effectiveData.optimized_routes, effectiveData.routes, tick]);
 
-  const alerts = (monitor.alerts ?? []).map((alert, index) => ({
+  const alerts = useMemo(() => (monitor.alerts ?? []).map((alert, index) => ({
     id: index,
-    icon: alert.toLowerCase().includes("retraso") ? "🚛" : "🔔",
-    title: alert,
-    description: alert,
+    icon: String(alert ?? "").toLowerCase().includes("retraso") ? "🚛" : "🔔",
+    title: alert ?? "Alerta",
+    description: alert ?? "Alerta",
     time: "Ahora",
-    status: alert.toLowerCase().includes("retraso") ? "pendiente" : "activo"
-  }));
+    status: String(alert ?? "").toLowerCase().includes("retraso") ? "pendiente" : "activo"
+  })), [monitor.alerts]);
 
   return (
     <>
@@ -386,7 +397,7 @@ function Dashboard({ data, monitor, session }: { data: Bootstrap; monitor: Monit
       </div>
 
       <div className="dashboard-role-row">
-        <span className="dashboard-role-badge" style={{ textTransform: "capitalize" }} aria-label={`Rol activo: ${session.role}`}>
+        <span className="dashboard-role-badge" aria-label={`Rol activo: ${session.role}`}>
           {session.role}
         </span>
       </div>
@@ -476,7 +487,7 @@ function Schedules({ schedules }: { schedules: Schedule[] }) {
 
   const filtered = useMemo(() => {
     return schedules.filter(s => {
-      const matchSearch = s.zone.toLowerCase().includes(search.toLowerCase());
+      const matchSearch = String(s.zone ?? "").toLowerCase().includes(String(search ?? "").toLowerCase());
       const matchDay = selectedDay === "Todos" || s.day === selectedDay;
       return matchSearch && matchDay;
     });
@@ -563,18 +574,28 @@ function Schedules({ schedules }: { schedules: Schedule[] }) {
 
 function Reports({ data, session, onCreateReport, onResolveReport }: { data: Bootstrap; session: Session; onCreateReport: (report: Omit<Report, "id" | "status">) => Promise<void>; onResolveReport: (id: number) => Promise<void>; }) {
   const [submitting, setSubmitting] = useState(false);
+  const [formZone, setFormZone] = useState("");
+  const [formType, setFormType] = useState("");
+  const [formDetail, setFormDetail] = useState("");
+  const [filterStatus, setFilterStatus] = useState("Todos");
+  const [searchQuery, setSearchQuery] = useState("");
+  const safeReports = useMemo(() => (Array.isArray(data.reports) ? data.reports : []), [data.reports]);
+  const safeZones = useMemo(() => (Array.isArray(data.zones) ? data.zones : []), [data.zones]);
+  const safeTrucks = useMemo(() => (Array.isArray(data.trucks) ? data.trucks : []), [data.trucks]);
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const form = new FormData(event.currentTarget);
     setSubmitting(true);
     try {
       await onCreateReport({
         citizen: session.name,
-        zone: String(form.get("zone")),
-        type: String(form.get("type")),
-        detail: String(form.get("detail")).trim()
+        zone: formZone,
+        type: formType,
+        detail: formDetail.trim()
       });
+      setFormZone("");
+      setFormType("");
+      setFormDetail("");
       event.currentTarget.reset();
     } finally {
       setSubmitting(false);
@@ -583,31 +604,67 @@ function Reports({ data, session, onCreateReport, onResolveReport }: { data: Boo
   const isCitizen = session.role === "ciudadano";
   const canResolve = session.role === "operador" || session.role === "admin";
 
+  const filteredReports = useMemo(() => {
+    let result = safeReports;
+    if (filterStatus !== "Todos") {
+      result = result.filter(r => r.status === filterStatus);
+    }
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase().trim();
+      result = result.filter(r => {
+        const type = String(r.type ?? "").toLowerCase();
+        const zone = String(r.zone ?? "").toLowerCase();
+        const citizen = String(r.citizen ?? "").toLowerCase();
+        const detail = String(r.detail ?? "").toLowerCase();
+        return type.includes(q) || zone.includes(q) || citizen.includes(q) || detail.includes(q);
+      });
+    }
+    return result;
+  }, [safeReports, filterStatus, searchQuery]);
+
+  const exportReportsCSV = useCallback(() => {
+    exportToCSV("reportes", filteredReports.length > 0 ? filteredReports : safeReports);
+  }, [filteredReports, safeReports]);
+
+  const exportReportsPDF = useCallback(() => {
+    const source = filteredReports.length > 0 ? filteredReports : safeReports;
+    exportToPDF("Reportes", source.map(report => `<div class="report-card"><h2>${report.type}</h2><div class="tag ${statusTone(report.status)}">${report.status}</div><p><strong>Zona:</strong> ${report.zone}</p><p><strong>Ciudadano:</strong> ${report.citizen}</p><p>${report.detail}</p></div>`).join(""));
+  }, [filteredReports, safeReports]);
+
   return (
     <div className="two-col">
       <section className="panel">
         <h2>Registrar incidencia</h2>
         <form className="form-grid" onSubmit={submit}>
-          <label>Zona<select name="zone">{data.zones.map(zone => <option key={zone.id}>{zone.name}</option>)}</select></label>
-          <label>Tipo<select name="type"><option>Acumulacion de basura</option><option>Retraso</option><option>Contenedor lleno</option><option>Otro</option></select></label>
-          <label className="wide">Detalle<textarea name="detail" required minLength={8} maxLength={600} placeholder="Describe el problema encontrado" /></label>
+          <label>Zona<select name="zone" value={formZone} onChange={e => setFormZone(e.target.value)}><option value="">Seleccionar zona</option>{safeZones.map(zone => <option key={zone.id} value={zone.name}>{zone.name}</option>)}</select></label>
+          <label>Tipo<select name="type" value={formType} onChange={e => setFormType(e.target.value)}><option value="">Seleccionar tipo</option><option>Acumulacion de basura</option><option>Retraso</option><option>Contenedor lleno</option><option>Otro</option></select></label>
+          <label className="wide">Detalle<textarea name="detail" required minLength={8} maxLength={600} placeholder="Describe el problema encontrado" value={formDetail} onChange={e => setFormDetail(e.target.value)} /></label>
           <button disabled={submitting}>{submitting ? "Enviando..." : "Enviar reporte"}</button>
         </form>
       </section>
       <section className="panel">
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        <div className="panel-header">
           <h2>{isCitizen ? "Mis reportes" : "Seguimiento"}</h2>
-          <div style={{ display: "flex", gap: 8 }}>
-            <button type="button" className="export-btn" onClick={() => exportToCSV("reportes", data.reports)}>
+          <div className="panel-actions">
+            <button type="button" className="export-btn" onClick={exportReportsCSV}>
               📥 Exportar reportes CSV
             </button>
-            <button type="button" className="export-btn" onClick={() => exportToPDF("Reportes", data.reports.map(report => `<div class="report-card"><h2>${report.type}</h2><div class="tag">${report.status}</div><p><strong>Zona:</strong> ${report.zone}</p><p><strong>Ciudadano:</strong> ${report.citizen}</p><p>${report.detail}</p></div>`).join(""))}>
+            <button type="button" className="export-btn" onClick={exportReportsPDF}>
               📄 Exportar reportes PDF
             </button>
           </div>
         </div>
-        {isCitizen && <p style={{ color: "var(--muted)", marginBottom: "12px" }}>Como ciudadano, esta vista muestra solo tus reportes.</p>}
-        <ReportList reports={data.reports} trucks={data.trucks} showDriverFilter={!isCitizen} showResolve={canResolve} onResolveReport={onResolveReport} />
+        {isCitizen && <p className="hint">Como ciudadano, esta vista muestra solo tus reportes.</p>}
+        <div className="search-box">
+          <span className="search-icon">🔍</span>
+          <input type="text" placeholder="Buscar reporte..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} aria-label="Buscar reportes" />
+        </div>
+        <div className="filter-bar">
+          {["Todos", "Pendiente", "En revision", "Resuelto"].map(status => (
+            <button key={status} type="button" className={`filter-btn ${filterStatus === status ? "active" : ""}`} onClick={() => setFilterStatus(status)} aria-pressed={filterStatus === status}>{status}</button>
+          ))}
+        </div>
+        <ReportList reports={filteredReports.length > 0 ? filteredReports : safeReports} trucks={safeTrucks} showDriverFilter={!isCitizen} showResolve={canResolve} onResolveReport={onResolveReport} />
       </section>
     </div>
   );
@@ -657,7 +714,7 @@ function Routes({ data, monitor, session, onCreateCollection }: { data: Bootstra
         <section className="panel">
           <h2>Seguimiento GPS</h2>
           <div className="list">
-            {routes.map(route => <Item key={route.id} title={`${route.truck} - ${route.zone}`} detail={`Avance ${route.progress}% | ETA ${route.eta} | ${route.delay}`} color={route.delay.includes("Retraso") ? "yellow" : "blue"} />)}
+            {routes.map(route => <Item key={route.id} title={`${route.truck} - ${route.zone}`} detail={`Avance ${route.progress}% | ETA ${route.eta} | ${route.delay}`} color={String(route.delay ?? "").toLowerCase().includes("retraso") ? "yellow" : "blue"} />)}
             {alerts.map(alert => <Item key={alert} title="Microservicio TS" detail={alert} color="blue" />)}
           </div>
         </section>
@@ -926,9 +983,15 @@ function Map({ zones, trucks, routes, prioritizedZones }: { zones: Zone[]; truck
   const ref = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<L.Map | null>(null);
   const layerRef = useRef<L.LayerGroup | null>(null);
-  const signature = useMemo(() => JSON.stringify({ zones, trucks, routes, prioritizedZones }), [zones, trucks, routes, prioritizedZones]);
+  const signatureRef = useRef<string>("");
+  const signature = useMemo(() => {
+    const s = `${zones.length}-${trucks.length}-${routes.length}-${prioritizedZones.length}`;
+    return s;
+  }, [zones.length, trucks.length, routes.length, prioritizedZones.length]);
 
   useEffect(() => {
+    if (signatureRef.current === signature) return;
+    signatureRef.current = signature;
     if (!ref.current || mapRef.current) return;
     mapRef.current = L.map(ref.current).setView([-13.532, -71.967], 12);
     L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
@@ -936,10 +999,11 @@ function Map({ zones, trucks, routes, prioritizedZones }: { zones: Zone[]; truck
     }).addTo(mapRef.current);
     layerRef.current = L.layerGroup().addTo(mapRef.current);
     mapRef.current.invalidateSize();
-  }, []);
+  }, [signature]);
 
   useEffect(() => {
     if (!mapRef.current || !layerRef.current) return;
+    if (signatureRef.current !== signature) return;
 
     const layer = layerRef.current;
     layer.clearLayers();
@@ -952,9 +1016,9 @@ function Map({ zones, trucks, routes, prioritizedZones }: { zones: Zone[]; truck
       }
     });
     trucks.forEach(truck => L.circleMarker([truck.latitude, truck.longitude], { radius: 8, color: "#f5b942", fillOpacity: 0.9 }).bindPopup(`${truck.code} - ${truck.status}`).addTo(layer));
-    routes.forEach(route => L.circle([route.latitude, route.longitude], { radius: 450, color: route.delay.includes("Retraso") ? "#c94735" : "#0f8b8d" }).bindPopup(`${route.truck}: ${route.eta}`).addTo(layer));
+    routes.forEach(route => L.circle([route.latitude, route.longitude], { radius: 450, color: String(route.delay ?? "").toLowerCase().includes("retraso") ? "#c94735" : "#0f8b8d" }).bindPopup(`${route.truck}: ${route.eta}`).addTo(layer));
     mapRef.current.invalidateSize();
-  }, [signature]);
+  }, [signature, zones, trucks, routes, prioritizedZones]);
 
   useEffect(() => {
     return () => {
@@ -969,39 +1033,42 @@ function Map({ zones, trucks, routes, prioritizedZones }: { zones: Zone[]; truck
   return <div className="map" ref={ref} />;
 }
 
-function ReportList({ reports, trucks = [], showDriverFilter = false, showResolve = false, onResolveReport }: { reports: Report[]; trucks?: Truck[]; showDriverFilter?: boolean; showResolve?: boolean; onResolveReport?: (id: number) => Promise<void>; }) {
+export function ReportList({ reports, trucks = [], showDriverFilter = false, showResolve = false, onResolveReport }: { reports: Report[]; trucks?: Truck[]; showDriverFilter?: boolean; showResolve?: boolean; onResolveReport?: (id: number) => Promise<void>; }) {
   const [search, setSearch] = useState("");
   const [filterStatus, setFilterStatus] = useState("Todos");
   const [driverSearch, setDriverSearch] = useState("");
   const [resolvingId, setResolvingId] = useState<number | null>(null);
+  const safeReports = useMemo(() => (Array.isArray(reports) ? reports : []), [reports]);
+  const safeTrucks = useMemo(() => (Array.isArray(trucks) ? trucks : []), [trucks]);
   
   const driverByZone = useMemo(() => {
     const map: Record<string, string> = {};
-    trucks.forEach(truck => {
-      const zoneKey = truck.zone.toLowerCase();
+    safeTrucks.forEach(truck => {
+      const zoneKey = String(truck.zone ?? "").toLowerCase();
       if (!map[zoneKey]) {
-        map[zoneKey] = truck.driver.toLowerCase();
+        map[zoneKey] = String(truck.driver ?? "").toLowerCase();
       }
     });
     return map;
-  }, [trucks]);
+  }, [safeTrucks]);
 
   const filtered = useMemo(() => {
     const normalizedSearch = search.toLowerCase().trim();
     const normalizedDriver = driverSearch.toLowerCase().trim();
 
-    return reports.filter(r => {
-      const reportDriver = driverByZone[r.zone.toLowerCase()] ?? "";
-      const matchSearch = r.type.toLowerCase().includes(normalizedSearch) || 
-                          r.zone.toLowerCase().includes(normalizedSearch) ||
-                          r.citizen.toLowerCase().includes(normalizedSearch) ||
-                          r.detail.toLowerCase().includes(normalizedSearch) ||
+    return safeReports.filter(r => {
+      const zoneKey = String(r.zone ?? "").toLowerCase();
+      const reportDriver = driverByZone[zoneKey] ?? "";
+      const matchSearch = String(r.type ?? "").toLowerCase().includes(normalizedSearch) || 
+                          zoneKey.includes(normalizedSearch) ||
+                          String(r.citizen ?? "").toLowerCase().includes(normalizedSearch) ||
+                          String(r.detail ?? "").toLowerCase().includes(normalizedSearch) ||
                           reportDriver.includes(normalizedSearch);
       const matchStatus = filterStatus === "Todos" || r.status === filterStatus;
       const matchDriver = !normalizedDriver || reportDriver.includes(normalizedDriver);
       return matchSearch && matchStatus && matchDriver;
     });
-  }, [reports, search, filterStatus, driverSearch, driverByZone]);
+  }, [safeReports, search, filterStatus, driverSearch, driverByZone]);
   
   const statuses: Array<"Todos" | ReportStatus> = ["Todos", "Pendiente", "En revision", "Resuelto"];
   
@@ -1018,17 +1085,17 @@ function ReportList({ reports, trucks = [], showDriverFilter = false, showResolv
         />
       </div>
 {showDriverFilter && (
-         <div className="search-box" style={{ marginTop: '10px' }}>
-           <span className="search-icon">🚗</span>
-           <input
-             type="text"
-             placeholder="Buscar por conductor..."
-             value={driverSearch}
-             onChange={(e) => setDriverSearch(e.target.value)}
-             aria-label="Buscar reportes por conductor"
-           />
-         </div>
-       )}
+          <div className="search-box driver-search">
+            <span className="search-icon">🚗</span>
+            <input
+              type="text"
+              placeholder="Buscar por conductor..."
+              value={driverSearch}
+              onChange={(e) => setDriverSearch(e.target.value)}
+              aria-label="Buscar reportes por conductor"
+            />
+          </div>
+        )}
        
        <div className="filter-bar">
          {filtered.length === 0 ? (
@@ -1037,17 +1104,18 @@ function ReportList({ reports, trucks = [], showDriverFilter = false, showResolv
            </p>
          ) : (
           filtered.map(report => {
-            const reportDriver = driverByZone[report.zone.toLowerCase()] ?? "Sin conductor asignado";
+            const zoneKey = String(report.zone ?? "").toLowerCase();
+            const reportDriver = driverByZone[zoneKey] ?? "Sin conductor asignado";
             return (
               <article className="item" key={report.id}>
                 <div className="item-row">
-                  <strong>{report.type}</strong>
+                  <strong>{report.type ?? "Sin tipo"}</strong>
                   <span className={`tag ${statusTone(report.status)}`}>
-                     {report.status}
+                     {report.status ?? "Sin estado"}
                   </span>
                 </div>
-                <span>{report.zone} | {report.citizen} | {reportDriver}</span>
-                <p>{report.detail}</p>
+                <span>{report.zone ?? "Sin zona"} | {report.citizen ?? "Sin ciudadano"} | {reportDriver}</span>
+                <p>{report.detail ?? "Sin detalle"}</p>
               </article>
             );
           })
