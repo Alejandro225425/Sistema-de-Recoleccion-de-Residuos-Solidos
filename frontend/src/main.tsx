@@ -65,15 +65,15 @@ const emptyBootstrap: Bootstrap = {
   analytics: { zones: 0, active_trucks: 0, open_reports: 0, confirmed_collections: 0, total_kg: 0, compliance: 0 }
 };
 
-function statusTone(status: string | undefined | null) {
-  const s = (status ?? "").toString().toLowerCase();
+function statusTone(status: string) {
+  const s = status.toLowerCase();
   if (s === "resuelto") return "blue";
   if (s === "en revision") return "yellow";
   return "red";
 }
 
 function getOperationalSignal(data: Bootstrap) {
-  const delayedRoutes = data.routes.filter(route => String(route.delay ?? "").toLowerCase().includes("retraso")).length;
+  const delayedRoutes = data.routes.filter(route => route.delay.toLowerCase().includes("retraso")).length;
   if (data.analytics.open_reports > 2 || delayedRoutes > 0) {
     return { label: `${data.analytics.open_reports} incidencias abiertas`, tone: "warning" };
   }
@@ -375,11 +375,11 @@ function Dashboard({ data, monitor, session }: { data: Bootstrap; monitor: Monit
 
   const alerts = useMemo(() => (monitor.alerts ?? []).map((alert, index) => ({
     id: index,
-    icon: String(alert ?? "").toLowerCase().includes("retraso") ? "🚛" : "🔔",
-    title: alert ?? "Alerta",
-    description: alert ?? "Alerta",
+    icon: alert.toLowerCase().includes("retraso") ? "🚛" : "🔔",
+    title: alert,
+    description: alert,
     time: "Ahora",
-    status: String(alert ?? "").toLowerCase().includes("retraso") ? "pendiente" : "activo"
+    status: alert.toLowerCase().includes("retraso") ? "pendiente" : "activo"
   })), [monitor.alerts]);
 
   return (
@@ -487,7 +487,7 @@ function Schedules({ schedules }: { schedules: Schedule[] }) {
 
   const filtered = useMemo(() => {
     return schedules.filter(s => {
-      const matchSearch = String(s.zone ?? "").toLowerCase().includes(String(search ?? "").toLowerCase());
+      const matchSearch = s.zone.toLowerCase().includes(search.toLowerCase());
       const matchDay = selectedDay === "Todos" || s.day === selectedDay;
       return matchSearch && matchDay;
     });
@@ -579,9 +579,6 @@ function Reports({ data, session, onCreateReport, onResolveReport }: { data: Boo
   const [formDetail, setFormDetail] = useState("");
   const [filterStatus, setFilterStatus] = useState("Todos");
   const [searchQuery, setSearchQuery] = useState("");
-  const safeReports = useMemo(() => (Array.isArray(data.reports) ? data.reports : []), [data.reports]);
-  const safeZones = useMemo(() => (Array.isArray(data.zones) ? data.zones : []), [data.zones]);
-  const safeTrucks = useMemo(() => (Array.isArray(data.trucks) ? data.trucks : []), [data.trucks]);
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -605,38 +602,37 @@ function Reports({ data, session, onCreateReport, onResolveReport }: { data: Boo
   const canResolve = session.role === "operador" || session.role === "admin";
 
   const filteredReports = useMemo(() => {
-    let result = safeReports;
+    let result = data.reports;
     if (filterStatus !== "Todos") {
       result = result.filter(r => r.status === filterStatus);
     }
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase().trim();
-      result = result.filter(r => {
-        const type = String(r.type ?? "").toLowerCase();
-        const zone = String(r.zone ?? "").toLowerCase();
-        const citizen = String(r.citizen ?? "").toLowerCase();
-        const detail = String(r.detail ?? "").toLowerCase();
-        return type.includes(q) || zone.includes(q) || citizen.includes(q) || detail.includes(q);
-      });
+      result = result.filter(r =>
+        r.type.toLowerCase().includes(q) ||
+        r.zone.toLowerCase().includes(q) ||
+        r.citizen.toLowerCase().includes(q) ||
+        r.detail.toLowerCase().includes(q)
+      );
     }
     return result;
-  }, [safeReports, filterStatus, searchQuery]);
+  }, [data.reports, filterStatus, searchQuery]);
 
   const exportReportsCSV = useCallback(() => {
-    exportToCSV("reportes", filteredReports.length > 0 ? filteredReports : safeReports);
-  }, [filteredReports, safeReports]);
+    exportToCSV("reportes", filteredReports.length > 0 ? filteredReports : data.reports);
+  }, [filteredReports, data.reports]);
 
   const exportReportsPDF = useCallback(() => {
-    const source = filteredReports.length > 0 ? filteredReports : safeReports;
+    const source = filteredReports.length > 0 ? filteredReports : data.reports;
     exportToPDF("Reportes", source.map(report => `<div class="report-card"><h2>${report.type}</h2><div class="tag ${statusTone(report.status)}">${report.status}</div><p><strong>Zona:</strong> ${report.zone}</p><p><strong>Ciudadano:</strong> ${report.citizen}</p><p>${report.detail}</p></div>`).join(""));
-  }, [filteredReports, safeReports]);
+  }, [filteredReports, data.reports]);
 
   return (
     <div className="two-col">
       <section className="panel">
         <h2>Registrar incidencia</h2>
         <form className="form-grid" onSubmit={submit}>
-          <label>Zona<select name="zone" value={formZone} onChange={e => setFormZone(e.target.value)}><option value="">Seleccionar zona</option>{safeZones.map(zone => <option key={zone.id} value={zone.name}>{zone.name}</option>)}</select></label>
+          <label>Zona<select name="zone" value={formZone} onChange={e => setFormZone(e.target.value)}><option value="">Seleccionar zona</option>{data.zones.map(zone => <option key={zone.id} value={zone.name}>{zone.name}</option>)}</select></label>
           <label>Tipo<select name="type" value={formType} onChange={e => setFormType(e.target.value)}><option value="">Seleccionar tipo</option><option>Acumulacion de basura</option><option>Retraso</option><option>Contenedor lleno</option><option>Otro</option></select></label>
           <label className="wide">Detalle<textarea name="detail" required minLength={8} maxLength={600} placeholder="Describe el problema encontrado" value={formDetail} onChange={e => setFormDetail(e.target.value)} /></label>
           <button disabled={submitting}>{submitting ? "Enviando..." : "Enviar reporte"}</button>
@@ -664,7 +660,7 @@ function Reports({ data, session, onCreateReport, onResolveReport }: { data: Boo
             <button key={status} type="button" className={`filter-btn ${filterStatus === status ? "active" : ""}`} onClick={() => setFilterStatus(status)} aria-pressed={filterStatus === status}>{status}</button>
           ))}
         </div>
-        <ReportList reports={filteredReports.length > 0 ? filteredReports : safeReports} trucks={safeTrucks} showDriverFilter={!isCitizen} showResolve={canResolve} onResolveReport={onResolveReport} />
+        <ReportList reports={filteredReports.length > 0 ? filteredReports : data.reports} trucks={data.trucks} showDriverFilter={!isCitizen} showResolve={canResolve} onResolveReport={onResolveReport} />
       </section>
     </div>
   );
@@ -714,7 +710,7 @@ function Routes({ data, monitor, session, onCreateCollection }: { data: Bootstra
         <section className="panel">
           <h2>Seguimiento GPS</h2>
           <div className="list">
-            {routes.map(route => <Item key={route.id} title={`${route.truck} - ${route.zone}`} detail={`Avance ${route.progress}% | ETA ${route.eta} | ${route.delay}`} color={String(route.delay ?? "").toLowerCase().includes("retraso") ? "yellow" : "blue"} />)}
+            {routes.map(route => <Item key={route.id} title={`${route.truck} - ${route.zone}`} detail={`Avance ${route.progress}% | ETA ${route.eta} | ${route.delay}`} color={route.delay.includes("Retraso") ? "yellow" : "blue"} />)}
             {alerts.map(alert => <Item key={alert} title="Microservicio TS" detail={alert} color="blue" />)}
           </div>
         </section>
@@ -1016,7 +1012,7 @@ function Map({ zones, trucks, routes, prioritizedZones }: { zones: Zone[]; truck
       }
     });
     trucks.forEach(truck => L.circleMarker([truck.latitude, truck.longitude], { radius: 8, color: "#f5b942", fillOpacity: 0.9 }).bindPopup(`${truck.code} - ${truck.status}`).addTo(layer));
-    routes.forEach(route => L.circle([route.latitude, route.longitude], { radius: 450, color: String(route.delay ?? "").toLowerCase().includes("retraso") ? "#c94735" : "#0f8b8d" }).bindPopup(`${route.truck}: ${route.eta}`).addTo(layer));
+    routes.forEach(route => L.circle([route.latitude, route.longitude], { radius: 450, color: route.delay.includes("Retraso") ? "#c94735" : "#0f8b8d" }).bindPopup(`${route.truck}: ${route.eta}`).addTo(layer));
     mapRef.current.invalidateSize();
   }, [signature, zones, trucks, routes, prioritizedZones]);
 
@@ -1033,42 +1029,39 @@ function Map({ zones, trucks, routes, prioritizedZones }: { zones: Zone[]; truck
   return <div className="map" ref={ref} />;
 }
 
-export function ReportList({ reports, trucks = [], showDriverFilter = false, showResolve = false, onResolveReport }: { reports: Report[]; trucks?: Truck[]; showDriverFilter?: boolean; showResolve?: boolean; onResolveReport?: (id: number) => Promise<void>; }) {
+function ReportList({ reports, trucks = [], showDriverFilter = false, showResolve = false, onResolveReport }: { reports: Report[]; trucks?: Truck[]; showDriverFilter?: boolean; showResolve?: boolean; onResolveReport?: (id: number) => Promise<void>; }) {
   const [search, setSearch] = useState("");
   const [filterStatus, setFilterStatus] = useState("Todos");
   const [driverSearch, setDriverSearch] = useState("");
   const [resolvingId, setResolvingId] = useState<number | null>(null);
-  const safeReports = useMemo(() => (Array.isArray(reports) ? reports : []), [reports]);
-  const safeTrucks = useMemo(() => (Array.isArray(trucks) ? trucks : []), [trucks]);
   
   const driverByZone = useMemo(() => {
     const map: Record<string, string> = {};
-    safeTrucks.forEach(truck => {
-      const zoneKey = String(truck.zone ?? "").toLowerCase();
+    trucks.forEach(truck => {
+      const zoneKey = truck.zone.toLowerCase();
       if (!map[zoneKey]) {
-        map[zoneKey] = String(truck.driver ?? "").toLowerCase();
+        map[zoneKey] = truck.driver.toLowerCase();
       }
     });
     return map;
-  }, [safeTrucks]);
+  }, [trucks]);
 
   const filtered = useMemo(() => {
     const normalizedSearch = search.toLowerCase().trim();
     const normalizedDriver = driverSearch.toLowerCase().trim();
 
-    return safeReports.filter(r => {
-      const zoneKey = String(r.zone ?? "").toLowerCase();
-      const reportDriver = driverByZone[zoneKey] ?? "";
-      const matchSearch = String(r.type ?? "").toLowerCase().includes(normalizedSearch) || 
-                          zoneKey.includes(normalizedSearch) ||
-                          String(r.citizen ?? "").toLowerCase().includes(normalizedSearch) ||
-                          String(r.detail ?? "").toLowerCase().includes(normalizedSearch) ||
+    return reports.filter(r => {
+      const reportDriver = driverByZone[r.zone.toLowerCase()] ?? "";
+      const matchSearch = r.type.toLowerCase().includes(normalizedSearch) || 
+                          r.zone.toLowerCase().includes(normalizedSearch) ||
+                          r.citizen.toLowerCase().includes(normalizedSearch) ||
+                          r.detail.toLowerCase().includes(normalizedSearch) ||
                           reportDriver.includes(normalizedSearch);
       const matchStatus = filterStatus === "Todos" || r.status === filterStatus;
       const matchDriver = !normalizedDriver || reportDriver.includes(normalizedDriver);
       return matchSearch && matchStatus && matchDriver;
     });
-  }, [safeReports, search, filterStatus, driverSearch, driverByZone]);
+  }, [reports, search, filterStatus, driverSearch, driverByZone]);
   
   const statuses: Array<"Todos" | ReportStatus> = ["Todos", "Pendiente", "En revision", "Resuelto"];
   
@@ -1104,18 +1097,17 @@ export function ReportList({ reports, trucks = [], showDriverFilter = false, sho
            </p>
          ) : (
           filtered.map(report => {
-            const zoneKey = String(report.zone ?? "").toLowerCase();
-            const reportDriver = driverByZone[zoneKey] ?? "Sin conductor asignado";
+            const reportDriver = driverByZone[report.zone.toLowerCase()] ?? "Sin conductor asignado";
             return (
               <article className="item" key={report.id}>
                 <div className="item-row">
-                  <strong>{report.type ?? "Sin tipo"}</strong>
+                  <strong>{report.type}</strong>
                   <span className={`tag ${statusTone(report.status)}`}>
-                     {report.status ?? "Sin estado"}
+                     {report.status}
                   </span>
                 </div>
-                <span>{report.zone ?? "Sin zona"} | {report.citizen ?? "Sin ciudadano"} | {reportDriver}</span>
-                <p>{report.detail ?? "Sin detalle"}</p>
+                <span>{report.zone} | {report.citizen} | {reportDriver}</span>
+                <p>{report.detail}</p>
               </article>
             );
           })
