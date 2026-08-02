@@ -4,8 +4,8 @@ Sistema inteligente para la recoleccion de residuos solidos segregados en la ciu
 
 ## Version actual
 
-- **Version:** `3.0.0`
-- **Rama:** `main` y `version-3`
+- **Version:** `4.0.0`
+- **Rama:** `main` y `version-4`
 - **Repositorio:** `Alejandro225425/Sistema-de-Recoleccion-de-Residuos-Solidos`
 - **Estado:** Proyecto organizado y documentación consolidada. Configuración de despliegue lista. Backend en Render (`render.yaml`). Frontend en Vercel (dashboard). Ver `docs/DESPLIEGUE.md` y `DEPLOYMENT.md`.
 
@@ -34,6 +34,7 @@ Sistema inteligente para la recoleccion de residuos solidos segregados en la ciu
 - Accesibilidad mejorada en el panel administrativo: contraste WCAG AA, navegación por teclado con skip-link y focus-visible, touch targets mínimos de 44px y prevención de scroll horizontal en móvil.
 - Configuración de despliegue lista para producción: `render.yaml` (backend), `.vercelignore` + dashboard Vercel (frontend), `netlify.toml` + `railway.toml` + `Dockerfile` (alternativas). Variables de entorno documentadas. Ruta recomendada: Render + Vercel (ambos gratis, sin tarjeta). Build y pruebas verificados (`11 passed` frontend, `16 passed` backend). Ver `docs/DESPLIEGUE.md` y `DEPLOYMENT.md` para instrucciones paso a paso.
 - Diseño visual moderno con paleta verde-dorada, tipografía Inter, sidebar con gradiente, tabs modernos en login, responsive completo con menú hamburguesa para móvil, modo claro/oscuro.
+- Página de login revisada en versión 4.0.0: toggle de visibilidad de contraseña, indicador de fortaleza en registro, token de recuperación visible en demo, ARIA mejorado, auto-enfoque en email, elimando el hack de `window.__password`.
 - Página de login mejorada: tabs de modo (Iniciar sesión / Registrarse / Recuperar), rol y zona solo en registro, enlace fantasma para recuperación de contraseña.
 
 ## Progreso implementado hasta ahora
@@ -582,6 +583,7 @@ En este momento la aplicación está lista para probar la autenticación, los re
 
 | Versión | Rama | Estado |
 |---------|------|--------|
+| **4.0.0** | `main`, `version-4` | Revisión completa del login, seguridad (timing attack, password strip) y accesibilidad |
 | **3.0.0** | `main`, `version-3` | Proyecto organizado y documentación consolidada |
 | 2.0.0 | `main`, `v2.0.0` | Configuración de despliegue lista para producción |
 | 1.0.0 | `version-1-proyecto` | Estructura base del proyecto |

@@ -1,6 +1,101 @@
 # Changelog
 
-## 2026-08-01
+## 2026-08-02
+
+### Fix: Revisión completa del login — seguridad, UX, código y diseño
+
+#### Backend (`backend-python/app/main.py`)
+
+**Timing attack corregido en `/api/auth/login`**
+- **Problema**: cuando el email no existía, el endpoint retornaba inmediatamente (sin bcrypt), permitiendo enumeración de correos válidos mediante medición de tiempos.
+- **Solución**: se ejecuta una verificación de password dummy (`verify_password` contra `_DUMMY_PASSWORD_HASH`) incluso cuando el usuario no existe, manteniendo un tiempo de respuesta constante.
+
+**Strip de password corregido**
+- **Problema**: `model_config = ConfigDict(str_strip_whitespace=True)` en `LoginRequest` y `RegisterRequest` eliminaba espacios en blanco del password, causando inconsistencias y bloqueando contraseñas con espacios.
+- **Solución**: se eliminó `str_strip_whitespace` del `model_config` y se agregó un `field_validator("email")` que normaliza solo el email, dejando el password intacto.
+
+**Versión actualizada a 4.0.0**
+- `FastAPI(title="SIR Cusco API", version="4.0.0")`.
+- Health endpoint y root endpoint retornan `version: "4.0.0"`.
+- Test `test_operational_logic.py` actualizado para validar la nueva versión.
+
+#### Frontend (`frontend/src/main.tsx`, `frontend/src/components/AuthView.tsx`)
+
+**Hack de `window.__password` eliminado**
+- **Problema**: la contraseña se almacenaba en `(window as any).__password` como un hack global, exponiéndola a XSS y dejando la variable sin limpiar.
+- **Solución**: `AuthView` pasa la contraseña directamente como argumento a `onLogin(email, password)`. Se eliminó totalmente el uso de `window.__password`.
+
+**Trim de password corregido**
+- **Problema**: `String(form.get("password")).trim()` eliminaba espacios al inicio/final del password.
+- **Solución**: se dejó de hacer `.trim()` en el password. Solo se hace `.trim()` en el email.
+
+**AuthView extraído a su propio archivo**
+- **Problema**: `AuthView` (168 líneas) estaba embebido en `main.tsx`, dificultando mantenimiento.
+- **Solución**: componente movido a `frontend/src/components/AuthView.tsx` con interfaz `AuthViewProps` tipada. `main.tsx` lo importa como `{ AuthView }`.
+
+**Toggle de visibilidad de contraseña**
+- Se añadió botón de ojo 👁️/👁️‍🗨️ en los tres modos (login, registro, recuperación) para mostrar/ocultar la contraseña. Incluye `aria-label` y soporte de teclado (Space/Enter).
+
+**Auto-enfoque en email**
+- El campo de email recibe el foco automáticamente al cargar la página y al cambiar de modo.
+
+**Token de recuperación visible en modo demo**
+- **Problema**: en modo demo, el endpoint `/auth/forgot-password` retornaba el token en la respuesta, pero la UI nunca lo mostraba al usuario, imposibilitando completar la recuperación.
+- **Solución**: el token se muestra en un cuadro copiable con botón "Copiar" usando la API del portapapeles.
+
+**Indicador de fortaleza de contraseña**
+- En modo registro, se muestra una barra visual y etiqueta que evalúa: longitud ≥8, contiene letra, contiene número y contiene símbolo. Se actualiza en tiempo real con input controlado.
+
+**Botón de envío con spinner**
+- Durante el envío, muestra un spinner giratorio y el texto "Procesando..." con `aria-hidden`.
+
+**ARIA y accesibilidad mejorados**
+- `role="main"` en el contenedor principal.
+- `role="group"` y `aria-label` en el contenedor de pestañas.
+- `aria-pressed` en los botones de modo (indica cuál está activo).
+- `role="alert"` y `aria-live="assertive"` en mensajes de error.
+- `role="status"` y `aria-live="polite"` en mensajes de feedback/éxito.
+- `aria-label` y `aria-pressed` en botones de toggle de contraseña.
+- `aria-live="polite"` en mensajes de feedback.
+
+**Auto-completado de navegador**
+- Atributos `autoComplete` apropiados en todos los campos: `email`, `name`, `current-password`, `new-password`, `one-time-code`.
+
+**Link de Términos y Condiciones corregido**
+- **Problema**: `href="#terms"` apuntaba a una ancla inexistente.
+- **Solución**: enlaza a `https://www.eccusco.gob.pe/terminos` con `rel="noopener noreferrer"` y `target="_blank"`.
+
+**Validación de formulario**
+- Agregado `noValidate` al formulario para evitar validación nativa del navegador que podría interferir con la lógica de React.
+
+**Reset de estado al cambiar de modo**
+- Al cambiar entre login/registro/recuperación: se limpian `feedback`, `recoveryToken`, `showPassword` y `showNewPassword`.
+
+**CSS mejorado** (`frontend/src/styles.css`)
+- Nuevas reglas: `.password-field`, `.password-toggle`, `.password-strength`, `.strength-bar`, `.strength-fill`, `.strength-labels`, `.recovery-token`, `.auth-message`, `.hint.success`, `.spinner` (dentro de botones).
+- `.hint.success` agregado (faltaba en la hoja de estilos original).
+
+#### Archivos modificados
+
+| Archivo | Cambios |
+|---------|---------|
+| `backend-python/app/main.py` | Timing attack fix, password strip fix, version 4.0.0, `_DUMMY_PASSWORD_HASH` |
+| `backend-python/tests/test_operational_logic.py` | Assert de versión 4.0.0 |
+| `frontend/src/main.tsx` | Import AuthView, login(email, password), removed old AuthView fn, removed window.__password |
+| `frontend/src/components/AuthView.tsx` | **Nuevo**: componente AuthView extraído y mejorado |
+| `frontend/src/styles.css` | Nuevas reglas CSS para login |
+| `frontend/package.json` | Version 4.0.0 |
+| `backend-typescript/package.json` | Version 4.0.0 |
+| `package.json` (raíz) | Version 4.0.0 |
+| `AGENTS.md` | Version 4.0.0 |
+| `VERSION.md` | Versión 4.0.0, tabla de versiones actualizada |
+| `README.md` | Version 4.0.0, rama version-4, notas de login |
+| `frontend/README.md` | Version 4.0.0 |
+| `RAILWAY-VERCEL-DEPLOYMENT.md` | Version 4.0.0 |
+
+#### Verificación
+- Frontend: `npx tsc --noEmit` — 0 errores. `npm run build` — éxito. `npx vitest run` — **11 passed**.
+- Backend: `.\.venv\Scripts\python.exe -m py_compile` — OK. `.\.venv\Scripts\python.exe -m pytest -q` — **16 passed**.
 
 ### Fix: Ocultar rol y zona en login
 - **Problema**: al iniciar sesión con una cuenta ya existente, se mostraban campos de rol y zona innecesarios que solo deben usarse durante el registro.

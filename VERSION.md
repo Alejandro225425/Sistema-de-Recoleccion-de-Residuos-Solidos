@@ -1,23 +1,32 @@
-# Sistema de Recolección de Residuos Sólidos - Versión 3.0.0
+# Sistema de Recolección de Residuos Sólidos - Versión 4.0.0
 
-## Versión 3.0.0 - Proyecto organizado y documentación consolidada
+## Versión 4.0.0 - Revisión completa del login y seguridad
 
-Esta es la **versión 3.0.0** del Sistema Inteligente de Recolección de Residuos Sólidos para la Gestión Ambiental Urbana en la ciudad del Cusco.
+Esta es la **versión 4.0.0** del Sistema Inteligente de Recolección de Residuos Sólidos para la Gestión Ambiental Urbana en la ciudad del Cusco.
 
-### Características de esta versión
-- **Proyecto organizado y ordenado**: eliminados archivos binarios innecesarios (`cloudflared.exe`, 54 MB), URLs temporales obsoletas (`CLOUDFLARE-URLS.txt`) y referencias a archivos inexistentes (`nixpacks.toml` en `.vercelignore`).
-- **`.gitignore` reforzado**: ahora excluye binarios `*.exe`, `*.bin` y `scripts/cloudflared.exe` para evitar commits accidentales de ejecutables.
-- **Versiones sincronizadas**: `package.json` raíz, `frontend/package.json`, `backend-typescript/package.json` y el backend FastAPI (`app/main.py`) reportan versión `3.0.0`. Las pruebas de backend validan la versión del health endpoint.
-- **Configuración de despliegue lista para producción**: `render.yaml` (backend), `.vercelignore` + dashboard Vercel (frontend), `netlify.toml` + `railway.toml` + `Dockerfile` (alternativas). Variables de entorno documentadas.
-- **CORS configurado** para permitir dominios de Vercel y Netlify: `https://.*(\.vercel\.app|\.netlify\.app)`.
-- **Accesibilidad**: contraste WCAG AA, skip-link, focus-visible, touch targets de 44px y prevención de scroll horizontal en móvil.
-- **Exportación a PDF y CSV** para reportes y métricas desde la interfaz.
-- **Mapa operativo corregido**: se eliminó una condición de carrera en la inicialización de Leaflet y se garantizaron dimensiones fijas en el contenedor para que el mapa cargue correctamente en el dashboard y en la vista de rutas.
-- **Validación completa** de backup/restore de PostgreSQL local con scripts PowerShell.
-- **Build del frontend verificado** y pruebas automatizadas (`11 passed` frontend, `16 passed` backend).
-- **Diseño visual moderno**: redesign completo del CSS con paleta verde-dorada, tipografía Inter, sidebar con gradiente, tabs modernos en login, responsive completo con menú hamburguesa para móvil, modo claro/oscuro.
-- **Página de login mejorada**: tabs de modo (Iniciar sesión / Registrarse / Recuperar), rol y zona solo en registro, enlace fantasma para recuperación de contraseña.
-- **Seguridad de datos**: endpoint `/api/bootstrap` ahora filtra datos sensibles (`users`, `maintenance`, `notifications`) para requests sin autenticación.
+### Correcciones de login y seguridad
+- **Timing attack corregido**: el endpoint `/api/auth/login` ahora ejecuta una verificación de password dummy (bcrypt) cuando el email no existe, manteniendo un tiempo de respuesta constante para prevenir enumeración de usuarios.
+- **Strip de password corregido**: el backend ya no elimina espacios en blanco del password (antes `str_strip_whitespace=True` afectaba todos los campos incluido password). Ahora solo el email se normaliza con `field_validator`.
+- **Hack de `window.__password` eliminado**: la contraseña ya no se almacena en el objeto global `window`. El login pasa la contraseña directamente como argumento al callback `onLogin`.
+- **Trim de password corregido en frontend**: el formulario deja de hacer `.trim()` en el password, permitiendo contraseñas con espacios adicionales.
+- **Token de recuperación visible en demo**: al solicitar recuperación de contraseña, el token generado se muestra en la UI para que el usuario pueda usarlo directamente en modo demo (sin necesidad de email real).
+- **Variable shadowing corregido**: la función `login` en `main.tsx` dejó de sombrear la variable `session` con una constante local.
+
+### Mejoras de UX y accesibilidad en el login
+- **Toggle de visibilidad de contraseña**: botón de ojo para mostrar/ocultar contraseña en todas las modalidades (login, registro y recuperación).
+- **Auto-enfoque en email**: el campo de email recibe el foco automáticamente al cargar la página y al cambiar de modo.
+- **Indicador de fortaleza de contraseña**: en el modo de registro, se muestra una barra visual y etiqueta que evalúa la calidad de la contraseña en tiempo real (longitud, letras, números, símbolos).
+- **Botón de envío con spinner**: durante el envío, el botón muestra un spinner y el texto "Procesando..." con accesibilidad (`aria-hidden`).
+- **ARIA mejorado**: `role="alert"` y `aria-live` en mensajes de error y feedback, `aria-pressed` en las pestañas de modo, `aria-label` en botones de toggle, `role="main"` en el contenedor principal.
+- **Auto-completado de navegador**: atributos `autoComplete` apropiados (`email`, `current-password`, `new-password`, `name`, `one-time-code`) en todos los campos.
+- **Link de Términos y Condiciones corregido**: dejó de apuntar a `#terms` (ancla inexistente) y ahora enlaza a una URL válida con `rel="noopener noreferrer"`.
+- **Validación `noValidate` en el formulario**: previene validación nativa del navegador que podría interferir con la lógica de React.
+- **Reset de estado al cambiar de modo**: al cambiar entre login/registro/recuperación, se limpian los estados de visibilidad de contraseña, feedback y token de recuperación.
+
+### Mejoras de código y arquitectura
+- **AuthView extraído a su propio archivo**: el componente `AuthView` se movió de `frontend/src/main.tsx` (168 líneas) a `frontend/src/components/AuthView.tsx`, mejorando la organización y mantenibilidad del código.
+- **Función `submit` simplificada**: la lógica de envío está mejor organizada y las variables locales no sombrean las del scope superior.
+- **CSS mejorado**: nuevas reglas para `.password-field`, `.password-toggle`, `.password-strength`, `.recovery-token`, `.auth-message`, `.hint.success` y `.spinner` dentro de botones.
 - **UI por roles**: badge de rol en dashboard y formulario de registro de recolecciones visible solo para conductores en la vista de rutas.
 
 ### Rutas de despliegue recomendadas
@@ -29,7 +38,7 @@ Esta es la **versión 3.0.0** del Sistema Inteligente de Recolección de Residuo
 | D | Railway | Netlify | $5 crédito/mes (Railway) |
 
 ### Rama de producción
-- Rama: `main` y `version-3`
+- Rama: `main` y `version-4`
 - Repositorio: `Alejandro225425/Sistema-de-Recoleccion-de-Residuos-Solidos`
 
 ### Próximos pasos
@@ -37,7 +46,7 @@ Esta es la **versión 3.0.0** del Sistema Inteligente de Recolección de Residuo
 - Configurar `JWT_SECRET` como variable de entorno segura en el dashboard de Render.
 - Ajustar `CORS_ORIGINS` al dominio final del frontend si se usa dominio propio.
 
-## Versión 2.0.0 - Lista para despliegue
+## Versión 3.0.0 - Proyecto organizado y documentación consolidada
 
 ### Características de esta versión
 - Configuración de despliegue lista para producción: `render.yaml` para backend en Render, `.vercelignore` + dashboard para frontend en Vercel, `netlify.toml` + `railway.toml` + `Dockerfile` para alternativas.
@@ -80,8 +89,15 @@ Esta es la **versión 3.0.0** del Sistema Inteligente de Recolección de Residuo
 - Desplegar en producción
 
 ## Estado actual
-- Versión de demostración estable con frontend compilable y backend probado.
+- Versión 4.0.0: login revisado, corregido timing attack, eliminado hack de `window.__password`, toggle de visibilidad de contraseña, indicador de fortaleza, token de recuperación visible en demo, AuthView extraído a componente dedicado.
 - Endpoint operativo `/api/health` validado y funcionando en modo memoria y con persistencia PostgreSQL cuando `DATABASE_URL` está configurada.
 - Backend Python verificado con `16 passed` en la suite de pruebas.
 - Frontend React validado con pruebas e2e reales contra FastAPI y microservicio TypeScript compilado con éxito.
 - Configuración de despliegue preparada para Render + Vercel (recomendado) o Render + Netlify.
+
+| Versión | Rama | Estado |
+|---------|------|--------|
+| **4.0.0** | `main`, `version-4` | Revisión completa del login, seguridad y accesibilidad |
+| **3.0.0** | `main`, `version-3` | Proyecto organizado y documentación consolidada |
+| 2.0.0 | `main`, `v2.0.0` | Configuración de despliegue lista para producción |
+| 1.0.0 | `version-1-proyecto` | Estructura base del proyecto |
