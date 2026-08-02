@@ -424,7 +424,7 @@ function AuthView({ zones, onLogin, message }: { zones: Zone[]; onLogin: (sessio
             <input id="new-password" name="password" type="password" required minLength={8} placeholder="Ingresa una nueva contraseña" />
           </div>}
 
-          {mode !== "forgot" && (
+          {mode === "register" && (
             <div className="form-row">
               <div className="form-group">
                 <label htmlFor="role">Rol de Usuario</label>
