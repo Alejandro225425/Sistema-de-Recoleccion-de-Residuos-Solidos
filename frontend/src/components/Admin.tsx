@@ -278,7 +278,7 @@ export default function Admin({ data, session, onResolveReport, onOperationUpdat
   }
 
   return (
-    <div className="two-col admin-shell" data-testid="admin-shell" style={{ backgroundColor: "var(--bg, #f0f5f2)", color: "var(--ink, #1d2730)" }}>
+    <div className="admin-grid admin-shell" data-testid="admin-shell">
       <section className="panel">
         <h2>Gestión de usuarios</h2>
         <p>Administra roles, accesos y usuarios del sistema.</p>

@@ -33,10 +33,7 @@ describe('Admin dashboard', () => {
       />
     );
 
-    expect(screen.getByTestId('admin-shell')).toHaveStyle({
-      backgroundColor: 'var(--bg, #f0f5f2)',
-      color: 'var(--ink, #1d2730)',
-    });
+    expect(screen.getByTestId('admin-shell')).toHaveClass('admin-grid', 'admin-shell');
   });
 
   it('muestra un estado vacío cuando no hay zonas que coincidan con el filtro', async () => {

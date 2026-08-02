@@ -1,4 +1,28 @@
-# Sistema de Recolección de Residuos Sólidos - Versión 4.5.0
+# Sistema de Recolección de Residuos Sólidos - Versión 4.5.1
+
+## Versión 4.5.1 - Corrección definitiva del Dashboard de Administración
+
+### Problema resuelto: pantalla en blanco/negro en la vista Admin
+
+Esta versión corrige de forma definitiva la regresión por la cual el panel de Administración (`/admin`) mostraba una pantalla completamente en blanco (tema claro) o negra (tema oscuro) al acceder.
+
+#### Correcciones aplicadas
+
+| # | Componente | Problema | Solución |
+|---|-----------|----------|----------|
+| 1 | `styles.css` | `.search-box` sin `position: relative` → ícono absoluto se desborda | Se agrega `position: relative; display: flex; align-items: center` |
+| 2 | `Admin.tsx` | Clase `two-col` (2 hijos esperados) con 6 paneles → layout colapsado | Nueva clase `.admin-grid` con `repeat(2, 1fr)` responsive |
+| 3 | `Admin.tsx` | `style` inline con fallbacks de tema claro → texto invisible en modo oscuro | Se elimina el `style` inline; colores vienen de variables CSS |
+| 4 | `main.tsx` | Token JWT expirado no detectado → Admin con datos vacíos | `loadData()` detecta 401 y limpia la sesión automáticamente |
+| 5 | `styles.css` | `.loading` sin estilos → spinner puede ser invisible | Se agrega clase `.loading` con flex y colores de tema |
+
+#### Archivos modificados
+- `frontend/src/styles.css`
+- `frontend/src/components/Admin.tsx`
+- `frontend/src/components/Admin.test.tsx`
+- `frontend/src/main.tsx`
+
+---
 
 ## Versión 4.5.0 - Corrección visual del panel de administración
 
@@ -16,7 +40,7 @@
   - ReportList: `export` restaurado, `safeReports`, `safeTrucks`, y protecciones null en propiedades de report
 - **Archivo modificado**: `frontend/src/main.tsx`
 
-Esta es la **versión 4.5.0** del Sistema Inteligente de Recolección de Residuos Sólidos para la Gestión Ambiental Urbana en la ciudad del Cusco.
+Esta es la **versión 4.5.1** del Sistema Inteligente de Recolección de Residuos Sólidos para la Gestión Ambiental Urbana en la ciudad del Cusco.
 
 ### Correcciones de login y seguridad
 - **Timing attack corregido**: el endpoint `/api/auth/login` ahora ejecuta una verificación de password dummy (bcrypt) cuando el email no existe, manteniendo un tiempo de respuesta constante para prevenir enumeración de usuarios.

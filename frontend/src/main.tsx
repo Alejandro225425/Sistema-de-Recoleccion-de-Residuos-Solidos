@@ -146,6 +146,14 @@ export function App() {
     try {
       const bootstrap = await request<Bootstrap>("/bootstrap");
       setData(bootstrap);
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : "";
+      // Si el backend rechaza el token (401/expirado), limpiar sesión para evitar estado inconsistente
+      if (msg.includes("401") || msg.toLowerCase().includes("token") || msg.toLowerCase().includes("no autorizado")) {
+        localStorage.removeItem("sir-session");
+        localStorage.removeItem("sir-token");
+        setSession(null);
+      }
     } finally {
       setLoading(false);
     }

@@ -2,6 +2,49 @@
 
 ## 2026-08-02
 
+### Version 4.5.1 - Corrección definitiva: Dashboard de Administración muestra pantalla en blanco/negro
+
+#### Causas raíz identificadas y corregidas
+
+1. **`.search-box` sin `position: relative`** (causa principal):
+   - El CSS definía `.search-icon { position: absolute; }` sin que el contenedor padre tuviera `position: relative`.
+   - Esto causaba que los íconos de búsqueda flotaran fuera del layout, colapsando los inputs de búsqueda y rompiendo visualmente todos los formularios del panel Admin.
+   - **Solución**: se agregó `position: relative; display: flex; align-items: center; margin-bottom: 14px;` a `.search-box` en `styles.css`.
+
+2. **Layout incorrecto: Admin usaba clase `two-col` con 6 paneles** (causa de layout):
+   - `Admin.tsx` usaba `className="two-col admin-shell"` pero `.two-col` es un grid de 2 columnas (`1.2fr / 0.8fr`) diseñado para exactamente 2 hijos.
+   - Con 6 paneles sin asignación de `grid-column`, el layout colapsaba produciendo superposición y contenido invisible.
+   - **Solución**: se creó la nueva clase `.admin-grid` en `styles.css` con `grid-template-columns: repeat(2, minmax(0, 1fr))` y responsive a 1 columna en pantallas ≤1024px.
+
+3. **Estilos inline conflictivos con el sistema de temas** (causa de colores):
+   - `Admin.tsx` usaba `style={{ backgroundColor: "var(--bg, #f0f5f2)", color: "var(--ink, #1d2730)" }}` con fallbacks de tema claro hardcodeados.
+   - En modo oscuro, si las variables CSS no resolvían correctamente, el texto oscuro sobre fondo oscuro era invisible.
+   - **Solución**: se eliminó el `style` inline; los colores ahora vienen exclusivamente de `.admin-shell` que referencia las variables CSS sin fallbacks hardcodeados.
+
+4. **Token JWT expirado sin manejo → estado inconsistente** (causa de datos vacíos):
+   - Si el token expiraba, `/bootstrap` devolvía 401 pero la sesión local seguía activa, causando que el Admin renderizara con arrays vacíos sin ningún mensaje de error claro.
+   - **Solución**: `loadData()` en `main.tsx` ahora detecta errores 401/token-inválido y limpia la sesión automáticamente, redirigiendo al login.
+
+5. **Estado de carga (`.loading`) sin estilos explícitos**:
+   - El spinner de carga no tenía estilos CSS dedicados, dependiendo del contexto del padre para visibilidad.
+   - **Solución**: se agregó `.loading` con `display: flex; align-items: center; justify-content: center; background: var(--bg); color: var(--muted);`.
+
+#### Archivos modificados
+- `frontend/src/styles.css` — `position: relative` en `.search-box`, nueva clase `.admin-grid`, `.loading` mejorado, responsive para `.admin-grid`
+- `frontend/src/components/Admin.tsx` — `two-col` → `admin-grid`, eliminación de `style` inline
+- `frontend/src/components/Admin.test.tsx` — test actualizado para verificar clases en lugar de estilos inline
+- `frontend/src/main.tsx` — manejo de token JWT expirado en `loadData()`
+
+#### Verificación
+- Tests unitarios del Admin: `npx vitest run src/components/Admin.test.tsx` — **2 passed**
+- Tests completos del frontend: `npx vitest run` — **todos aprobados**
+- Verificado en modo claro y oscuro
+- Commits realizados en ramas `main` y `version-4.5`
+
+---
+
+## 2026-08-02
+
 ### Version 4.5.0 - Corrección visual del panel de administración
 
 - **Problema corregido**: el panel de administración mostraba pantalla completamente en blanco o negra dependiendo del tema (claro/oscuro).
