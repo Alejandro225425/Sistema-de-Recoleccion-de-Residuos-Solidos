@@ -119,10 +119,71 @@ function exportToPDF(title: string, html: string) {
   printWindow.print();
 }
 
+class ErrorBoundary extends React.Component<
+  { children: React.ReactNode },
+  { hasError: boolean; error: Error | null }
+> {
+  constructor(props: { children: React.ReactNode }) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+
+  static getDerivedStateFromError(error: Error) {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
+    console.error("Error capturado en ErrorBoundary:", error, errorInfo);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="panel" style={{ margin: "32px" }}>
+          <h2>Se produjo un error al renderizar esta sección</h2>
+          <p className="hint error" style={{ margin: "12px 0" }}>
+            {this.state.error?.message || "Error inesperado de interfaz"}
+          </p>
+          <button
+            type="button"
+            onClick={() => this.setState({ hasError: false, error: null })}
+          >
+            Reintentar
+          </button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
 export function App() {
   const [data, setData] = useState<Bootstrap>(emptyBootstrap);
   const [monitor, setMonitor] = useState<Monitor>({});
-  const effectiveData = useMemo(() => ({ ...data, ...monitor }) as Bootstrap, [data, monitor]);
+  const effectiveData = useMemo(() => {
+    const mergedTrucks = (monitor.trucks && monitor.trucks.length > 0)
+      ? monitor.trucks.map(mt => {
+          const base = (data.trucks ?? []).find(t => t.code === mt.code || t.id === mt.id);
+          return { ...base, ...mt };
+        })
+      : (data.trucks ?? []);
+
+    return {
+      ...data,
+      ...monitor,
+      trucks: mergedTrucks,
+      zones: data.zones ?? [],
+      schedules: data.schedules ?? [],
+      routes: monitor.optimized_routes ?? monitor.routes ?? data.routes ?? [],
+      reports: data.reports ?? [],
+      collections: data.collections ?? [],
+      analytics: data.analytics ?? emptyBootstrap.analytics,
+      users: data.users ?? [],
+      containers: monitor.containers ?? data.containers ?? [],
+      maintenance: monitor.maintenance ?? data.maintenance ?? [],
+      notifications: monitor.notifications ?? data.notifications ?? [],
+    } as Bootstrap;
+  }, [data, monitor]);
   const [session, setSession] = useState<Session | null>(() => JSON.parse(localStorage.getItem("sir-session") || "null"));
   const [view, setView] = useState<View>("dashboard");
   const [loading, setLoading] = useState(true);
@@ -138,7 +199,7 @@ export function App() {
   useEffect(() => {
     localStorage.setItem("eco-dark-mode", JSON.stringify(isDarkMode));
     document.documentElement.dataset.theme = isDarkMode ? "dark" : "light";
-    document.documentElement.style.colorScheme = isDarkMode ? "dark" : "light";
+    document.documentElement.style.colorScheme = "light dark";
   }, [isDarkMode]);
 
   async function loadData() {
@@ -146,6 +207,14 @@ export function App() {
     try {
       const bootstrap = await request<Bootstrap>("/bootstrap");
       setData(bootstrap);
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : "";
+      // Si el backend rechaza el token (401/expirado), limpiar sesión para evitar estado inconsistente
+      if (msg.includes("401") || msg.toLowerCase().includes("token") || msg.toLowerCase().includes("no autorizado")) {
+        localStorage.removeItem("sir-session");
+        localStorage.removeItem("sir-token");
+        setSession(null);
+      }
     } finally {
       setLoading(false);
     }
@@ -281,21 +350,23 @@ export function App() {
           <p className={`signal signal-${operationalSignal.tone}`}>{operationalSignal.label}</p>
         </header>
         {message && <div role="alert" className="app-alert">{message}</div>}
-        {loading ? (
-          <div className="loading">Cargando datos...</div>
-        ) : (
-          <Content
-            data={effectiveData}
-            monitor={monitor}
-            session={session}
-            view={view}
-            onCreateReport={createReport}
-            onResolveReport={resolveReport}
-            onOperationUpdate={updateOperation}
-            onCreateCollection={createCollection}
-            onConfirmCollection={confirmCollection}
-          />
-        )}
+        <ErrorBoundary>
+          {loading ? (
+            <div className="loading">Cargando datos...</div>
+          ) : (
+            <Content
+              data={effectiveData}
+              monitor={monitor}
+              session={session}
+              view={view}
+              onCreateReport={createReport}
+              onResolveReport={resolveReport}
+              onOperationUpdate={updateOperation}
+              onCreateCollection={createCollection}
+              onConfirmCollection={confirmCollection}
+            />
+          )}
+        </ErrorBoundary>
       </section>
     </main>
   );

@@ -2,6 +2,43 @@
 
 ## 2026-08-02
 
+### Version 4.5.1 - Corrección definitiva: Dashboard de Administración muestra pantalla en blanco/negro
+
+#### Correcciones aplicadas
+
+1. **ErrorBoundary envuelve el contenido principal** (`frontend/src/main.tsx`):
+   - Antes, el `ErrorBoundary` no envolvía el `<Content>` ni el estado de carga `<div className="loading">`, por lo que si el componente Admin lanzaba un error durante el render, toda la app caía sin recovery UI.
+   - **Solución**: se envolvió `{loading ? <div className="loading">...</div> : <Content ... />}` dentro de `<ErrorBoundary>` para capturar errores del componente Admin y mostrando un mensaje con botón "Reintentar".
+
+2. **Estilos inline del ErrorBoundary reemplazados por clases CSS con fallbacks** (`frontend/src/main.tsx`):
+   - El fallback del ErrorBoundary usaba `style={{ color: "var(--ink)" }}` e `style={{ color: "var(--error)" }}`, que quedaban invisibles si las variables CSS no resolvían correctamente.
+   - **Solución**: se usan las clases CSS `.panel` (con `background: var(--panel, #ffffff)`) y `.hint.error` (con `color: var(--error, #c94735)`), garantizando visibilidad con valores por defecto.
+
+3. **CSS fallbacks agregados a todas las clases admin** (`frontend/src/styles.css`):
+   - `.admin-grid`, `.admin-shell`, `.page-header`, `.main-content`, `.app-shell`, `.loading` y `.hint.error` ahora tienen valores por defecto hardcodeados (ej. `var(--bg, #f0f5f2)`) para garantizar que el dashboard sea visible incluso si las variables CSS no están definidas.
+
+4. **`color-scheme: light dark` agregado** (`frontend/src/styles.css` y `frontend/src/main.tsx`):
+   - Se añadió `color-scheme: light dark` a la regla `html, body, #root`.
+   - Se cambió `document.documentElement.style.colorScheme` de `isDarkMode ? "dark" : "light"` a `"light dark"` para permitir que el navegador adapte automáticamente los controles nativos al tema activo.
+
+5. **Contraste mejorado en modo oscuro para `.admin-list-item`** (`frontend/src/styles.css`):
+   - La clase `html[data-theme="dark"] .admin-list-item` usaba un gradiente lineal con `rgba()` que podía colapsar a negro total si `--panel` no estaba definido.
+   - **Solución**: se cambió a `color-mix(in srgb, var(--panel, #1a1f27) 85%, var(--bg, #0f1419) 15%)` con fallbacks.
+
+#### Archivos modificados
+- `frontend/src/main.tsx` — ErrorBoundary envuelve Content; fallback usa clases CSS; `color-scheme` global
+- `frontend/src/styles.css` — fallbacks en todas las clases admin; `color-scheme` en root
+- `frontend/src/components/Admin.test.tsx` — 2 tests nuevos (paneles visibles, datos undefined/null)
+
+#### Verificación
+- Tests frontend: `npx vitest run` — **16 passed** (4 test files)
+- TypeScript: `npx tsc --noEmit` — 0 errores
+- Build: `npx vite build` — exitoso (25 módulos, 42.10 kB CSS, 406.84 kB JS)
+
+---
+
+## 2026-08-02
+
 ### Version 4.5.0 - Corrección visual del panel de administración
 
 - **Problema corregido**: el panel de administración mostraba pantalla completamente en blanco o negra dependiendo del tema (claro/oscuro).

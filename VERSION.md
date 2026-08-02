@@ -1,4 +1,28 @@
-# Sistema de Recolección de Residuos Sólidos - Versión 4.5.0
+# Sistema de Recolección de Residuos Sólidos - Versión 4.5.1
+
+## Versión 4.5.1 - Corrección definitiva del Dashboard de Administración
+
+### Problema resuelto: pantalla en blanco/negro en la vista Admin
+
+Esta versión corrige de forma definitiva la regresión por la cual el panel de Administración (`/admin`) mostraba una pantalla completamente en blanco (tema claro) o negra (tema oscuro) al acceder.
+
+#### Correcciones aplicadas
+
+| # | Componente | Problema | Solución |
+|---|-----------|----------|----------|
+| 1 | `styles.css` | `.search-box` sin `position: relative` → ícono absoluto se desborda | Se agrega `position: relative; display: flex; align-items: center` |
+| 2 | `Admin.tsx` | Clase `two-col` (2 hijos esperados) con 6 paneles → layout colapsado | Nueva clase `.admin-grid` con `repeat(2, 1fr)` responsive |
+| 3 | `Admin.tsx` | `style` inline con fallbacks de tema claro → texto invisible en modo oscuro | Se elimina el `style` inline; colores vienen de variables CSS |
+| 4 | `main.tsx` | Token JWT expirado no detectado → Admin con datos vacíos | `loadData()` detecta 401 y limpia la sesión automáticamente |
+| 5 | `styles.css` | `.loading` sin estilos → spinner puede ser invisible | Se agrega clase `.loading` con flex y colores de tema |
+
+#### Archivos modificados
+- `frontend/src/styles.css`
+- `frontend/src/components/Admin.tsx`
+- `frontend/src/components/Admin.test.tsx`
+- `frontend/src/main.tsx`
+
+---
 
 ## Versión 4.5.0 - Corrección visual del panel de administración
 
@@ -16,7 +40,7 @@
   - ReportList: `export` restaurado, `safeReports`, `safeTrucks`, y protecciones null en propiedades de report
 - **Archivo modificado**: `frontend/src/main.tsx`
 
-Esta es la **versión 4.5.0** del Sistema Inteligente de Recolección de Residuos Sólidos para la Gestión Ambiental Urbana en la ciudad del Cusco.
+Esta es la **versión 4.5.1** del Sistema Inteligente de Recolección de Residuos Sólidos para la Gestión Ambiental Urbana en la ciudad del Cusco.
 
 ### Correcciones de login y seguridad
 - **Timing attack corregido**: el endpoint `/api/auth/login` ahora ejecuta una verificación de password dummy (bcrypt) cuando el email no existe, manteniendo un tiempo de respuesta constante para prevenir enumeración de usuarios.
@@ -153,14 +177,15 @@ Esta es la **versión 4.5.0** del Sistema Inteligente de Recolección de Residuo
 - Desplegar en producción
 
 ## Estado actual
- - Versión 4.5.0: panel de administración corregido para que no quede en modo negro/blanco; se añadieron colores de fallback, inicialización del tema previa al render y contenedor seguro para el contenido. Además incluye mejoras de login, dashboard y seguridad ya consolidadas en 4.0.0.
-- Endpoint operativo `/api/health` validado y funcionando en modo memoria y con persistencia PostgreSQL cuando `DATABASE_URL` está configurada.
-- Backend Python verificado con `16 passed` en la suite de pruebas.
-- Frontend React validado con pruebas e2e reales contra FastAPI y microservicio TypeScript compilado con éxito.
-- Configuración de despliegue preparada para Render + Vercel (recomendado) o Render + Netlify.
+ - Versión 4.5.1: corrección definitiva del Dashboard de Administración — ErrorBoundary envuelve el contenido Admin, fallbacks CSS en todas las clases admin (`var(--bg, #f0f5f2)`), `color-scheme: light dark`, y mejor contraste en modo oscuro para `.admin-list-item`. Tests frontend: 16 passed.
+ - Endpoint operativo `/api/health` validado y funcionando en modo memoria y con persistencia PostgreSQL cuando `DATABASE_URL` está configurada.
+ - Backend Python verificado con `16 passed` en la suite de pruebas.
+ - Frontend React validado con pruebas e2e reales contra FastAPI y microservicio TypeScript compilado con éxito.
+ - Configuración de despliegue preparada para Render + Vercel (recomendado) o Render + Netlify.
 
 | Versión | Rama | Estado |
 |---------|------|--------|
+| **4.5.1** | `main`, `version-4.5` | Corrección definitiva: ErrorBoundary, fallbacks CSS, color-scheme |
 | **4.5.0** | `main`, `version-4.5` | Corrección visual del panel de administración y mejoras de UX |
 | **3.0.0** | `main`, `version-3` | Proyecto organizado y documentación consolidada |
 | 2.0.0 | `main`, `v2.0.0` | Configuración de despliegue lista para producción |
