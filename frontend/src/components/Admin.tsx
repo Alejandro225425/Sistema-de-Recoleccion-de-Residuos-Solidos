@@ -277,33 +277,38 @@ export default function Admin({ data, session, onResolveReport, onOperationUpdat
     setEventNote("");
   }
 
+  function updateUserField(field: keyof typeof formValues, value: string) {
+    setFormValues(prev => ({ ...prev, [field]: value }));
+  }
+
+  function renderListItem(children: React.ReactNode, key?: string) {
+    return <li className="admin-list-item" key={key}>{children}</li>;
+  }
+
   return (
     <div className="two-col">
       <section className="panel">
         <h2>Gestión de usuarios</h2>
         <p>Administra roles, accesos y usuarios del sistema.</p>
         <form className="form-grid" onSubmit={createUser}>
-          <label htmlFor="admin-user-name">Nombre<input id="admin-user-name" required value={formValues.name} onChange={event => setFormValues(prev => ({ ...prev, name: event.currentTarget.value }))} /></label>
-          <label htmlFor="admin-user-email">Correo<input id="admin-user-email" required type="email" value={formValues.email} onChange={event => setFormValues(prev => ({ ...prev, email: event.currentTarget.value }))} /></label>
-          <label htmlFor="admin-user-password">Contraseña<input id="admin-user-password" required type="password" minLength={8} value={formValues.password} onChange={event => setFormValues(prev => ({ ...prev, password: event.currentTarget.value }))} /></label>
-          <label htmlFor="admin-user-role">Rol<select id="admin-user-role" value={formValues.role} onChange={event => setFormValues(prev => ({ ...prev, role: event.currentTarget.value as Role }))}>
+          <label htmlFor="admin-user-name">Nombre<input id="admin-user-name" required value={formValues.name} onChange={event => updateUserField("name", event.currentTarget.value)} /></label>
+          <label htmlFor="admin-user-email">Correo<input id="admin-user-email" required type="email" value={formValues.email} onChange={event => updateUserField("email", event.currentTarget.value)} /></label>
+          <label htmlFor="admin-user-password">Contraseña<input id="admin-user-password" required type="password" minLength={8} value={formValues.password} onChange={event => updateUserField("password", event.currentTarget.value)} /></label>
+          <label htmlFor="admin-user-role">Rol<select id="admin-user-role" value={formValues.role} onChange={event => updateUserField("role", event.currentTarget.value)}>
             <option value="ciudadano">Ciudadano</option>
             <option value="operador">Operador</option>
             <option value="admin">Administrador</option>
             <option value="conductor">Conductor</option>
           </select></label>
-          <label htmlFor="admin-user-zone">Zona<input id="admin-user-zone" value={formValues.zone} onChange={event => {
-              const value = event.target.value;
-              setFormValues(prev => ({ ...prev, zone: value }));
-            }} /></label>
+          <label htmlFor="admin-user-zone">Zona<input id="admin-user-zone" value={formValues.zone} onChange={event => updateUserField("zone", event.currentTarget.value)} /></label>
           <button type="submit">Crear usuario</button>
         </form>
         {feedback && <p className="hint success" role="status" aria-live="polite">{feedback}</p>}
         <ul className="list" aria-label="Lista de usuarios">
           {users.length === 0 ? (
             <li className="empty-state">No hay usuarios registrados todavía.</li>
-          ) : users.map((user, index) => (
-            <li key={`user-${user.id ?? user.email}-${index}`} className="admin-list-item">
+          ) : users.map((user, index) => renderListItem(
+            <>
               <div className="admin-list-main">
                 <strong>{user.name ?? "Sin nombre"}</strong>
                 <div className="admin-list-meta">{user.email} · {user.zone ?? "Sin zona"}</div>
@@ -320,7 +325,8 @@ export default function Admin({ data, session, onResolveReport, onOperationUpdat
                 </select>
                 <button type="button" onClick={() => updateUserRole(user)} disabled={!user.id || savingUserIds.includes(user.id)}>{savingUserIds.includes(user.id ?? -1) ? "Guardando..." : "Guardar rol"}</button>
               </div>
-            </li>
+            </>,
+            `user-${user.id ?? user.email}-${index}`
           ))}
         </ul>
       </section>
@@ -356,8 +362,8 @@ export default function Admin({ data, session, onResolveReport, onOperationUpdat
         <ul className="list" aria-label="Lista de zonas">
           {filteredZones.length === 0 ? (
             <li className="empty-state">No se encontraron zonas que coincidan con el filtro.</li>
-          ) : filteredZones.map(zone => (
-            <li key={zone.id} className="admin-list-item">
+          ) : filteredZones.map(zone => renderListItem(
+            <>
               <div className="admin-list-main">
                 <strong>{zone.name ?? "Sin nombre"}</strong>
                 <div className="admin-list-meta">Criticidad {zone.criticality ?? "Sin datos"}</div>
@@ -366,7 +372,8 @@ export default function Admin({ data, session, onResolveReport, onOperationUpdat
                 <button type="button" onClick={() => startEditZone(zone)}>Editar zona</button>
                 <button type="button" onClick={() => deleteZone(zone.id)}>Eliminar zona</button>
               </div>
-            </li>
+            </>,
+            `zone-${zone.id}`
           ))}
         </ul>
       </section>
@@ -419,8 +426,8 @@ export default function Admin({ data, session, onResolveReport, onOperationUpdat
         <ul className="list" aria-label="Lista de horarios">
           {schedules.length === 0 ? (
             <li className="empty-state">No hay horarios registrados aún.</li>
-          ) : schedules.map(schedule => (
-            <li key={schedule.id} className="admin-list-item">
+          ) : schedules.map(schedule => renderListItem(
+            <>
               <div className="admin-list-main">
                 <strong>{schedule.zone}</strong>
                 <div className="admin-list-meta">{schedule.day} · {schedule.time} · {schedule.waste}</div>
@@ -429,7 +436,8 @@ export default function Admin({ data, session, onResolveReport, onOperationUpdat
                 <button type="button" onClick={() => startEditSchedule(schedule)}>Editar</button>
                 <button type="button" onClick={() => deleteSchedule(schedule.id)}>Eliminar</button>
               </div>
-            </li>
+            </>,
+            `schedule-${schedule.id}`
           ))}
         </ul>
       </section>

@@ -65,15 +65,43 @@ const emptyBootstrap: Bootstrap = {
   analytics: { zones: 0, active_trucks: 0, open_reports: 0, confirmed_collections: 0, total_kg: 0, compliance: 0 }
 };
 
+function applyThemePreference(isDarkMode: boolean) {
+  document.documentElement.dataset.theme = isDarkMode ? "dark" : "light";
+  document.documentElement.style.colorScheme = isDarkMode ? "dark" : "light";
+}
+
+function getInitialThemePreference() {
+  if (typeof window === "undefined") return false;
+  const saved = window.localStorage.getItem("eco-dark-mode");
+  if (saved !== null) {
+    try {
+      return JSON.parse(saved) as boolean;
+    } catch {
+      return false;
+    }
+  }
+  if (typeof window.matchMedia === "function") {
+    return window.matchMedia("(prefers-color-scheme: dark)").matches;
+  }
+  return false;
+}
+
+const initialThemePreference = getInitialThemePreference();
+applyThemePreference(initialThemePreference);
+
+function safeLower(value: unknown) {
+  return String(value ?? "").toLowerCase();
+}
+
 function statusTone(status: string | undefined | null) {
-  const s = (status ?? "").toString().toLowerCase();
+  const s = safeLower(status);
   if (s === "resuelto") return "blue";
   if (s === "en revision") return "yellow";
   return "red";
 }
 
 function getOperationalSignal(data: Bootstrap) {
-  const delayedRoutes = data.routes.filter(route => String(route.delay ?? "").toLowerCase().includes("retraso")).length;
+  const delayedRoutes = (Array.isArray(data.routes) ? data.routes : []).filter(route => safeLower(route.delay).includes("retraso")).length;
   if (data.analytics.open_reports > 2 || delayedRoutes > 0) {
     return { label: `${data.analytics.open_reports} incidencias abiertas`, tone: "warning" };
   }
@@ -129,16 +157,12 @@ export function App() {
   const [message, setMessage] = useState("");
   const accessibleViews = session?.role === "admin" ? views : views.filter(item => item !== "admin");
 
-  const [isDarkMode, setIsDarkMode] = useState(() => {
-    const saved = localStorage.getItem("eco-dark-mode");
-    return saved ? JSON.parse(saved) : window.matchMedia("(prefers-color-scheme: dark)").matches;
-  });
+  const [isDarkMode, setIsDarkMode] = useState(initialThemePreference);
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   useEffect(() => {
     localStorage.setItem("eco-dark-mode", JSON.stringify(isDarkMode));
-    document.documentElement.dataset.theme = isDarkMode ? "dark" : "light";
-    document.documentElement.style.colorScheme = isDarkMode ? "dark" : "light";
+    applyThemePreference(isDarkMode);
   }, [isDarkMode]);
 
   async function loadData() {
@@ -375,11 +399,11 @@ function Dashboard({ data, monitor, session }: { data: Bootstrap; monitor: Monit
 
   const alerts = useMemo(() => (monitor.alerts ?? []).map((alert, index) => ({
     id: index,
-    icon: String(alert ?? "").toLowerCase().includes("retraso") ? "🚛" : "🔔",
-    title: alert ?? "Alerta",
-    description: alert ?? "Alerta",
+    icon: safeLower(alert).includes("retraso") ? "🚛" : "🔔",
+    title: alert,
+    description: alert,
     time: "Ahora",
-    status: String(alert ?? "").toLowerCase().includes("retraso") ? "pendiente" : "activo"
+    status: safeLower(alert).includes("retraso") ? "pendiente" : "activo"
   })), [monitor.alerts]);
 
   return (
@@ -487,7 +511,7 @@ function Schedules({ schedules }: { schedules: Schedule[] }) {
 
   const filtered = useMemo(() => {
     return schedules.filter(s => {
-      const matchSearch = String(s.zone ?? "").toLowerCase().includes(String(search ?? "").toLowerCase());
+      const matchSearch = safeLower(s.zone).includes(search.toLowerCase());
       const matchDay = selectedDay === "Todos" || s.day === selectedDay;
       return matchSearch && matchDay;
     });
@@ -495,8 +519,8 @@ function Schedules({ schedules }: { schedules: Schedule[] }) {
 
   const sorted = useMemo(() => {
     return [...filtered].sort((a, b) => {
-      const av = String(a[sortBy] ?? "").toLowerCase();
-      const bv = String(b[sortBy] ?? "").toLowerCase();
+      const av = safeLower(a[sortBy]);
+      const bv = safeLower(b[sortBy]);
       const cmp = av < bv ? -1 : av > bv ? 1 : 0;
       return sortDir === "asc" ? cmp : -cmp;
     });
@@ -579,9 +603,10 @@ function Reports({ data, session, onCreateReport, onResolveReport }: { data: Boo
   const [formDetail, setFormDetail] = useState("");
   const [filterStatus, setFilterStatus] = useState("Todos");
   const [searchQuery, setSearchQuery] = useState("");
-  const safeReports = useMemo(() => (Array.isArray(data.reports) ? data.reports : []), [data.reports]);
-  const safeZones = useMemo(() => (Array.isArray(data.zones) ? data.zones : []), [data.zones]);
-  const safeTrucks = useMemo(() => (Array.isArray(data.trucks) ? data.trucks : []), [data.trucks]);
+
+  const safeReports = useMemo(() => Array.isArray(data.reports) ? data.reports : [], [data.reports]);
+  const safeZones = useMemo(() => Array.isArray(data.zones) ? data.zones : [], [data.zones]);
+  const safeTrucks = useMemo(() => Array.isArray(data.trucks) ? data.trucks : [], [data.trucks]);
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -611,13 +636,12 @@ function Reports({ data, session, onCreateReport, onResolveReport }: { data: Boo
     }
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase().trim();
-      result = result.filter(r => {
-        const type = String(r.type ?? "").toLowerCase();
-        const zone = String(r.zone ?? "").toLowerCase();
-        const citizen = String(r.citizen ?? "").toLowerCase();
-        const detail = String(r.detail ?? "").toLowerCase();
-        return type.includes(q) || zone.includes(q) || citizen.includes(q) || detail.includes(q);
-      });
+      result = result.filter(r =>
+        safeLower(r.type).includes(q) ||
+        safeLower(r.zone).includes(q) ||
+        safeLower(r.citizen).includes(q) ||
+        safeLower(r.detail).includes(q)
+      );
     }
     return result;
   }, [safeReports, filterStatus, searchQuery]);
@@ -714,7 +738,7 @@ function Routes({ data, monitor, session, onCreateCollection }: { data: Bootstra
         <section className="panel">
           <h2>Seguimiento GPS</h2>
           <div className="list">
-            {routes.map(route => <Item key={route.id} title={`${route.truck} - ${route.zone}`} detail={`Avance ${route.progress}% | ETA ${route.eta} | ${route.delay}`} color={String(route.delay ?? "").toLowerCase().includes("retraso") ? "yellow" : "blue"} />)}
+            {routes.map(route => <Item key={route.id} title={`${route.truck} - ${route.zone}`} detail={`Avance ${route.progress}% | ETA ${route.eta} | ${route.delay}`} color={route.delay.includes("Retraso") ? "yellow" : "blue"} />)}
             {alerts.map(alert => <Item key={alert} title="Microservicio TS" detail={alert} color="blue" />)}
           </div>
         </section>
@@ -966,7 +990,7 @@ function Analytics({ data, session, onConfirmCollection }: { data: Bootstrap; se
                 <span className={`tag ${item.status === "Confirmada" ? "blue" : "yellow"}`}>{item.status}</span>
               </div>
               <span>{`${item.truck} · ${item.kg} kg`}</span>
-              {session && session.role === "ciudadano" && !String(item.status).toLowerCase().includes("confirmada") && onConfirmCollection && (
+              {session && session.role === "ciudadano" && !safeLower(item.status).includes("confirmada") && onConfirmCollection && (
                 <div style={{ marginTop: 8 }}>
                   <button className="btn-primary" onClick={() => onConfirmCollection(item.id)}>Confirmar recolección</button>
                 </div>
@@ -1016,7 +1040,7 @@ function Map({ zones, trucks, routes, prioritizedZones }: { zones: Zone[]; truck
       }
     });
     trucks.forEach(truck => L.circleMarker([truck.latitude, truck.longitude], { radius: 8, color: "#f5b942", fillOpacity: 0.9 }).bindPopup(`${truck.code} - ${truck.status}`).addTo(layer));
-    routes.forEach(route => L.circle([route.latitude, route.longitude], { radius: 450, color: String(route.delay ?? "").toLowerCase().includes("retraso") ? "#c94735" : "#0f8b8d" }).bindPopup(`${route.truck}: ${route.eta}`).addTo(layer));
+    routes.forEach(route => L.circle([route.latitude, route.longitude], { radius: 450, color: safeLower(route.delay).includes("retraso") ? "#c94735" : "#0f8b8d" }).bindPopup(`${route.truck}: ${route.eta}`).addTo(layer));
     mapRef.current.invalidateSize();
   }, [signature, zones, trucks, routes, prioritizedZones]);
 
@@ -1033,20 +1057,21 @@ function Map({ zones, trucks, routes, prioritizedZones }: { zones: Zone[]; truck
   return <div className="map" ref={ref} />;
 }
 
-export function ReportList({ reports, trucks = [], showDriverFilter = false, showResolve = false, onResolveReport }: { reports: Report[]; trucks?: Truck[]; showDriverFilter?: boolean; showResolve?: boolean; onResolveReport?: (id: number) => Promise<void>; }) {
+function ReportList({ reports, trucks = [], showDriverFilter = false, showResolve = false, onResolveReport }: { reports: Report[]; trucks?: Truck[]; showDriverFilter?: boolean; showResolve?: boolean; onResolveReport?: (id: number) => Promise<void>; }) {
   const [search, setSearch] = useState("");
   const [filterStatus, setFilterStatus] = useState("Todos");
   const [driverSearch, setDriverSearch] = useState("");
   const [resolvingId, setResolvingId] = useState<number | null>(null);
-  const safeReports = useMemo(() => (Array.isArray(reports) ? reports : []), [reports]);
-  const safeTrucks = useMemo(() => (Array.isArray(trucks) ? trucks : []), [trucks]);
   
+  const safeReports = useMemo(() => Array.isArray(reports) ? reports : [], [reports]);
+  const safeTrucks = useMemo(() => Array.isArray(trucks) ? trucks : [], [trucks]);
+
   const driverByZone = useMemo(() => {
     const map: Record<string, string> = {};
     safeTrucks.forEach(truck => {
-      const zoneKey = String(truck.zone ?? "").toLowerCase();
+      const zoneKey = safeLower(truck.zone);
       if (!map[zoneKey]) {
-        map[zoneKey] = String(truck.driver ?? "").toLowerCase();
+        map[zoneKey] = safeLower(truck.driver);
       }
     });
     return map;
@@ -1057,18 +1082,17 @@ export function ReportList({ reports, trucks = [], showDriverFilter = false, sho
     const normalizedDriver = driverSearch.toLowerCase().trim();
 
     return safeReports.filter(r => {
-      const zoneKey = String(r.zone ?? "").toLowerCase();
-      const reportDriver = driverByZone[zoneKey] ?? "";
-      const matchSearch = String(r.type ?? "").toLowerCase().includes(normalizedSearch) || 
-                          zoneKey.includes(normalizedSearch) ||
-                          String(r.citizen ?? "").toLowerCase().includes(normalizedSearch) ||
-                          String(r.detail ?? "").toLowerCase().includes(normalizedSearch) ||
+      const reportDriver = driverByZone[safeLower(r.zone)] ?? "";
+      const matchSearch = safeLower(r.type).includes(normalizedSearch) || 
+                          safeLower(r.zone).includes(normalizedSearch) ||
+                          safeLower(r.citizen).includes(normalizedSearch) ||
+                          safeLower(r.detail).includes(normalizedSearch) ||
                           reportDriver.includes(normalizedSearch);
       const matchStatus = filterStatus === "Todos" || r.status === filterStatus;
       const matchDriver = !normalizedDriver || reportDriver.includes(normalizedDriver);
       return matchSearch && matchStatus && matchDriver;
     });
-  }, [safeReports, search, filterStatus, driverSearch, driverByZone]);
+  }, [reports, search, filterStatus, driverSearch, driverByZone]);
   
   const statuses: Array<"Todos" | ReportStatus> = ["Todos", "Pendiente", "En revision", "Resuelto"];
   
@@ -1104,8 +1128,7 @@ export function ReportList({ reports, trucks = [], showDriverFilter = false, sho
            </p>
          ) : (
           filtered.map(report => {
-            const zoneKey = String(report.zone ?? "").toLowerCase();
-            const reportDriver = driverByZone[zoneKey] ?? "Sin conductor asignado";
+            const reportDriver = driverByZone[safeLower(report.zone)] ?? "Sin conductor asignado";
             return (
               <article className="item" key={report.id}>
                 <div className="item-row">
