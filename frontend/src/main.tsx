@@ -65,15 +65,15 @@ const emptyBootstrap: Bootstrap = {
   analytics: { zones: 0, active_trucks: 0, open_reports: 0, confirmed_collections: 0, total_kg: 0, compliance: 0 }
 };
 
-function statusTone(status: string) {
-  const s = status.toLowerCase();
+function statusTone(status: string | undefined | null) {
+  const s = (status ?? "").toString().toLowerCase();
   if (s === "resuelto") return "blue";
   if (s === "en revision") return "yellow";
   return "red";
 }
 
 function getOperationalSignal(data: Bootstrap) {
-  const delayedRoutes = data.routes.filter(route => route.delay.toLowerCase().includes("retraso")).length;
+  const delayedRoutes = data.routes.filter(route => String(route.delay ?? "").toLowerCase().includes("retraso")).length;
   if (data.analytics.open_reports > 2 || delayedRoutes > 0) {
     return { label: `${data.analytics.open_reports} incidencias abiertas`, tone: "warning" };
   }
@@ -375,11 +375,11 @@ function Dashboard({ data, monitor, session }: { data: Bootstrap; monitor: Monit
 
   const alerts = useMemo(() => (monitor.alerts ?? []).map((alert, index) => ({
     id: index,
-    icon: alert.toLowerCase().includes("retraso") ? "🚛" : "🔔",
-    title: alert,
-    description: alert,
+    icon: String(alert ?? "").toLowerCase().includes("retraso") ? "🚛" : "🔔",
+    title: alert ?? "Alerta",
+    description: alert ?? "Alerta",
     time: "Ahora",
-    status: alert.toLowerCase().includes("retraso") ? "pendiente" : "activo"
+    status: String(alert ?? "").toLowerCase().includes("retraso") ? "pendiente" : "activo"
   })), [monitor.alerts]);
 
   return (
@@ -608,12 +608,13 @@ function Reports({ data, session, onCreateReport, onResolveReport }: { data: Boo
     }
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase().trim();
-      result = result.filter(r =>
-        r.type.toLowerCase().includes(q) ||
-        r.zone.toLowerCase().includes(q) ||
-        r.citizen.toLowerCase().includes(q) ||
-        r.detail.toLowerCase().includes(q)
-      );
+      result = result.filter(r => {
+        const type = String(r.type ?? "").toLowerCase();
+        const zone = String(r.zone ?? "").toLowerCase();
+        const citizen = String(r.citizen ?? "").toLowerCase();
+        const detail = String(r.detail ?? "").toLowerCase();
+        return type.includes(q) || zone.includes(q) || citizen.includes(q) || detail.includes(q);
+      });
     }
     return result;
   }, [data.reports, filterStatus, searchQuery]);
@@ -1029,7 +1030,7 @@ function Map({ zones, trucks, routes, prioritizedZones }: { zones: Zone[]; truck
   return <div className="map" ref={ref} />;
 }
 
-function ReportList({ reports, trucks = [], showDriverFilter = false, showResolve = false, onResolveReport }: { reports: Report[]; trucks?: Truck[]; showDriverFilter?: boolean; showResolve?: boolean; onResolveReport?: (id: number) => Promise<void>; }) {
+export function ReportList({ reports, trucks = [], showDriverFilter = false, showResolve = false, onResolveReport }: { reports: Report[]; trucks?: Truck[]; showDriverFilter?: boolean; showResolve?: boolean; onResolveReport?: (id: number) => Promise<void>; }) {
   const [search, setSearch] = useState("");
   const [filterStatus, setFilterStatus] = useState("Todos");
   const [driverSearch, setDriverSearch] = useState("");
@@ -1038,9 +1039,9 @@ function ReportList({ reports, trucks = [], showDriverFilter = false, showResolv
   const driverByZone = useMemo(() => {
     const map: Record<string, string> = {};
     trucks.forEach(truck => {
-      const zoneKey = truck.zone.toLowerCase();
+      const zoneKey = String(truck.zone ?? "").toLowerCase();
       if (!map[zoneKey]) {
-        map[zoneKey] = truck.driver.toLowerCase();
+        map[zoneKey] = String(truck.driver ?? "").toLowerCase();
       }
     });
     return map;
@@ -1051,11 +1052,12 @@ function ReportList({ reports, trucks = [], showDriverFilter = false, showResolv
     const normalizedDriver = driverSearch.toLowerCase().trim();
 
     return reports.filter(r => {
-      const reportDriver = driverByZone[r.zone.toLowerCase()] ?? "";
-      const matchSearch = r.type.toLowerCase().includes(normalizedSearch) || 
-                          r.zone.toLowerCase().includes(normalizedSearch) ||
-                          r.citizen.toLowerCase().includes(normalizedSearch) ||
-                          r.detail.toLowerCase().includes(normalizedSearch) ||
+      const zoneKey = String(r.zone ?? "").toLowerCase();
+      const reportDriver = driverByZone[zoneKey] ?? "";
+      const matchSearch = String(r.type ?? "").toLowerCase().includes(normalizedSearch) || 
+                          zoneKey.includes(normalizedSearch) ||
+                          String(r.citizen ?? "").toLowerCase().includes(normalizedSearch) ||
+                          String(r.detail ?? "").toLowerCase().includes(normalizedSearch) ||
                           reportDriver.includes(normalizedSearch);
       const matchStatus = filterStatus === "Todos" || r.status === filterStatus;
       const matchDriver = !normalizedDriver || reportDriver.includes(normalizedDriver);
@@ -1097,17 +1099,18 @@ function ReportList({ reports, trucks = [], showDriverFilter = false, showResolv
            </p>
          ) : (
           filtered.map(report => {
-            const reportDriver = driverByZone[report.zone.toLowerCase()] ?? "Sin conductor asignado";
+            const zoneKey = String(report.zone ?? "").toLowerCase();
+            const reportDriver = driverByZone[zoneKey] ?? "Sin conductor asignado";
             return (
               <article className="item" key={report.id}>
                 <div className="item-row">
-                  <strong>{report.type}</strong>
+                  <strong>{report.type ?? "Sin tipo"}</strong>
                   <span className={`tag ${statusTone(report.status)}`}>
-                     {report.status}
+                     {report.status ?? "Sin estado"}
                   </span>
                 </div>
-                <span>{report.zone} | {report.citizen} | {reportDriver}</span>
-                <p>{report.detail}</p>
+                <span>{report.zone ?? "Sin zona"} | {report.citizen ?? "Sin ciudadano"} | {reportDriver}</span>
+                <p>{report.detail ?? "Sin detalle"}</p>
               </article>
             );
           })

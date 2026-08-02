@@ -38,6 +38,7 @@ Sistema inteligente para la recoleccion de residuos solidos segregados en la ciu
 - Página de login mejorada: tabs de modo (Iniciar sesión / Registrarse / Recuperar), rol y zona solo en registro, enlace fantasma para recuperación de contraseña.
 - Dashboard de reportes revisado en versión 4.0.0: formulario de reportes convertido a controlled components, filtros de estado y búsqueda en la vista de reportes, optimización de rendimiento del dashboard (tick con useRef, effectiveData memoizado, Map signature optimization), corrección de tipos (`Report.status` usa `ReportStatus`), corrección de bug crítico de indentación en backend (`create_collection_record` y `confirm_collection_by_citizen` inaccesibles), estilos inline migados a clases CSS, `statusTone` case-insensitive.
 - Corregido fondo negro en la vista de reportes del dashboard: eliminado centrado flex del `<body>` en `frontend/index.html` y ajustados estilos CSS en `frontend/src/styles.css` para que el contenido ocupe toda la ventana sin fondos oscuros alrededor.
+- Corregido el fallo que dejaba vacías las vistas de reportes y administración cuando algunos campos llegaban vacíos o `undefined`, protegiendo el renderizado contra excepciones de `toLowerCase()` y añadiendo una prueba de regresión en `frontend/src/ReportList.test.tsx`.
 
 ## Progreso implementado hasta ahora
 
