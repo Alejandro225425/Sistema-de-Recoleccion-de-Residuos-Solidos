@@ -359,6 +359,18 @@ button.btn-gold:hover { background: var(--eco-gold-light); box-shadow: 0 6px 20p
   transform: none !important;
 }
 
+@media (max-width: 640px) {
+  .auth-tabs {
+    flex-direction: column;
+    gap: 2px;
+  }
+  .auth-tab {
+    text-align: center;
+    padding: 10px 12px;
+    font-size: 0.85rem;
+  }
+}
+
 .form-header { text-align: left; margin-bottom: 4px; }
 .form-header h2 { font-size: 1.5rem; color: var(--ink); margin-bottom: 4px; }
 .form-header p { color: var(--muted); font-size: 0.9rem; }
