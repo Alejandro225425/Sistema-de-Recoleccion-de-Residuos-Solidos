@@ -2,6 +2,22 @@
 
 ## 2026-08-02
 
+### Version 4.5.0 - Corrección visual del panel de administración
+
+- **Problema corregido**: el panel de administración mostraba pantalla completamente en blanco o negra dependiendo del tema (claro/oscuro).
+- **Causa raíz**: el commit `c2aeea7` eliminó protecciones de seguridad (null checks) en `frontend/src/main.tsx`, lo que causaba errores de ejecución (TypeError) cuando los datos del bootstrap tenían campos `undefined` o `null`. La función `getOperationalSignal` llamaba `data.routes.filter(...)` sin verificar si `routes` existía, provocando un crash de React y una pantalla en blanco/negra.
+- **Solución**: se restauraron las protecciones de seguridad esenciales en `main.tsx`:
+  - `statusTone()`: se restauró el tipo `string | undefined | null` y el fallback `(status ?? "").toString()`
+  - `getOperationalSignal()`: se agregó `(data.routes ?? [])` y `String(route.delay ?? "")` para prevenir crashes
+  - Alertas del Dashboard: se restauró `String(alert ?? "")` y fallback `"Alerta"`
+  - Schedules search: se restauró `String(s.zone ?? "")` y `String(search ?? "")`
+  - Routes/Map: se restauró `String(route.delay ?? "")` para prevenir crashes
+  - Reports: se restauraron `safeReports`, `safeZones`, `safeTrucks` con `Array.isArray()` checks
+  - ReportList: se restauró `export`, `safeReports`, `safeTrucks`, y protecciones null en propiedades de report
+- **Archivos modificados**: `frontend/src/main.tsx`
+- **Verificación**: pruebas del frontend ejecutadas correctamente con `npx vitest run` — 14 tests aprobados.
+
+
 ### Fix: Fondo negro en vista de reportes del dashboard
 
 - **Problema**: el `<body>` en `frontend/index.html` tenía `display: flex; align-items: center; justify-content: center`, lo que centraba el contenido vertical y horizontalmente. En la vista de reportes, al ser más corta que la ventana, se mostraba el fondo oscuro original `#0a1f14` alrededor, dando la sensación de pantalla negra.

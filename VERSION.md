@@ -1,8 +1,22 @@
-# Sistema de Recolección de Residuos Sólidos - Versión 4.0.0
+# Sistema de Recolección de Residuos Sólidos - Versión 4.5.0
 
-## Versión 4.0.0 - Revisión completa del login y seguridad
+## Versión 4.5.0 - Corrección visual del panel de administración
 
-Esta es la **versión 4.0.0** del Sistema Inteligente de Recolección de Residuos Sólidos para la Gestión Ambiental Urbana en la ciudad del Cusco.
+### Corrección crítica: Dashboard de Administración en blanco/negro
+
+- **Problema**: el Dashboard de Administración mostraba una pantalla completamente en blanco (tema claro) o negra (tema oscuro) al acceder.
+- **Causa raíz**: el commit `c2aeea7` eliminó protecciones de seguridad (null checks) en `frontend/src/main.tsx`. La función `getOperationalSignal()` llamaba `data.routes.filter(...)` sin verificar si `routes` existía, lo que provocaba un `TypeError` y el crash de todo el componente `App`, resultando en pantalla en blanco/negra.
+- **Solución**: se restauraron las protecciones de seguridad esenciales en `main.tsx`:
+  - `statusTone()`: tipo `string | undefined | null` con fallback `(status ?? "").toString()`
+  - `getOperationalSignal()`: `(data.routes ?? [])` y `String(route.delay ?? "")`
+  - Alertas del Dashboard: `String(alert ?? "")` y fallback `"Alerta"`
+  - Schedules search: `String(s.zone ?? "")` y `String(search ?? "")`
+  - Routes/Map: `String(route.delay ?? "")`
+  - Reports: `safeReports`, `safeZones`, `safeTrucks` con `Array.isArray()` checks
+  - ReportList: `export` restaurado, `safeReports`, `safeTrucks`, y protecciones null en propiedades de report
+- **Archivo modificado**: `frontend/src/main.tsx`
+
+Esta es la **versión 4.5.0** del Sistema Inteligente de Recolección de Residuos Sólidos para la Gestión Ambiental Urbana en la ciudad del Cusco.
 
 ### Correcciones de login y seguridad
 - **Timing attack corregido**: el endpoint `/api/auth/login` ahora ejecuta una verificación de password dummy (bcrypt) cuando el email no existe, manteniendo un tiempo de respuesta constante para prevenir enumeración de usuarios.
@@ -88,7 +102,7 @@ Esta es la **versión 4.0.0** del Sistema Inteligente de Recolección de Residuo
 | D | Railway | Netlify | $5 crédito/mes (Railway) |
 
 ### Rama de producción
-- Rama: `main` y `version-4`
+- Rama: `main` y `version-4.5`
 - Repositorio: `Alejandro225425/Sistema-de-Recoleccion-de-Residuos-Solidos`
 
 ### Próximos pasos
@@ -139,7 +153,7 @@ Esta es la **versión 4.0.0** del Sistema Inteligente de Recolección de Residuo
 - Desplegar en producción
 
 ## Estado actual
- - Versión 4.0.0: login revisado, corregido timing attack, eliminado hack de `window.__password`, toggle de visibilidad de contraseña, indicador de fortaleza, token de recuperación visible en demo, AuthView extraído a componente dedicado. Dashboard revisado y corregido (horas de despacho, alerts case-sensitivity, estado vacío, badge de rol, ARIA, signal tone, código muerto).
+ - Versión 4.5.0: panel de administración corregido para que no quede en modo negro/blanco; se añadieron colores de fallback, inicialización del tema previa al render y contenedor seguro para el contenido. Además incluye mejoras de login, dashboard y seguridad ya consolidadas en 4.0.0.
 - Endpoint operativo `/api/health` validado y funcionando en modo memoria y con persistencia PostgreSQL cuando `DATABASE_URL` está configurada.
 - Backend Python verificado con `16 passed` en la suite de pruebas.
 - Frontend React validado con pruebas e2e reales contra FastAPI y microservicio TypeScript compilado con éxito.
@@ -147,7 +161,7 @@ Esta es la **versión 4.0.0** del Sistema Inteligente de Recolección de Residuo
 
 | Versión | Rama | Estado |
 |---------|------|--------|
-| **4.0.0** | `main`, `version-4` | Revisión completa del login, seguridad y accesibilidad |
+| **4.5.0** | `main`, `version-4.5` | Corrección visual del panel de administración y mejoras de UX |
 | **3.0.0** | `main`, `version-3` | Proyecto organizado y documentación consolidada |
 | 2.0.0 | `main`, `v2.0.0` | Configuración de despliegue lista para producción |
 | 1.0.0 | `version-1-proyecto` | Estructura base del proyecto |
