@@ -155,7 +155,70 @@
 - **Componentes**:
   - `Admin.tsx`: corregido `var(--border)` → `var(--line)` en estilos inline.
   - `Item.tsx`: sin cambios necesarios, compatible con nuevos estilos.
-- **Verificación**: build exitoso (`npm run build`), 11 tests pasando (`npm test`).
+  - **Verificación**: build exitoso (`npm run build`), 11 tests pasando (`npm test`).
+
+### Fix: Revisión completa del Dashboard — bugs funcionales, UX, accesibilidad y rendimiento
+
+#### Backend / API
+- Sin cambios de backend necesarios. El Dashboard consumía correctamente los endpoints existentes; los errores eran de presentación y lógica del cliente.
+
+#### Frontend (`frontend/src/main.tsx`, `frontend/src/styles.css`)
+
+**Hora de despacho corregida**
+- **Problema**: el formateo `` `0${8 + index}:00` `` producía `"08:00"`, `"09:00"` pero `"010:00"` para el tercer índice, ya que `0${8+2}` = `"010"`.
+- **Solución**: se usa `String(8 + index).padStart(2, "0") + ":00"`, garantizando `"08:00"`, `"09:00"`, `"10:00"`.
+
+**Casos de alerta de retraso case-sensitivity**
+- **Problema**: la detección de iconos usaba `alert.includes("retraso")` (sensible a mayúsculas/minúsculas) mientras la detección de estado usaba `alert.toLowerCase().includes("retraso")`. Un alerta como `"Retraso en ruta"` no se detectaba como retraso en el icono.
+- **Solución**: ambos usan `alert.toLowerCase().includes("retraso")` consistentemente.
+
+**Badge de rol con estilos CSS**
+- **Problema**: el badge de rol usaba estilos en línea (`style={{ display: "flex", ... }}`) y la clase `tag` genérica, sin sombra ni degradado.
+- **Solución**: clase `.dashboard-role-badge` con degradado, sombra y `aria-label="Rol activo: {role}"`.
+
+**Label "Operativo" reemplazado**
+- **Problema**: el header del "Tablero de despacho" mostraba el texto `"Operativo"` como etiqueta de conteo, sin significado.
+- **Solución**: muestra `{dispatchBoard.length} asignaciones`.
+
+**Estado vacío para Alertas Activas**
+- **Problema**: cuando `monitor.alerts` estaba vacío, el panel de "Alertas Activas" mostraba una lista vacía sin mensaje.
+- **Solución**: mensaje `"No hay alertas activas en este momento."` centrado y con color `--muted`.
+
+**Botón "Cargar más" no funcional removido**
+- **Problema**: el botón `<button className="ghost">Cargar más notificaciones →</button>` no tenía `onClick`, era un elemento no funcional que inducía a confusión.
+- **Solución**: eliminado. Las alertas vienen completas del backend; no hay paginación.
+
+**Keys estables en lista de alertas**
+- **Problema**: `key={alert.id}` donde `id = index` puede causar re-render incorrecto si el orden cambia.
+- **Solución**: `key={`alert-${alert.id}-${alert.title}`}`.
+
+**ARIA mejorada en Dashboard**
+- `aria-hidden="true"` en iconos decorativos de métricas y alertas (emojis).
+- `aria-label` en el badge de rol y en los indicadores de estado de alertas (`alert-status`).
+
+**Signal operacional con tono visual**
+- **Problema**: `getOperationalSignal()` retornaba `tone` ("ok"/"warning"/"danger") pero nunca se usaba en el JSX.
+- **Solución**: `<p className="signal signal-{tone}">` con colores contextuales (`.signal-ok`, `.signal-warning`, `.signal-danger`) en CSS.
+
+**Page header con estilos CSS**
+- **Problema**: `.page-header` no tenía reglas CSS; el `h2` y `p` dependían de estilos por defecto del navegador con `padding: 0` en `.main-content`.
+- **Solución**: `.page-header` con padding `24px 32px 16px`, fondo `var(--panel)`, borde inferior. `.page-header h2` con `font-size: 1.4rem`.
+
+**Código muerto eliminado**
+- **Problema**: `reportStatusLabel()` era una función identidad que siempre retornaba el input sin transformación.
+- **Solución**: eliminada; el JSX usa directamente `{report.status}`.
+
+#### Archivos modificados
+
+| Archivo | Cambios |
+|---------|---------|
+| `frontend/src/main.tsx` | Corrección hora dispatch, case-sensitivity alerts, badge rol CSS+ARIA, label operativo, empty state alerts, key estable, aria-hidden iconos, signal tone, page-header, eliminación reportStatusLabel |
+| `frontend/src/styles.css` | Nuevas reglas: `.app-alert`, `.dashboard-role-row`, `.dashboard-role-badge`, `.page-header`, `.signal`, `.signal-ok`, `.signal-warning`, `.signal-danger` |
+| `CHANGELOG.md` | Nueva sección de revisión completa del Dashboard |
+| `VERSION.md` | Nueva sección de revisión completa del Dashboard |
+
+#### Verificación
+- Frontend: `npx tsc --noEmit` — 0 errores. `npm run build` — éxito. `npx vitest run` — **11 passed**.
 
 ## 2026-07-30
 

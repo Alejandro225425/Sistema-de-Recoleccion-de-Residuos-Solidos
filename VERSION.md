@@ -26,8 +26,23 @@ Esta es la **versión 4.0.0** del Sistema Inteligente de Recolección de Residuo
 ### Mejoras de código y arquitectura
 - **AuthView extraído a su propio archivo**: el componente `AuthView` se movió de `frontend/src/main.tsx` (168 líneas) a `frontend/src/components/AuthView.tsx`, mejorando la organización y mantenibilidad del código.
 - **Función `submit` simplificada**: la lógica de envío está mejor organizada y las variables locales no sombrean las del scope superior.
-- **CSS mejorado**: nuevas reglas para `.password-field`, `.password-toggle`, `.password-strength`, `.recovery-token`, `.auth-message`, `.hint.success` y `.spinner` dentro de botones.
-- **UI por roles**: badge de rol en dashboard y formulario de registro de recolecciones visible solo para conductores en la vista de rutas.
+  - **CSS mejorado**: nuevas reglas para `.password-field`, `.password-toggle`, `.password-strength`, `.recovery-token`, `.auth-message`, `.hint.success` y `.spinner` dentro de botones.
+  - **UI por roles**: badge de rol en dashboard y formulario de registro de recolecciones visible solo para conductores en la vista de rutas.
+
+### Revisión completa del Dashboard — correcciones y mejoras
+- **Hora de despacho corregida**: `0${8 + index}:00` producía `"010:00"` para el tercer índice; ahora usa `padStart(2, "0")` → `"08:00"`, `"09:00"`, `"10:00"`.
+- **Case-sensitivity en alertas de retraso**: el icono de alerta ahora usa `toLowerCase()` consistentemente con la detección de estado.
+- **Badge de rol con estilos CSS**: badge de rol con degradado, sombra y `aria-label` en lugar de estilos en línea.
+- **Label "Operativo" reemplazado**: muestra `{dispatchBoard.length} asignaciones` en lugar de texto genérico.
+- **Estado vacío para Alertas Activas**: mensaje amigable cuando no hay alertas.
+- **Botón "Cargar más" removido**: no tenía `onClick`; eliminado para evitar confusión.
+- **Keys estables en lista de alertas**: `key={`alert-${alert.id}-${alert.title}`}` en lugar de usar índice directamente.
+- **ARIA mejorado**: `aria-hidden="true"` en iconos decorativos, `aria-label` en indicadores de estado de alertas.
+- **Signal operacional con tono visual**: `tone` ("ok"/"warning"/"danger") ahora se aplica como clase CSS con colores contextuales.
+- **Page header con estilos CSS**: `.page-header` con padding, fondo y `h2` con tipografía; reglas `.signal`, `.signal-ok`, `.signal-warning`, `.signal-danger` agregadas.
+- **Código muerto eliminado**: `reportStatusLabel()` era una función identidad; eliminada y reemplazada por `{report.status}` directamente.
+- **CSS nuevo**: `.app-alert`, `.dashboard-role-row`, `.dashboard-role-badge`, `.page-header`, `.signal{-ok|-warning|-danger}`.
+- **Verificación**: `tsc --noEmit` 0 errores, `npm run build` exitoso, `vitest run` — 11 passed.
 
 ### Rutas de despliegue recomendadas
 
@@ -89,7 +104,7 @@ Esta es la **versión 4.0.0** del Sistema Inteligente de Recolección de Residuo
 - Desplegar en producción
 
 ## Estado actual
-- Versión 4.0.0: login revisado, corregido timing attack, eliminado hack de `window.__password`, toggle de visibilidad de contraseña, indicador de fortaleza, token de recuperación visible en demo, AuthView extraído a componente dedicado.
+ - Versión 4.0.0: login revisado, corregido timing attack, eliminado hack de `window.__password`, toggle de visibilidad de contraseña, indicador de fortaleza, token de recuperación visible en demo, AuthView extraído a componente dedicado. Dashboard revisado y corregido (horas de despacho, alerts case-sensitivity, estado vacío, badge de rol, ARIA, signal tone, código muerto).
 - Endpoint operativo `/api/health` validado y funcionando en modo memoria y con persistencia PostgreSQL cuando `DATABASE_URL` está configurada.
 - Backend Python verificado con `16 passed` en la suite de pruebas.
 - Frontend React validado con pruebas e2e reales contra FastAPI y microservicio TypeScript compilado con éxito.

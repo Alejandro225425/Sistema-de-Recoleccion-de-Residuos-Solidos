@@ -249,6 +249,21 @@ button.btn-gold:hover { background: var(--eco-gold-light); box-shadow: 0 6px 20p
   transition: margin-left 0.3s ease;
 }
 
+.page-header {
+  padding: 24px 32px 16px; display: flex; flex-direction: column; gap: 4px;
+  background: var(--panel); border-bottom: 1px solid var(--line);
+}
+.page-header h2 {
+  font-size: 1.4rem; color: var(--ink);
+}
+.signal {
+  font-size: 0.85rem; font-weight: 600; padding: 4px 12px; border-radius: 12px;
+  display: inline-block; align-self: flex-start;
+}
+.signal-ok { color: #1a7f37; background: color-mix(in srgb, var(--success) 12%, transparent); }
+.signal-warning { color: #92400e; background: color-mix(in srgb, var(--warning) 12%, transparent); }
+.signal-danger { color: #b91c1c; background: color-mix(in srgb, var(--error) 12%, transparent); }
+
 /* Auth page */
 .auth-view {
   min-height: 100vh; display: grid; grid-template-columns: 1fr 460px;
@@ -482,6 +497,24 @@ textarea { min-height: 100px; resize: vertical; font-family: inherit; }
   font-family: 'Courier New', monospace; font-weight: 700;
   font-size: 1.05rem; color: var(--eco-primary); padding: 4px 8px;
   background: rgba(27, 115, 69, 0.08); border-radius: 4px; word-break: break-all;
+}
+
+.app-alert {
+  padding: 12px 20px; border-radius: 8px; margin: 16px 32px 0;
+  background: color-mix(in srgb, var(--error) 8%, var(--panel));
+  color: var(--error); border: 1px solid color-mix(in srgb, var(--error) 25%, transparent);
+  font-weight: 600; font-size: 0.9rem;
+}
+
+.dashboard-role-row {
+  display: flex; justify-content: flex-end; margin-bottom: 16px; padding: 0 32px;
+}
+.dashboard-role-badge {
+  background: linear-gradient(135deg, var(--eco-primary) 0%, var(--eco-primary-dark) 100%);
+  color: white; padding: 6px 16px; border-radius: 20px;
+  font-size: 0.8rem; font-weight: 700; letter-spacing: 0.02em;
+  box-shadow: 0 2px 8px rgba(27, 115, 69, 0.15);
+  text-transform: capitalize;
 }
 
 /* Panels */

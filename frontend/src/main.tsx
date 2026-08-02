@@ -71,10 +71,6 @@ function statusTone(status: string) {
   return "red";
 }
 
-function reportStatusLabel(status: string) {
-  return status === "Pendiente" ? "Pendiente" : status;
-}
-
 function getOperationalSignal(data: Bootstrap) {
   const delayedRoutes = data.routes.filter(route => route.delay.toLowerCase().includes("retraso")).length;
   if (data.analytics.open_reports > 2 || delayedRoutes > 0) {
@@ -273,7 +269,7 @@ export function App() {
       <section id="main-content" className="main-content">
         <header className="page-header">
           <h2>{viewLabels[view]}</h2>
-          <p>{operationalSignal.label}</p>
+          <p className={`signal signal-${operationalSignal.tone}`}>{operationalSignal.label}</p>
         </header>
         {message && <div role="alert" className="app-alert">{message}</div>}
         {loading ? (
@@ -331,7 +327,7 @@ function Dashboard({ data, monitor, session }: { data: Bootstrap; monitor: Monit
   const dispatchBoard = useMemo(() => {
     if (monitor.truck_assignments?.length) {
       return monitor.truck_assignments.slice(0, 3).map((assignment, index) => ({
-        hour: `0${8 + index}:00`,
+        hour: `${String(8 + index).padStart(2, "0")}:00`,
         zone: assignment.zone,
         truck: assignment.truck_code,
         action: assignment.action ?? `Atender ${assignment.zone}`,
@@ -360,7 +356,7 @@ function Dashboard({ data, monitor, session }: { data: Bootstrap; monitor: Monit
 
   const alerts = (monitor.alerts ?? []).map((alert, index) => ({
     id: index,
-    icon: alert.includes("retraso") ? "🚛" : "🔔",
+    icon: alert.toLowerCase().includes("retraso") ? "🚛" : "🔔",
     title: alert,
     description: alert,
     time: "Ahora",
@@ -372,7 +368,7 @@ function Dashboard({ data, monitor, session }: { data: Bootstrap; monitor: Monit
       <div className="metrics-grid">
         {metrics.map(([value, label, icon]) => (
           <div className="metric-card" key={label}>
-            <span className="metric-icon">{icon}</span>
+            <span className="metric-icon" aria-hidden="true">{icon}</span>
             <div className="metric-content">
               <strong className="metric-value">{value}</strong>
               <span className="metric-label">{label}</span>
@@ -381,8 +377,10 @@ function Dashboard({ data, monitor, session }: { data: Bootstrap; monitor: Monit
         ))}
       </div>
 
-      <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 16 }}>
-        <span className="tag" style={{ textTransform: "capitalize" }}>{session.role}</span>
+      <div className="dashboard-role-row">
+        <span className="dashboard-role-badge" style={{ textTransform: "capitalize" }} aria-label={`Rol activo: ${session.role}`}>
+          {session.role}
+        </span>
       </div>
 
       <div className="dashboard-sections">
@@ -393,12 +391,12 @@ function Dashboard({ data, monitor, session }: { data: Bootstrap; monitor: Monit
         <section className="panel panel-alerts">
           <div className="alerts-header">
             <h2>📋 Tablero de despacho</h2>
-            <span className="alert-count">Operativo</span>
+            <span className="alert-count">{dispatchBoard.length} asignaciones</span>
           </div>
           <div className="alerts-list">
             {dispatchBoard.map(step => (
               <div className={`alert-item alert-${step.status === "En curso" ? "activo" : step.status === "Programado" ? "pendiente" : "resuelto"}`} key={step.hour}>
-                <div className="alert-icon">🚛</div>
+                <div className="alert-icon" aria-hidden="true">🚛</div>
                 <div className="alert-content">
                   <h4>{step.hour} · {step.zone}</h4>
                   <p>{step.action} · Camión {step.truck}</p>
@@ -438,21 +436,23 @@ function Dashboard({ data, monitor, session }: { data: Bootstrap; monitor: Monit
           </div>
           <div className="alerts-list">
             {alerts.map(alert => (
-              <div className={`alert-item alert-${alert.status}`} key={alert.id}>
-                <div className="alert-icon">{alert.icon}</div>
+              <div className={`alert-item alert-${alert.status}`} key={`alert-${alert.id}-${alert.title}`}>
+                <div className="alert-icon" aria-hidden="true">{alert.icon}</div>
                 <div className="alert-content">
                   <h4>{alert.title}</h4>
                   <p>{alert.description}</p>
                   <span className="alert-time">{alert.time}</span>
                 </div>
-                <span className={`alert-status alert-status-${alert.status}`}>
+                <span className={`alert-status alert-status-${alert.status}`} aria-label={`Estado: ${alert.status}`}>
                   {alert.status === "activo" ? "🔴" : alert.status === "pendiente" ? "🟡" : "🟢"}
                 </span>
               </div>
             ))}
-          </div>
-          <div className="load-more">
-            <button className="ghost">Cargar más notificaciones →</button>
+            {alerts.length === 0 && (
+              <p style={{ color: "var(--muted)", padding: "12px 0", textAlign: "center" }}>
+                No hay alertas activas en este momento.
+              </p>
+            )}
           </div>
         </section>
       </div>
@@ -1002,7 +1002,7 @@ function ReportList({ reports, trucks = [], showDriverFilter = false, showResolv
                 <div className="item-row">
                   <strong>{report.type}</strong>
                   <span className={`tag ${statusTone(report.status)}`}>
-                    {reportStatusLabel(report.status)}
+                     {report.status}
                   </span>
                 </div>
                 <span>{report.zone} | {report.citizen} | {reportDriver}</span>
