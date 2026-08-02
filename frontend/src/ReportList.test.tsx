@@ -29,6 +29,7 @@ vi.mock("leaflet", () => {
 });
 
 import { ReportList } from "./main";
+import Admin from "./components/Admin";
 import type { Report } from "./types";
 
 describe("ReportList", () => {
@@ -54,5 +55,31 @@ describe("ReportList", () => {
     render(<ReportList reports={undefined as unknown as Report[]} trucks={[]} />);
 
     expect(screen.getByText(/No hay reportes que coincidan con tu búsqueda/i)).toBeInTheDocument();
+  });
+
+  it("renders the admin panel without crashing when truck driver data is incomplete", () => {
+    const data = {
+      zones: [{ id: 1, name: "Centro", latitude: -13.52, longitude: -71.98, criticality: "Alta" }],
+      schedules: [],
+      trucks: [{ id: 1, code: "C-01", driver: undefined as unknown as string, status: "En ruta", zone: "Centro", latitude: -13.52, longitude: -71.98 }],
+      routes: [],
+      reports: [],
+      collections: [],
+      analytics: { zones: 1, active_trucks: 1, open_reports: 0, confirmed_collections: 0, total_kg: 0, compliance: 100 },
+      maintenance: [],
+      users: [],
+      notifications: [],
+      containers: [],
+      prioritized_zones: [],
+      optimized_routes: [],
+      truck_assignments: [],
+      intervention_plan: [],
+      performance: undefined,
+    } as any;
+
+    render(<Admin data={data} session={{ id: 1, name: "Admin", email: "admin@example.com", role: "admin", zone: "Centro" }} onResolveReport={async () => {}} onOperationUpdate={async () => {}} />);
+
+    expect(screen.getByText(/Gestión de usuarios/i)).toBeInTheDocument();
+    expect(screen.getByText(/Gestión de zonas/i)).toBeInTheDocument();
   });
 });

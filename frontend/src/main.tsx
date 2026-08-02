@@ -487,7 +487,7 @@ function Schedules({ schedules }: { schedules: Schedule[] }) {
 
   const filtered = useMemo(() => {
     return schedules.filter(s => {
-      const matchSearch = s.zone.toLowerCase().includes(search.toLowerCase());
+      const matchSearch = String(s.zone ?? "").toLowerCase().includes(String(search ?? "").toLowerCase());
       const matchDay = selectedDay === "Todos" || s.day === selectedDay;
       return matchSearch && matchDay;
     });
@@ -714,7 +714,7 @@ function Routes({ data, monitor, session, onCreateCollection }: { data: Bootstra
         <section className="panel">
           <h2>Seguimiento GPS</h2>
           <div className="list">
-            {routes.map(route => <Item key={route.id} title={`${route.truck} - ${route.zone}`} detail={`Avance ${route.progress}% | ETA ${route.eta} | ${route.delay}`} color={route.delay.includes("Retraso") ? "yellow" : "blue"} />)}
+            {routes.map(route => <Item key={route.id} title={`${route.truck} - ${route.zone}`} detail={`Avance ${route.progress}% | ETA ${route.eta} | ${route.delay}`} color={String(route.delay ?? "").toLowerCase().includes("retraso") ? "yellow" : "blue"} />)}
             {alerts.map(alert => <Item key={alert} title="Microservicio TS" detail={alert} color="blue" />)}
           </div>
         </section>
@@ -1016,7 +1016,7 @@ function Map({ zones, trucks, routes, prioritizedZones }: { zones: Zone[]; truck
       }
     });
     trucks.forEach(truck => L.circleMarker([truck.latitude, truck.longitude], { radius: 8, color: "#f5b942", fillOpacity: 0.9 }).bindPopup(`${truck.code} - ${truck.status}`).addTo(layer));
-    routes.forEach(route => L.circle([route.latitude, route.longitude], { radius: 450, color: route.delay.includes("Retraso") ? "#c94735" : "#0f8b8d" }).bindPopup(`${route.truck}: ${route.eta}`).addTo(layer));
+    routes.forEach(route => L.circle([route.latitude, route.longitude], { radius: 450, color: String(route.delay ?? "").toLowerCase().includes("retraso") ? "#c94735" : "#0f8b8d" }).bindPopup(`${route.truck}: ${route.eta}`).addTo(layer));
     mapRef.current.invalidateSize();
   }, [signature, zones, trucks, routes, prioritizedZones]);
 
