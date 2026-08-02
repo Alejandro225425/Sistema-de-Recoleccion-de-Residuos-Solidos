@@ -10,7 +10,7 @@ Esta es la **versión 4.0.0** del Sistema Inteligente de Recolección de Residuo
 - **Hack de `window.__password` eliminado**: la contraseña ya no se almacena en el objeto global `window`. El login pasa la contraseña directamente como argumento al callback `onLogin`.
 - **Trim de password corregido en frontend**: el formulario deja de hacer `.trim()` en el password, permitiendo contraseñas con espacios adicionales.
 - **Token de recuperación visible en demo**: al solicitar recuperación de contraseña, el token generado se muestra en la UI para que el usuario pueda usarlo directamente en modo demo (sin necesidad de email real).
-- **Variable shadowing corregido**: la función `login` en `main.tsx` dejó de sombrear la variable `session` con una constante local.
+- **Variable shadowing corregida**: la función `login` en `main.tsx` dejó de sombrear la variable `session` con una constante local.
 
 ### Mejoras de UX y accesibilidad en el login
 - **Toggle de visibilidad de contraseña**: botón de ojo para mostrar/ocultar contraseña en todas las modalidades (login, registro y recuperación).
@@ -26,13 +26,13 @@ Esta es la **versión 4.0.0** del Sistema Inteligente de Recolección de Residuo
 ### Mejoras de código y arquitectura
 - **AuthView extraído a su propio archivo**: el componente `AuthView` se movió de `frontend/src/main.tsx` (168 líneas) a `frontend/src/components/AuthView.tsx`, mejorando la organización y mantenibilidad del código.
 - **Función `submit` simplificada**: la lógica de envío está mejor organizada y las variables locales no sombrean las del scope superior.
-  - **CSS mejorado**: nuevas reglas para `.password-field`, `.password-toggle`, `.password-strength`, `.recovery-token`, `.auth-message`, `.hint.success` y `.spinner` dentro de botones.
-  - **UI por roles**: badge de rol en dashboard y formulario de registro de recolecciones visible solo para conductores en la vista de rutas.
+- **CSS mejorado**: nuevas reglas para `.password-field`, `.password-toggle`, `.password-strength`, `.recovery-token`, `.auth-message`, `.hint.success` y `.spinner` dentro de botones.
+- **UI por roles**: badge de rol en dashboard y formulario de registro de recolecciones visible solo para conductores en la vista de rutas.
 
 ### Revisión completa del Dashboard de Horarios — correcciones y mejoras
 - **Bug funcional crítico corregido**: `createSchedule` en el panel administrativo enviaba `zone` (string) en lugar de `zone_id` (number) al backend, lo que causaba que la creación de horarios fallara. Ahora se usa `zone_id` correctamente.
 - **CRUD completo de horarios en el panel administrativo**: se agregaron funciones de editar y eliminar horarios (`startEditSchedule`, `saveScheduleEdit`, `deleteSchedule`) con formulario de edición integrado.
-- **Bug del componente `Item`**: el texto de la etiqueta ya no está hardcodeado a "Activo". Se agregó un prop opcional `tag` para mostrar contexto relevante (tipo de residuo en horarios).
+- **Bug del componente `Item`: el texto de la etiqueta ya no está hardcodeado a "Activo". Se agregó un prop opcional `tag` para mostrar contexto relevante (tipo de residuo en horarios).
 - **Exportación CSV corregida**: valores con comas, comillas y saltos de línea ahora se escapan correctamente según RFC 4180. Se liberan objetos Blob con `URL.revokeObjectURL`.
 - **Vista de horarios mejorada**: ordenamiento por zona/día/hora/tipo, exportación PDF además de CSV, estilos CSS en lugar de inline, `useMemo` para el array de días, etiquetas ARIA para accesibilidad.
 - **CSS nuevo**: `.panel-header`, `.panel-actions`, `.empty-state` para consistencia visual.
@@ -48,6 +48,34 @@ Esta es la **versión 4.0.0** del Sistema Inteligente de Recolección de Residuo
 - **Page header con estilos CSS**: `.page-header` con padding, fondo y `h2` con tipografía; reglas `.signal`, `.signal-ok`, `.signal-warning`, `.signal-danger` agregadas.
 - **Código muerto eliminado**: `reportStatusLabel()` era una función identidad; eliminada y reemplazada por `{report.status}` directamente.
 - **CSS nuevo**: `.app-alert`, `.dashboard-role-row`, `.dashboard-role-badge`, `.page-header`, `.signal{-ok|-warning|-danger}`.
+
+### Revisión completa del Dashboard de Reportes — correcciones y mejoras
+
+#### Errores funcionales corregidos
+- **Formulario de reportes no controlado**: los campos de zona, tipo y detalle eran uncontrolled, impidiendo validación adecuada. Ahora son controlled components con estados locales.
+- **`Report.status` usaba `string` en lugar de `ReportStatus`**: se corrigió el tipo en `types.ts` para usar `ReportStatus` y garantizar seguridad de tipos.
+- **`create_collection_record` y `confirm_collection_by_citizen` indentados incorrectamente**: estaban dentro de `delete_maintenance`, haciéndolos inaccesibles. Se corrigió la indentación al nivel del módulo.
+
+#### Mejoras de diseño y funcionalidad
+- **Filtros de estado en la vista de reportes**: botones de filtro para Todos/Pendiente/En revision/Resuelto.
+- **Búsqueda de texto en reportes**: búsqueda por tipo, zona, ciudadano o detalle.
+- **Exportaciones memoizadas**: funciones CSV y PDF ahora usan `useCallback` para evitar recreaciones innecesarias.
+- **Estilos CSS consistentes**: se eliminaron estilos inline y se usaron clases CSS existentes (`.panel-header`, `.panel-actions`, `.hint`, `.driver-search`).
+
+#### Optimizaciones de rendimiento
+- **Dashboard tick optimization**: se usa `useRef` para el contador de ticks y `useMemo` para `effectiveData`, evitando re-renderizados innecesarios.
+- **Map component signature optimization**: se reemplazó `JSON.stringify` por una firma basada en conteos de arrays con referencia `signatureRef`.
+- **`driverByZone` memoizado**: ya estaba memoizado con `useMemo`; se optimizó la dependencia del `filtered` useMemo.
+
+#### Mejoras de accesibilidad y código
+- **`statusTone` case-insensitive**: la función ahora usa `toLowerCase()` para manejar cualquier capitalización del estado.
+- **ARIA mejorado**: `aria-pressed` en botones de filtro de estado, `aria-label` en inputs de búsqueda.
+
+#### Verificación
+- Frontend build: ✅ exitoso (`npm run build`)
+- Backend tests: ✅ 20/20 pasados
+- Frontend tests: ✅ 11/11 pasados
+- TypeScript geo service build: ✅ exitoso
 - **Verificación**: `tsc --noEmit` 0 errores, `npm run build` exitoso, `vitest run` — 11 passed.
 
 ### Rutas de despliegue recomendadas
