@@ -630,7 +630,7 @@ function Reports({ data, session, onCreateReport, onResolveReport }: { data: Boo
   const canResolve = session.role === "operador" || session.role === "admin";
 
   const filteredReports = useMemo(() => {
-    let result = safeReports;
+    let result = data.reports;
     if (filterStatus !== "Todos") {
       result = result.filter(r => r.status === filterStatus);
     }
@@ -644,23 +644,23 @@ function Reports({ data, session, onCreateReport, onResolveReport }: { data: Boo
       );
     }
     return result;
-  }, [safeReports, filterStatus, searchQuery]);
+  }, [data.reports, filterStatus, searchQuery]);
 
   const exportReportsCSV = useCallback(() => {
-    exportToCSV("reportes", filteredReports.length > 0 ? filteredReports : safeReports);
-  }, [filteredReports, safeReports]);
+    exportToCSV("reportes", filteredReports.length > 0 ? filteredReports : data.reports);
+  }, [filteredReports, data.reports]);
 
   const exportReportsPDF = useCallback(() => {
-    const source = filteredReports.length > 0 ? filteredReports : safeReports;
+    const source = filteredReports.length > 0 ? filteredReports : data.reports;
     exportToPDF("Reportes", source.map(report => `<div class="report-card"><h2>${report.type}</h2><div class="tag ${statusTone(report.status)}">${report.status}</div><p><strong>Zona:</strong> ${report.zone}</p><p><strong>Ciudadano:</strong> ${report.citizen}</p><p>${report.detail}</p></div>`).join(""));
-  }, [filteredReports, safeReports]);
+  }, [filteredReports, data.reports]);
 
   return (
     <div className="two-col">
       <section className="panel">
         <h2>Registrar incidencia</h2>
         <form className="form-grid" onSubmit={submit}>
-          <label>Zona<select name="zone" value={formZone} onChange={e => setFormZone(e.target.value)}><option value="">Seleccionar zona</option>{safeZones.map(zone => <option key={zone.id} value={zone.name}>{zone.name}</option>)}</select></label>
+          <label>Zona<select name="zone" value={formZone} onChange={e => setFormZone(e.target.value)}><option value="">Seleccionar zona</option>{data.zones.map(zone => <option key={zone.id} value={zone.name}>{zone.name}</option>)}</select></label>
           <label>Tipo<select name="type" value={formType} onChange={e => setFormType(e.target.value)}><option value="">Seleccionar tipo</option><option>Acumulacion de basura</option><option>Retraso</option><option>Contenedor lleno</option><option>Otro</option></select></label>
           <label className="wide">Detalle<textarea name="detail" required minLength={8} maxLength={600} placeholder="Describe el problema encontrado" value={formDetail} onChange={e => setFormDetail(e.target.value)} /></label>
           <button disabled={submitting}>{submitting ? "Enviando..." : "Enviar reporte"}</button>
@@ -688,7 +688,7 @@ function Reports({ data, session, onCreateReport, onResolveReport }: { data: Boo
             <button key={status} type="button" className={`filter-btn ${filterStatus === status ? "active" : ""}`} onClick={() => setFilterStatus(status)} aria-pressed={filterStatus === status}>{status}</button>
           ))}
         </div>
-        <ReportList reports={filteredReports.length > 0 ? filteredReports : safeReports} trucks={safeTrucks} showDriverFilter={!isCitizen} showResolve={canResolve} onResolveReport={onResolveReport} />
+        <ReportList reports={filteredReports.length > 0 ? filteredReports : data.reports} trucks={data.trucks} showDriverFilter={!isCitizen} showResolve={canResolve} onResolveReport={onResolveReport} />
       </section>
     </div>
   );
@@ -1029,17 +1029,6 @@ function Map({ zones, trucks, routes, prioritizedZones }: { zones: Zone[]; truck
     if (!mapRef.current || !layerRef.current) return;
     if (signatureRef.current !== signature) return;
 
-    const layer = layerRef.current;
-    layer.clearLayers();
-    zones.forEach(zone => L.marker([zone.latitude, zone.longitude]).bindPopup(`${zone.name} - ${zone.criticality}`).addTo(layer));
-    prioritizedZones.forEach(zone => {
-      const lat = zone.latitude ?? zones.find(item => item.name === zone.name)?.latitude;
-      const lon = zone.longitude ?? zones.find(item => item.name === zone.name)?.longitude;
-      if (lat !== undefined && lon !== undefined) {
-        L.circleMarker([lat, lon], { radius: 12, color: zone.priority_score >= 5 ? "#c94735" : "#f5b942", fillColor: zone.priority_score >= 5 ? "#c94735" : "#f5b942", fillOpacity: 0.9, weight: 3 }).bindPopup(`${zone.name} · Prioridad ${zone.priority_score}`).addTo(layer);
-      }
-    });
-    trucks.forEach(truck => L.circleMarker([truck.latitude, truck.longitude], { radius: 8, color: "#f5b942", fillOpacity: 0.9 }).bindPopup(`${truck.code} - ${truck.status}`).addTo(layer));
     routes.forEach(route => L.circle([route.latitude, route.longitude], { radius: 450, color: safeLower(route.delay).includes("retraso") ? "#c94735" : "#0f8b8d" }).bindPopup(`${route.truck}: ${route.eta}`).addTo(layer));
     mapRef.current.invalidateSize();
   }, [signature, zones, trucks, routes, prioritizedZones]);
@@ -1075,7 +1064,7 @@ function ReportList({ reports, trucks = [], showDriverFilter = false, showResolv
       }
     });
     return map;
-  }, [safeTrucks]);
+  }, [trucks]);
 
   const filtered = useMemo(() => {
     const normalizedSearch = search.toLowerCase().trim();
@@ -1132,13 +1121,13 @@ function ReportList({ reports, trucks = [], showDriverFilter = false, showResolv
             return (
               <article className="item" key={report.id}>
                 <div className="item-row">
-                  <strong>{report.type ?? "Sin tipo"}</strong>
+                  <strong>{report.type}</strong>
                   <span className={`tag ${statusTone(report.status)}`}>
-                     {report.status ?? "Sin estado"}
+                     {report.status}
                   </span>
                 </div>
-                <span>{report.zone ?? "Sin zona"} | {report.citizen ?? "Sin ciudadano"} | {reportDriver}</span>
-                <p>{report.detail ?? "Sin detalle"}</p>
+                <span>{report.zone} | {report.citizen} | {reportDriver}</span>
+                <p>{report.detail}</p>
               </article>
             );
           })
