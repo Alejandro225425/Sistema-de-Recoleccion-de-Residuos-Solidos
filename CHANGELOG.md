@@ -220,6 +220,45 @@
 #### Verificación
 - Frontend: `npx tsc --noEmit` — 0 errores. `npm run build` — éxito. `npx vitest run` — **11 passed**.
 
+### Improvement: Recomendaciones implementadas del Dashboard
+
+**Estado del dispatch board basado en datos reales**
+- **Problema**: el tablero de despacho ciclaba estados con `tick % 3` cada 5 segundos, simulando "En curso" → "Completado" → "Programado" sin relación con datos reales. Causaba re-renders innecesarios cada 5s.
+- **Solución**: se elimina el estado `tick` y el intervalo. El estado se deriva del `progress` de la ruta real (`routeStatus`): 0→"Programado", 0<progress<100→"En curso", >=100→"Completado". Se agrega indicador visual `⏱️` con badge `.alert-delay-badge` cuando la ruta tiene delay.
+
+**Auto-dismiss con fade-out del `.app-alert`**
+- **Problema**: los mensajes de feedback (exito/error) persistían indefinidamente, requiriendo interacción del usuario para deshacerse.
+- **Solución**: `useEffect` que activa `messageHiding` después de 4s, aplicando la clase `.hiding` (opacity 0, translateY -4px) con transición CSS de 0.3s. El mensaje se limpia 300ms después, permitiendo que termine el fade-out.
+
+**Tests visuales del Dashboard**
+- Nuevo archivo `frontend/src/Dashboard.test.tsx` con 7 tests:
+  1. Dashboard renderiza metrics grid y role badge
+  2. Estado vacío de Alertas Activas
+  3. Alertas activas visibles cuando el monitor devuelve strings
+  4. Formato de horas correcto ("08:00", "09:00", "10:00")
+  5. No renderiza el botón "Cargar más" removido
+  6. Label muestra "asignaciones" en vez de "Operativo"
+  7. Fallback del mapa cuando zones está vacío
+- Verificación: 18 passed (11 existentes + 7 nuevos).
+
+**Fallback del Mapa vacío**
+- **Problema**: el componente `Map` no mostraba mensaje cuando `zones` estaba vacío.
+- **Solución**: cuando `zones.length === 0`, renderiza `.map.map-empty` con el mensaje "No hay zonas operativas." en lugar de inicializar Leaflet.
+
+#### Archivos modificados
+
+| Archivo | Cambios |
+|---------|---------|
+| `frontend/src/main.tsx` | routeStatus data-driven, eliminado tick interval, messageHiding auto-dismiss, Map empty state |
+| `frontend/src/styles.css` | `.app-alert.hiding`, `.alert-delayed`, `.alert-delay-badge`, `.map-empty`, `.signal*` |
+| `frontend/src/Dashboard.test.tsx` | **Nuevo**: 7 tests de renderizado del Dashboard |
+| `CHANGELOG.md` | Sección de recomendaciones implementadas |
+| `VERSION.md` | Dashboard con estado basado en datos, auto-dismiss, tests, fallback mapa |
+
+#### Verificación
+- Frontend: `tsc --noEmit` — 0 errores. `npm run build` — éxito. `vitest run` — **18 passed** (11 + 7).
+- Backend: `pytest -q` — **20 passed**.
+
 ## 2026-07-30
 
 ### Versión 3.0.0 — Organización y consolidación

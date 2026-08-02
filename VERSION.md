@@ -41,8 +41,16 @@ Esta es la **versión 4.0.0** del Sistema Inteligente de Recolección de Residuo
 - **Signal operacional con tono visual**: `tone` ("ok"/"warning"/"danger") ahora se aplica como clase CSS con colores contextuales.
 - **Page header con estilos CSS**: `.page-header` con padding, fondo y `h2` con tipografía; reglas `.signal`, `.signal-ok`, `.signal-warning`, `.signal-danger` agregadas.
 - **Código muerto eliminado**: `reportStatusLabel()` era una función identidad; eliminada y reemplazada por `{report.status}` directamente.
-- **CSS nuevo**: `.app-alert`, `.dashboard-role-row`, `.dashboard-role-badge`, `.page-header`, `.signal{-ok|-warning|-danger}`.
-- **Verificación**: `tsc --noEmit` 0 errores, `npm run build` exitoso, `vitest run` — 11 passed.
+  - **CSS nuevo**: `.app-alert`, `.dashboard-role-row`, `.dashboard-role-badge`, `.page-header`, `.signal{-ok|-warning|-danger}`.
+  - **Verificación**: `tsc --noEmit` 0 errores, `npm run build` exitoso, `vitest run` — 11 passed.
+
+### Recomendaciones implementadas — Dashboard v2
+- **Estado del dispatch board basado en datos reales**: se elimina el estado `tick` y el intervalo de 5s. El estado de cada asignación se deriva del `progress` de la ruta real (`routeStatus`): 0→"Programado", 0<progress<100→"En curso", >=100→"Completado". Se agrega `⏱️` con `.alert-delay-badge` cuando la ruta tiene delay. Esto elimina re-renders innecesarios cada 5 segundos.
+- **Auto-dismiss con fade-out de `.app-alert`**: `useEffect` que activa `messageHiding` después de 4s, aplicando `.hiding` (opacity 0 + translateY -4px, transición 0.3s). El mensaje se limpia 300ms después.
+- **Tests visuales del Dashboard**: nuevo `Dashboard.test.tsx` con 7 tests (metrics, empty alerts, active alerts, hour format, no "Cargar más", label, map fallback). Total: **18 passed** (11 + 7).
+- **Fallback del Mapa vacío**: cuando `zones.length === 0`, renderiza `.map.map-empty` con "No hay zonas operativas." en lugar de inicializar Leaflet.
+- **CSS nueva**: `.app-alert.hiding`, `.alert-delayed`, `.alert-delay-badge`, `.map-empty`.
+- **Verificación**: `tsc --noEmit` 0 errores, `npm run build` exitoso, `vitest run` — **18 passed**, `pytest -q` — **20 passed**.
 
 ### Rutas de despliegue recomendadas
 
@@ -104,7 +112,7 @@ Esta es la **versión 4.0.0** del Sistema Inteligente de Recolección de Residuo
 - Desplegar en producción
 
 ## Estado actual
- - Versión 4.0.0: login revisado, corregido timing attack, eliminado hack de `window.__password`, toggle de visibilidad de contraseña, indicador de fortaleza, token de recuperación visible en demo, AuthView extraído a componente dedicado. Dashboard revisado y corregido (horas de despacho, alerts case-sensitivity, estado vacío, badge de rol, ARIA, signal tone, código muerto).
+ - Versión 4.0.0: login revisado, corregido timing attack, eliminado hack de `window.__password`, toggle de visibilidad de contraseña, indicador de fortaleza, token de recuperación visible en demo, AuthView extraído a componente dedicado. Dashboard revisado y corregido (horas de despacho, alerts case-sensitivity, estado vacío, badge de rol, ARIA, signal tone, código muerto). Recomendaciones implementadas: dispatch board con estado basado en datos reales (eliminado tick simulation), auto-dismiss fade-out de alerts, 7 tests visuales del Dashboard (18 passed total), fallback de mapa vacío.
 - Endpoint operativo `/api/health` validado y funcionando en modo memoria y con persistencia PostgreSQL cuando `DATABASE_URL` está configurada.
 - Backend Python verificado con `16 passed` en la suite de pruebas.
 - Frontend React validado con pruebas e2e reales contra FastAPI y microservicio TypeScript compilado con éxito.
