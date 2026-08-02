@@ -2,16 +2,50 @@
 
 ## 2026-08-01
 
-### Fix: Mapa operativo no cargaba en el dashboard
-- **Problema resuelto**: el componente `Map` en `frontend/src/main.tsx:1026` presentaba una carrera de inicialización. El mapa se creaba con un `setTimeout` de 50ms, pero el efecto que agrega los marcadores se ejecutaba antes de que el mapa existiera, por lo que no se dibujaban zonas, camiones ni rutas.
-- **Solución aplicada**:
-  - Separación de efectos: creación del mapa (una sola vez), actualización de capas al cambiar datos y limpieza al desmontar.
-  - Eliminación del `setTimeout` que causaba la condición de carrera.
-  - Uso de `layerRef` persistente con `layer.clearLayers()` en cada actualización.
-  - Llamada a `map.invalidateSize()` después de crear el mapa y de actualizar datos.
-- **Cambios CSS**: `frontend/src/styles.css` cambió `.map` de `min-height: 400px` a `height: 400px` (y `height: 260px` en móvil) para garantizar dimensiones fijas en el contenedor del mapa.
-- **Tests actualizados**: `frontend/src/App.test.tsx` ajustó el mock de Leaflet para soportar `invalidateSize`, `clearLayers` y métodos encadenables del mapa.
-- **Verificación**: `11 passed` en frontend, build de producción exitoso y validación con Playwright (5 marcadores visibles, 0 errores de consola).
+### Fix: Ocultar rol y zona en login
+- **Problema**: al iniciar sesión con una cuenta ya existente, se mostraban campos de rol y zona innecesarios que solo deben usarse durante el registro.
+- **Solución**: los campos de rol y zona ahora solo aparecen en el modo "Registrarme". En "Iniciar sesión" y "Recuperar contraseña" no se muestran.
+
+### Fix: Página de login mejorada con tabs modernos
+- **Mejora visual**: reemplazado el grupo de botones inline por un contenedor `.auth-tabs` con estilo de pestañas modernas.
+- **Estilos**: las pestañas tienen fondo gris claro, activo con fondo verde y sombra, hover con highlight.
+- **Enlace "Olvidaste tu contraseña"**: ahora se muestra como enlace fantasma (`ghost-link`) en lugar de botón, solo en modo login.
+- **Responsive**: en pantallas ≤640px las pestañas se apilan verticalmente.
+
+### Fix: Mapa operativo no cargaba por condición de carrera en Leaflet
+- **Problema resuelto**: el componente `Map` en `frontend/src/main.tsx` presentaba una carrera de inicialización.
+- **Solución aplicada**: separación de efectos para creación del mapa, actualización de capas y limpieza. Eliminado `setTimeout` problemático. Uso de `layerRef` persistente con `layer.clearLayers()`. Llamada a `map.invalidateSize()`.
+- **Cambios CSS**: `.map` de `min-height: 400px` a `height: 400px` (y `height: 260px` en móvil).
+- **Tests actualizados**: mock de Leaflet en `App.test.tsx` para soportar `invalidateSize`, `clearLayers` y métodos encadenables.
+- **Verificación**: `11 passed` en frontend, build de producción exitoso.
+
+### Mejora visual del sitio web — Diseño moderno y responsive
+- **CSS completo** (`frontend/src/styles.css`):
+  - Paleta de colores modernizada con acento dorado (`#c49a30`) acorde al branding de EcoCusco.
+  - Tipografía Inter (Google Fonts) importada en `index.html`.
+  - Sidebar con gradiente oscuro mejorado y navegación con indicador activo lateral.
+  - Tarjetas de métricas con animaciones escalonadas y hover elevado.
+  - Paneles con bordes redondeados, sombras sutiles y transiciones suaves.
+  - Botones con hover lift y sombra, focus-visible accesible.
+  - Formularios con inputs redondeados y focus ring verde.
+  - Alertas con colores de fondo mezclados y bordes contextuales.
+  - Diseño responsive completo: breakpoints en 1400px, 1024px, 640px y 380px.
+  - Menú hamburguesa para móvil con overlay y transición slide.
+  - Modo claro/oscuro preservado con CSS custom properties.
+- **Página de carga** (`frontend/index.html`):
+  - Fondo oscuro verde (`#0a1f14`) acorde al branding.
+  - Spinner dorado con animación de rotación.
+  - Tipografía Inter con carga asíncrona desde Google Fonts.
+- **Navegación móvil** (`frontend/src/main.tsx`):
+  - Botón hamburguesa fijo en esquina superior izquierda.
+  - Overlay semitransparente para cerrar sidebar al tocar fuera.
+  - Sidebar con transición slide-in desde la izquierda.
+  - Brand actualizado con icono y texto mejorado.
+  - Toggle de tema en el footer del sidebar.
+- **Componentes**:
+  - `Admin.tsx`: corregido `var(--border)` → `var(--line)` en estilos inline.
+  - `Item.tsx`: sin cambios necesarios, compatible con nuevos estilos.
+- **Verificación**: build exitoso (`npm run build`), 11 tests pasando (`npm test`).
 
 ## 2026-07-30
 

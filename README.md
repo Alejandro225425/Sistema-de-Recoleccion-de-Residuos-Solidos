@@ -33,7 +33,8 @@ Sistema inteligente para la recoleccion de residuos solidos segregados en la ciu
 - Validación completa: build del frontend verificado localmente con `npm run build`, pruebas de backend con `16 passed` y pruebas de frontend con `11 passed` en la suite de integración real del panel administrativo.
 - Accesibilidad mejorada en el panel administrativo: contraste WCAG AA, navegación por teclado con skip-link y focus-visible, touch targets mínimos de 44px y prevención de scroll horizontal en móvil.
 - Configuración de despliegue lista para producción: `render.yaml` (backend), `.vercelignore` + dashboard Vercel (frontend), `netlify.toml` + `railway.toml` + `Dockerfile` (alternativas). Variables de entorno documentadas. Ruta recomendada: Render + Vercel (ambos gratis, sin tarjeta). Build y pruebas verificados (`11 passed` frontend, `16 passed` backend). Ver `docs/DESPLIEGUE.md` y `DEPLOYMENT.md` para instrucciones paso a paso.
-- Mapa operativo reparado: se corrigió una condición de carrera en `frontend/src/main.tsx` que impedía que se mostraran zonas, camiones y rutas. Ahora el mapa carga correctamente en el dashboard y en la vista de rutas.
+- Diseño visual moderno con paleta verde-dorada, tipografía Inter, sidebar con gradiente, tabs modernos en login, responsive completo con menú hamburguesa para móvil, modo claro/oscuro.
+- Página de login mejorada: tabs de modo (Iniciar sesión / Registrarse / Recuperar), rol y zona solo en registro, enlace fantasma para recuperación de contraseña.
 
 ## Progreso implementado hasta ahora
 
@@ -139,6 +140,8 @@ cd backend-python
 - ~~Validación de accesibilidad y experiencia móvil~~ Completado el 2026-07-30.
 - ~~Despliegue en producción con variables de entorno seguras~~ Completado el 2026-07-30. Backend en Render (Blueprint o Web Services), frontend en Vercel (dashboard). Ver `docs/DESPLIEGUE.md`.
 - ~~Organizar y limpiar el repositorio~~ Completado el 2026-07-30. Versión 3.0.0.
+- ~~Diseño visual moderno del sitio web~~ Completado el 2026-08-01. Redesign completo del CSS, login con tabs, responsive con hamburguesa, paleta verde-dorada.
+- ~~Mejorar la página de login~~ Completado el 2026-08-01. Tabs modernos, rol/zona solo en registro, enlace fantasma para recuperación.
 
 ## Arquitectura
 

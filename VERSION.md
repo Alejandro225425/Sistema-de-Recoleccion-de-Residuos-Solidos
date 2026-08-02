@@ -15,6 +15,8 @@ Esta es la **versión 3.0.0** del Sistema Inteligente de Recolección de Residuo
 - **Mapa operativo corregido**: se eliminó una condición de carrera en la inicialización de Leaflet y se garantizaron dimensiones fijas en el contenedor para que el mapa cargue correctamente en el dashboard y en la vista de rutas.
 - **Validación completa** de backup/restore de PostgreSQL local con scripts PowerShell.
 - **Build del frontend verificado** y pruebas automatizadas (`11 passed` frontend, `16 passed` backend).
+- **Diseño visual moderno**: redesign completo del CSS con paleta verde-dorada, tipografía Inter, sidebar con gradiente, tabs modernos en login, responsive completo con menú hamburguesa para móvil, modo claro/oscuro.
+- **Página de login mejorada**: tabs de modo (Iniciar sesión / Registrarse / Recuperar), rol y zona solo en registro, enlace fantasma para recuperación de contraseña.
 
 ### Rutas de despliegue recomendadas
 
