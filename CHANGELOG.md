@@ -19,6 +19,21 @@
 - **Tests actualizados**: mock de Leaflet en `App.test.tsx` para soportar `invalidateSize`, `clearLayers` y métodos encadenables.
 - **Verificación**: `11 passed` en frontend, build de producción exitoso.
 
+### Fix: Protección de endpoint `/api/bootstrap` y datos sensibles
+- **Problema**: el endpoint `/api/bootstrap` era público y exponía datos sensibles como `list_users()`, `notifications` y `maintenance` sin autenticación.
+- **Solución**: agregada dependencia opcional `get_current_user_optional` que filtra `users`, `maintenance` y `notifications` cuando no hay token JWT válido. Los datos públicos (zonas, horarios, camiones, rutas, reportes, colecciones, contenedores) siguen accesibles para la página de login.
+- **Backend**: `backend-python/app/main.py` — nueva dependencia `get_current_user_optional`, endpoint `/api/bootstrap` actualizado.
+
+### Fix: Formulario de registro de recolecciones para conductores
+- **Problema**: en la vista `Rutas`, el componente `Routes` tenía la función `submitCollection` definida pero el formulario HTML no estaba renderizado en el JSX. Los conductores no podían registrar recolecciones desde la interfaz.
+- **Solución**: agregado formulario de registro de recolección visible solo para el rol `conductor` con selectores de camión, zona y campo de kilogramos.
+- **Frontend**: `frontend/src/main.tsx` — componente `Routes` actualizado.
+
+### Mejora: Diferenciación de UI por rol en Dashboard y Rutas
+- **Dashboard**: agregado badge de rol en el panel principal para que cada usuario vea claramente su rol activo.
+- **Rutas**: el formulario de registro de recolecciones ahora se muestra condicionalmente solo para `conductor`.
+- **Frontend**: `frontend/src/main.tsx` — `Dashboard` y `Routes` actualizados con `session` y condicionales por rol.
+
 ### Mejora visual del sitio web — Diseño moderno y responsive
 - **CSS completo** (`frontend/src/styles.css`):
   - Paleta de colores modernizada con acento dorado (`#c49a30`) acorde al branding de EcoCusco.

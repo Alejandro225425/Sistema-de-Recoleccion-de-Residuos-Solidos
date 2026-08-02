@@ -17,6 +17,8 @@ Esta es la **versión 3.0.0** del Sistema Inteligente de Recolección de Residuo
 - **Build del frontend verificado** y pruebas automatizadas (`11 passed` frontend, `16 passed` backend).
 - **Diseño visual moderno**: redesign completo del CSS con paleta verde-dorada, tipografía Inter, sidebar con gradiente, tabs modernos en login, responsive completo con menú hamburguesa para móvil, modo claro/oscuro.
 - **Página de login mejorada**: tabs de modo (Iniciar sesión / Registrarse / Recuperar), rol y zona solo en registro, enlace fantasma para recuperación de contraseña.
+- **Seguridad de datos**: endpoint `/api/bootstrap` ahora filtra datos sensibles (`users`, `maintenance`, `notifications`) para requests sin autenticación.
+- **UI por roles**: badge de rol en dashboard y formulario de registro de recolecciones visible solo para conductores en la vista de rutas.
 
 ### Rutas de despliegue recomendadas
 

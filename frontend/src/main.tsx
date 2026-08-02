@@ -183,6 +183,7 @@ export function App() {
       localStorage.setItem('sir-token', payload.token);
       setSession(session);
       setMessage('');
+      await loadData();
     } catch (error) {
       const message = error instanceof Error ? error.message : 'No se pudo iniciar sesión';
       setMessage(message);
@@ -467,7 +468,7 @@ function AuthView({ zones, onLogin, message }: { zones: Zone[]; onLogin: (sessio
 
 function Content(props: { data: Bootstrap; monitor: Monitor; session: Session; view: View; onCreateReport: (report: Omit<Report, "id" | "status">) => Promise<void>; onResolveReport: (id: number) => Promise<void>; onOperationUpdate: (payload: OperationUpdatePayload) => Promise<void>; onCreateCollection: (payload: { truck_id: number; zone_id: number; kg: number }) => Promise<void>; onConfirmCollection: (collectionId: number) => Promise<void>; }) {
   const { data, monitor, session, view, onOperationUpdate, onResolveReport, onCreateCollection, onConfirmCollection } = props;
-  if (view === "dashboard") return <Dashboard data={data} monitor={monitor} />;
+  if (view === "dashboard") return <Dashboard data={data} monitor={monitor} session={session} />;
   if (view === "admin") return <Admin data={data} session={session} onResolveReport={onResolveReport} onOperationUpdate={onOperationUpdate} />;
   if (view === "schedules") return <Schedules schedules={data.schedules} />;
   if (view === "reports") return <Reports {...props} />;
@@ -476,7 +477,7 @@ function Content(props: { data: Bootstrap; monitor: Monitor; session: Session; v
   return <Analytics data={data} session={session} onConfirmCollection={onConfirmCollection} />;
 }
 
-function Dashboard({ data, monitor }: { data: Bootstrap; monitor: Monitor }) {
+function Dashboard({ data, monitor, session }: { data: Bootstrap; monitor: Monitor; session: Session }) {
   const [tick, setTick] = useState(0);
   useEffect(() => {
     const interval = window.setInterval(() => setTick(value => value + 1), 5000);
@@ -548,6 +549,10 @@ function Dashboard({ data, monitor }: { data: Bootstrap; monitor: Monitor }) {
             </div>
           </div>
         ))}
+      </div>
+
+      <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 16 }}>
+        <span className="tag" style={{ textTransform: "capitalize" }}>{session.role}</span>
       </div>
 
       <div className="dashboard-sections">
@@ -775,16 +780,39 @@ function Routes({ data, monitor, session, onCreateCollection }: { data: Bootstra
   }
 
   return (
-    <div className="two-col">
-      <section className="panel"><h2>Mapa operativo OpenStreetMap</h2><Map zones={data.zones} trucks={trucks} routes={routes} prioritizedZones={prioritizedZones} /></section>
-      <section className="panel">
-        <h2>Seguimiento GPS</h2>
-        <div className="list">
-          {routes.map(route => <Item key={route.id} title={`${route.truck} - ${route.zone}`} detail={`Avance ${route.progress}% | ETA ${route.eta} | ${route.delay}`} color={route.delay.includes("Retraso") ? "yellow" : "blue"} />)}
-          {alerts.map(alert => <Item key={alert} title="Microservicio TS" detail={alert} color="blue" />)}
-        </div>
-      </section>
-    </div>
+    <>
+      <div className="two-col">
+        <section className="panel"><h2>Mapa operativo OpenStreetMap</h2><Map zones={data.zones} trucks={trucks} routes={routes} prioritizedZones={prioritizedZones} /></section>
+        <section className="panel">
+          <h2>Seguimiento GPS</h2>
+          <div className="list">
+            {routes.map(route => <Item key={route.id} title={`${route.truck} - ${route.zone}`} detail={`Avance ${route.progress}% | ETA ${route.eta} | ${route.delay}`} color={route.delay.includes("Retraso") ? "yellow" : "blue"} />)}
+            {alerts.map(alert => <Item key={alert} title="Microservicio TS" detail={alert} color="blue" />)}
+          </div>
+        </section>
+      </div>
+      {session?.role === "conductor" && (
+        <section className="panel" style={{ marginTop: 16 }}>
+          <h2>Registrar recoleccion</h2>
+          <form className="form-grid" onSubmit={submitCollection}>
+            <label>Camion
+              <select value={selectedTruck} onChange={event => setSelectedTruck(event.target.value ? Number(event.target.value) : "")}>
+                {trucks.map(truck => <option key={truck.id} value={truck.id}>{truck.code} - {truck.driver}</option>)}
+              </select>
+            </label>
+            <label>Zona
+              <select value={selectedZone} onChange={event => setSelectedZone(event.target.value ? Number(event.target.value) : "")}>
+                {data.zones.map(zone => <option key={zone.id} value={zone.id}>{zone.name}</option>)}
+              </select>
+            </label>
+            <label>Kg recolectados
+              <input name="kg" type="number" min={0} value={kgValue} onChange={event => setKgValue(Number(event.target.value))} required />
+            </label>
+            <button type="submit" className="btn-primary" disabled={submittingCollection}>{submittingCollection ? "Registrando..." : "Registrar recoleccion"}</button>
+          </form>
+        </section>
+      )}
+    </>
   );
 }
 

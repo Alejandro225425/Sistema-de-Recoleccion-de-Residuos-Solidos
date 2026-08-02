@@ -47,6 +47,8 @@ Sistema inteligente para la recoleccion de residuos solidos segregados en la ciu
 - Panel de administración operativa con formularios de creación, edición, eliminación y listado para zonas, horarios, camiones y mantenimiento, con filtros y ayudas contextuales para mejorar la experiencia, incluyendo búsqueda por conductor y filtros de reporte por estado y zona.
 - Base de datos ampliada para usuarios, reseteos, mantenimiento, contenedores y notificaciones.
 - Documentación de respaldo y restauración de PostgreSQL para facilitar el despliegue y la recuperación operativa.
+- Endpoint `/api/bootstrap` protegido: datos sensibles (`users`, `maintenance`, `notifications`) solo se exponen a usuarios autenticados. La página de login carga datos públicos (zonas, horarios, camiones, rutas) sin token.
+- Diferenciación de interfaces por rol: badge de rol en dashboard, formulario de registro de recolecciones visible solo para conductores en la vista de rutas.
 
 ### 2. Operaciones y monitoreo urbano
 - Panel operativo con alertas automáticas por rutas retrasadas y contenedores casi llenos.

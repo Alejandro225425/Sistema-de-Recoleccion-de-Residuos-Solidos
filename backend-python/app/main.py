@@ -1040,6 +1040,18 @@ def require_role(allowed_roles: set[str]):
     return dependency
 
 
+def get_current_user_optional(authorization: str | None = Header(default=None)) -> dict[str, Any] | None:
+    if not authorization or not authorization.startswith("Bearer "):
+        return None
+    token = authorization.split(" ", 1)[1]
+    try:
+        payload = decode_token(token)
+    except Exception:
+        return None
+    user = get_user_by_email(str(payload.get("email", "")))
+    return user
+
+
 @app.get("/")
 def root() -> dict[str, Any]:
     return {
@@ -1071,8 +1083,13 @@ def health() -> dict[str, str]:
 
 
 @app.get("/api/bootstrap")
-def get_bootstrap() -> dict[str, Any]:
-    return bootstrap()
+def get_bootstrap(current_user: dict[str, Any] | None = Depends(get_current_user_optional)) -> dict[str, Any]:
+    data = bootstrap()
+    if current_user is None:
+        data.pop("users", None)
+        data.pop("maintenance", None)
+        data.pop("notifications", None)
+    return data
 
 
 @app.post("/api/auth/register")
