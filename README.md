@@ -33,6 +33,7 @@ Sistema inteligente para la recoleccion de residuos solidos segregados en la ciu
 - Validación completa: build del frontend verificado localmente con `npm run build`, pruebas de backend con `16 passed` y pruebas de frontend con `11 passed` en la suite de integración real del panel administrativo.
 - Accesibilidad mejorada en el panel administrativo: contraste WCAG AA, navegación por teclado con skip-link y focus-visible, touch targets mínimos de 44px y prevención de scroll horizontal en móvil.
 - Configuración de despliegue lista para producción: `render.yaml` (backend), `.vercelignore` + dashboard Vercel (frontend), `netlify.toml` + `railway.toml` + `Dockerfile` (alternativas). Variables de entorno documentadas. Ruta recomendada: Render + Vercel (ambos gratis, sin tarjeta). Build y pruebas verificados (`11 passed` frontend, `16 passed` backend). Ver `docs/DESPLIEGUE.md` y `DEPLOYMENT.md` para instrucciones paso a paso.
+- Mapa operativo reparado: se corrigió una condición de carrera en `frontend/src/main.tsx` que impedía que se mostraran zonas, camiones y rutas. Ahora el mapa carga correctamente en el dashboard y en la vista de rutas.
 
 ## Progreso implementado hasta ahora
 
@@ -542,11 +543,11 @@ python verify_system.py
 | `ModuleNotFoundError: uvicorn` | Instala dependencias con `.\.venv\Scripts\python.exe -m pip install -r backend-python\requirements.txt` |
 | Puerto 8000 ocupado | Deten el proceso anterior o cambia `--port 8001` |
 | Puerto 5173 ocupado | Vite suele elegir otro puerto; revisa la terminal |
-| El mapa no carga | Verifica conexion a internet para tiles de OpenStreetMap |
+| El mapa no carga | Verifica que Leaflet tenga un contenedor con dimensiones fijas (`.map { height: 400px }`) y que la inicialización del mapa ocurra antes de agregar marcadores. |
 | No conecta con API | Revisa `http://localhost:8000/api/health` y el proxy en `frontend/vite.config.ts` |
 | PostgreSQL falla | El sistema cae a modo demo en memoria; revisa `DATABASE_URL` |
 | `dockerDesktopLinuxEngine` no existe | Docker Desktop esta instalado pero apagado; abre Docker Desktop y ejecuta `docker info` otra vez |
-| `.\.venv\Scripts\python.exe` no se reconoce desde `database` | Vuelve a la raiz con `cd ..` o usa `python` si el entorno virtual esta activado |
+| `\.venv\Scripts\python.exe` no se reconoce desde `database` | Vuelve a la raiz con `cd ..` o usa `python` si el entorno virtual esta activado |
 | `ERR_ADDRESS_INVALID` en `http://0.0.0.0:8000/` | Abre `http://localhost:8000/api/health`; `0.0.0.0` no se usa como URL del navegador |
 
 ## Estado operativo actual

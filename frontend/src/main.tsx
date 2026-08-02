@@ -2,6 +2,12 @@ import React, { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
+import iconRetinaUrl from "leaflet/dist/images/marker-icon-2x.png";
+import iconUrl from "leaflet/dist/images/marker-icon.png";
+import shadowUrl from "leaflet/dist/images/marker-shadow.png";
+
+delete (L.Icon.Default.prototype as any)._getIconUrl;
+L.Icon.Default.mergeOptions({ iconUrl, iconRetinaUrl, shadowUrl });
 import "./styles.css";
 import Admin from "./components/Admin";
 import Item, { Metric } from "./components/Item";
@@ -1020,17 +1026,24 @@ function Analytics({ data, session, onConfirmCollection }: { data: Bootstrap; se
 function Map({ zones, trucks, routes, prioritizedZones }: { zones: Zone[]; trucks: Truck[]; routes: Route[]; prioritizedZones: Array<{ id: number; name: string; priority_score: number; criticality: string; latitude?: number; longitude?: number }> }) {
   const ref = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<L.Map | null>(null);
+  const layerRef = useRef<L.LayerGroup | null>(null);
   const signature = useMemo(() => JSON.stringify({ zones, trucks, routes, prioritizedZones }), [zones, trucks, routes, prioritizedZones]);
 
   useEffect(() => {
-    if (!ref.current) return;
-    if (!mapRef.current) {
-      mapRef.current = L.map(ref.current).setView([-13.532, -71.967], 12);
-      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-        attribution: "&copy; OpenStreetMap contributors"
-      }).addTo(mapRef.current);
-    }
-    const layer = L.layerGroup().addTo(mapRef.current);
+    if (!ref.current || mapRef.current) return;
+    mapRef.current = L.map(ref.current).setView([-13.532, -71.967], 12);
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      attribution: "&copy; OpenStreetMap contributors"
+    }).addTo(mapRef.current);
+    layerRef.current = L.layerGroup().addTo(mapRef.current);
+    mapRef.current.invalidateSize();
+  }, []);
+
+  useEffect(() => {
+    if (!mapRef.current || !layerRef.current) return;
+
+    const layer = layerRef.current;
+    layer.clearLayers();
     zones.forEach(zone => L.marker([zone.latitude, zone.longitude]).bindPopup(`${zone.name} - ${zone.criticality}`).addTo(layer));
     prioritizedZones.forEach(zone => {
       const lat = zone.latitude ?? zones.find(item => item.name === zone.name)?.latitude;
@@ -1041,8 +1054,18 @@ function Map({ zones, trucks, routes, prioritizedZones }: { zones: Zone[]; truck
     });
     trucks.forEach(truck => L.circleMarker([truck.latitude, truck.longitude], { radius: 8, color: "#f5b942", fillOpacity: 0.9 }).bindPopup(`${truck.code} - ${truck.status}`).addTo(layer));
     routes.forEach(route => L.circle([route.latitude, route.longitude], { radius: 450, color: route.delay.includes("Retraso") ? "#c94735" : "#0f8b8d" }).bindPopup(`${route.truck}: ${route.eta}`).addTo(layer));
-    return () => { layer.remove(); };
+    mapRef.current.invalidateSize();
   }, [signature]);
+
+  useEffect(() => {
+    return () => {
+      if (mapRef.current) {
+        mapRef.current.remove();
+        mapRef.current = null;
+        layerRef.current = null;
+      }
+    };
+  }, []);
 
   return <div className="map" ref={ref} />;
 }

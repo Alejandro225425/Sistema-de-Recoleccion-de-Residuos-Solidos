@@ -1,5 +1,18 @@
 # Changelog
 
+## 2026-08-01
+
+### Fix: Mapa operativo no cargaba en el dashboard
+- **Problema resuelto**: el componente `Map` en `frontend/src/main.tsx:1026` presentaba una carrera de inicialización. El mapa se creaba con un `setTimeout` de 50ms, pero el efecto que agrega los marcadores se ejecutaba antes de que el mapa existiera, por lo que no se dibujaban zonas, camiones ni rutas.
+- **Solución aplicada**:
+  - Separación de efectos: creación del mapa (una sola vez), actualización de capas al cambiar datos y limpieza al desmontar.
+  - Eliminación del `setTimeout` que causaba la condición de carrera.
+  - Uso de `layerRef` persistente con `layer.clearLayers()` en cada actualización.
+  - Llamada a `map.invalidateSize()` después de crear el mapa y de actualizar datos.
+- **Cambios CSS**: `frontend/src/styles.css` cambió `.map` de `min-height: 400px` a `height: 400px` (y `height: 260px` en móvil) para garantizar dimensiones fijas en el contenedor del mapa.
+- **Tests actualizados**: `frontend/src/App.test.tsx` ajustó el mock de Leaflet para soportar `invalidateSize`, `clearLayers` y métodos encadenables del mapa.
+- **Verificación**: `11 passed` en frontend, build de producción exitoso y validación con Playwright (5 marcadores visibles, 0 errores de consola).
+
 ## 2026-07-30
 
 ### Versión 3.0.0 — Organización y consolidación

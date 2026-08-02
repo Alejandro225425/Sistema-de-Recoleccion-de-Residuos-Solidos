@@ -5,21 +5,32 @@ import { ChildProcess, spawn } from "child_process";
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 
-vi.mock("leaflet", () => ({
-  default: {
-    map: () => ({
-      setView: () => {},
-      addLayer: () => {},
-      remove: () => {},
-    }),
-    tileLayer: () => ({ addTo: () => {} }),
-    layerGroup: () => ({ addTo: () => ({ remove: () => {} }) }),
-    marker: () => ({ bindPopup: () => ({ addTo: () => {} }) }),
-    circleMarker: () => ({ bindPopup: () => ({ addTo: () => {} }) }),
-    circle: () => ({ bindPopup: () => ({ addTo: () => {} }) }),
-    icon: () => ({}),
-  },
-}));
+vi.mock("leaflet", () => {
+  const mockMap = () => ({
+    setView: () => mockMap(),
+    addLayer: () => mockMap(),
+    remove: () => mockMap(),
+    invalidateSize: () => mockMap(),
+  });
+  return {
+    default: {
+      map: mockMap,
+      tileLayer: () => ({ addTo: () => mockMap() }),
+      layerGroup: () => ({ addTo: () => ({ remove: () => mockMap(), clearLayers: () => mockMap() }) }),
+      marker: () => ({ bindPopup: () => ({ addTo: () => mockMap() }) }),
+      circleMarker: () => ({ bindPopup: () => ({ addTo: () => mockMap() }) }),
+      circle: () => ({ bindPopup: () => ({ addTo: () => mockMap() }) }),
+      icon: () => ({}),
+      Icon: {
+        Default: {
+          prototype: {},
+          mergeOptions: () => {},
+        },
+      },
+      divIcon: () => ({}),
+    },
+  };
+});
 
 import { App } from "./main";
 
