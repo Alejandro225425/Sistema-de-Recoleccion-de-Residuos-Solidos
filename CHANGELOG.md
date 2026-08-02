@@ -73,6 +73,7 @@
 - Frontend tests: ✅ 11/11 pasados
 - TypeScript geo service build: ✅ exitoso
 
+
 #### Frontend (`frontend/src/main.tsx`, `frontend/src/components/Admin.tsx`, `frontend/src/components/Item.tsx`)
 
 **Bug funcional crítico corregido: `createSchedule` enviaba `zone` (string) en lugar de `zone_id` (number)**
