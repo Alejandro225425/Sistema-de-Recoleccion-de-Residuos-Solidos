@@ -541,10 +541,11 @@ textarea { min-height: 100px; resize: vertical; font-family: inherit; }
 
 /* Panels */
 .panel {
-  background: var(--panel); border: 1px solid var(--line); border-radius: 12px;
+  background: var(--panel); border: 1px solid var(--line); border-radius: 16px;
   padding: 24px; transition: all 0.25s ease; animation: slideIn 0.3s ease-out;
+  box-shadow: 0 10px 30px rgba(15, 82, 48, 0.05);
 }
-.panel:hover { border-color: rgba(27,115,69,0.3); box-shadow: 0 4px 16px rgba(0,0,0,0.06); }
+.panel:hover { border-color: rgba(27,115,69,0.3); box-shadow: 0 12px 30px rgba(15, 82, 48, 0.08); }
 
 .shell > .panel, .shell > .metrics, .shell > .waste-grid,
 .two-col, .dashboard-sections, .metrics-grid {
@@ -607,10 +608,26 @@ textarea { min-height: 100px; resize: vertical; font-family: inherit; }
 .metric span { color: var(--muted); }
 
 .two-col {
-  display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(260px, 0.8fr);
-  gap: 16px; padding: 20px 32px 32px; overflow-x: hidden;
+  display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(280px, 0.8fr);
+  gap: 20px; padding: 20px 32px 32px; overflow-x: hidden;
 }
-.list { display: grid; gap: 10px; overflow-x: hidden; }
+.list { display: grid; gap: 10px; overflow-x: hidden; margin-top: 16px; }
+
+.admin-list-item {
+  display: flex; justify-content: space-between; align-items: center; gap: 12px;
+  flex-wrap: wrap; border: 1px solid var(--line); border-radius: 14px; padding: 14px;
+  background: linear-gradient(180deg, rgba(255,255,255,0.9), rgba(240,245,242,0.92));
+}
+html[data-theme="dark"] .admin-list-item {
+  background: linear-gradient(180deg, rgba(26, 31, 39, 0.95), rgba(15, 20, 25, 0.95));
+}
+.admin-list-main { display: grid; gap: 4px; min-width: 0; }
+.admin-list-meta { color: var(--muted); font-size: 0.95rem; }
+.admin-list-actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.admin-list-actions select {
+  min-width: 140px; border: 1px solid var(--line); border-radius: 10px; padding: 9px 10px;
+  background: var(--panel); color: var(--ink);
+}
 
 .item {
   display: grid; gap: 6px; padding: 14px; background: var(--panel);
@@ -635,6 +652,16 @@ textarea { min-height: 100px; resize: vertical; font-family: inherit; }
 
 .actions { display: flex; gap: 10px; flex-wrap: wrap; }
 .form-grid { display: grid; grid-template-columns: repeat(2, minmax(170px, 1fr)); gap: 14px; }
+.form-grid label {
+  display: grid; gap: 6px; font-size: 0.95rem; font-weight: 600; color: var(--ink);
+}
+.form-grid input,
+.form-grid select,
+.form-grid textarea {
+  width: 100%; border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px;
+  background: var(--panel); color: var(--ink);
+}
+.form-grid textarea { min-height: 96px; resize: vertical; }
 .form-grid .wide { grid-column: 1 / -1; }
 
 /* Alerts */
@@ -709,6 +736,10 @@ textarea { min-height: 100px; resize: vertical; font-family: inherit; }
 
 @media (max-width: 1024px) {
   .app-shell { padding-left: 0; }
+  .admin-list-item { align-items: flex-start; }
+  .admin-list-actions { width: 100%; }
+  .admin-list-actions button,
+  .admin-list-actions select { width: auto; }
   .sidebar {
     position: fixed; left: -280px; top: 0; width: 280px;
     transition: left 0.3s ease; z-index: 200;
@@ -758,6 +789,10 @@ textarea { min-height: 100px; resize: vertical; font-family: inherit; }
   .notice { margin: 10px 16px 0; }
   .metrics-grid { grid-template-columns: 1fr; }
   .metric-card { align-items: center; padding: 14px; }
+  .admin-list-item { flex-direction: column; align-items: stretch; }
+  .admin-list-actions { flex-direction: column; align-items: stretch; }
+  .admin-list-actions button,
+  .admin-list-actions select { width: 100%; }
   .dashboard-sections { grid-template-columns: 1fr; }
   .panel { padding: 14px; border-radius: 10px; }
   .shell > .panel { margin: 10px 12px 16px; }
