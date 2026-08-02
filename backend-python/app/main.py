@@ -252,9 +252,7 @@ app.add_middleware(
 memory = MemoryStore()
 
 
-JWT_SECRET = os.getenv("JWT_SECRET")
-if not JWT_SECRET:
-    JWT_SECRET = "dev-secret-change-me-change-this-to-a-strong-secret-123456"
+JWT_SECRET = os.getenv("JWT_SECRET", "dev-secret-change-me-change-this-to-a-strong-secret-123456")
 JWT_ALGORITHM = "HS256"
 
 
@@ -552,7 +550,7 @@ def create_token(user: dict[str, Any]) -> str:
         "role": normalize_role(str(user.get("role", "ciudadano"))),
         "name": user.get("name"),
         "zone": user.get("zone", "Centro Historico"),
-        "exp": datetime.now(timezone.utc) + timedelta(minutes=60),
+        "exp": datetime.now(timezone.utc) + timedelta(hours=12),
     }
     return jwt.encode(payload, JWT_SECRET, algorithm=JWT_ALGORITHM)
 
@@ -1118,9 +1116,12 @@ def login(payload: LoginRequest) -> dict[str, Any]:
     user_record = get_user_record_by_email(str(payload.email))
     user_exists = user_record is not None
     password_hash = user_record.get("password_hash") if user_exists else _DUMMY_PASSWORD_HASH
-    if not verify_password(payload.password, password_hash) or not user_exists:
+    if not user_exists:
+        verify_password(payload.password, _DUMMY_PASSWORD_HASH)
         raise HTTPException(status_code=401, detail="Credenciales inválidas")
     user = build_user_payload(user_record)
+    if not verify_password(payload.password, password_hash):
+        raise HTTPException(status_code=401, detail="Credenciales inválidas")
     token = create_token(user)
     return {"ok": True, "token": token, "user": user}
 

@@ -29,7 +29,13 @@ Esta es la **versión 4.0.0** del Sistema Inteligente de Recolección de Residuo
   - **CSS mejorado**: nuevas reglas para `.password-field`, `.password-toggle`, `.password-strength`, `.recovery-token`, `.auth-message`, `.hint.success` y `.spinner` dentro de botones.
   - **UI por roles**: badge de rol en dashboard y formulario de registro de recolecciones visible solo para conductores en la vista de rutas.
 
-### Revisión completa del Dashboard — correcciones y mejoras
+### Revisión completa del Dashboard de Horarios — correcciones y mejoras
+- **Bug funcional crítico corregido**: `createSchedule` en el panel administrativo enviaba `zone` (string) en lugar de `zone_id` (number) al backend, lo que causaba que la creación de horarios fallara. Ahora se usa `zone_id` correctamente.
+- **CRUD completo de horarios en el panel administrativo**: se agregaron funciones de editar y eliminar horarios (`startEditSchedule`, `saveScheduleEdit`, `deleteSchedule`) con formulario de edición integrado.
+- **Bug del componente `Item`**: el texto de la etiqueta ya no está hardcodeado a "Activo". Se agregó un prop opcional `tag` para mostrar contexto relevante (tipo de residuo en horarios).
+- **Exportación CSV corregida**: valores con comas, comillas y saltos de línea ahora se escapan correctamente según RFC 4180. Se liberan objetos Blob con `URL.revokeObjectURL`.
+- **Vista de horarios mejorada**: ordenamiento por zona/día/hora/tipo, exportación PDF además de CSV, estilos CSS en lugar de inline, `useMemo` para el array de días, etiquetas ARIA para accesibilidad.
+- **CSS nuevo**: `.panel-header`, `.panel-actions`, `.empty-state` para consistencia visual.
 - **Hora de despacho corregida**: `0${8 + index}:00` producía `"010:00"` para el tercer índice; ahora usa `padStart(2, "0")` → `"08:00"`, `"09:00"`, `"10:00"`.
 - **Case-sensitivity en alertas de retraso**: el icono de alerta ahora usa `toLowerCase()` consistentemente con la detección de estado.
 - **Badge de rol con estilos CSS**: badge de rol con degradado, sombra y `aria-label` en lugar de estilos en línea.
@@ -41,16 +47,8 @@ Esta es la **versión 4.0.0** del Sistema Inteligente de Recolección de Residuo
 - **Signal operacional con tono visual**: `tone` ("ok"/"warning"/"danger") ahora se aplica como clase CSS con colores contextuales.
 - **Page header con estilos CSS**: `.page-header` con padding, fondo y `h2` con tipografía; reglas `.signal`, `.signal-ok`, `.signal-warning`, `.signal-danger` agregadas.
 - **Código muerto eliminado**: `reportStatusLabel()` era una función identidad; eliminada y reemplazada por `{report.status}` directamente.
-  - **CSS nuevo**: `.app-alert`, `.dashboard-role-row`, `.dashboard-role-badge`, `.page-header`, `.signal{-ok|-warning|-danger}`.
-  - **Verificación**: `tsc --noEmit` 0 errores, `npm run build` exitoso, `vitest run` — 11 passed.
-
-### Recomendaciones implementadas — Dashboard v2
-- **Estado del dispatch board basado en datos reales**: se elimina el estado `tick` y el intervalo de 5s. El estado de cada asignación se deriva del `progress` de la ruta real (`routeStatus`): 0→"Programado", 0<progress<100→"En curso", >=100→"Completado". Se agrega `⏱️` con `.alert-delay-badge` cuando la ruta tiene delay. Esto elimina re-renders innecesarios cada 5 segundos.
-- **Auto-dismiss con fade-out de `.app-alert`**: `useEffect` que activa `messageHiding` después de 4s, aplicando `.hiding` (opacity 0 + translateY -4px, transición 0.3s). El mensaje se limpia 300ms después.
-- **Tests visuales del Dashboard**: nuevo `Dashboard.test.tsx` con 7 tests (metrics, empty alerts, active alerts, hour format, no "Cargar más", label, map fallback). Total: **18 passed** (11 + 7).
-- **Fallback del Mapa vacío**: cuando `zones.length === 0`, renderiza `.map.map-empty` con "No hay zonas operativas." en lugar de inicializar Leaflet.
-- **CSS nueva**: `.app-alert.hiding`, `.alert-delayed`, `.alert-delay-badge`, `.map-empty`.
-- **Verificación**: `tsc --noEmit` 0 errores, `npm run build` exitoso, `vitest run` — **18 passed**, `pytest -q` — **20 passed**.
+- **CSS nuevo**: `.app-alert`, `.dashboard-role-row`, `.dashboard-role-badge`, `.page-header`, `.signal{-ok|-warning|-danger}`.
+- **Verificación**: `tsc --noEmit` 0 errores, `npm run build` exitoso, `vitest run` — 11 passed.
 
 ### Rutas de despliegue recomendadas
 
@@ -112,7 +110,7 @@ Esta es la **versión 4.0.0** del Sistema Inteligente de Recolección de Residuo
 - Desplegar en producción
 
 ## Estado actual
- - Versión 4.0.0: login revisado, corregido timing attack, eliminado hack de `window.__password`, toggle de visibilidad de contraseña, indicador de fortaleza, token de recuperación visible en demo, AuthView extraído a componente dedicado. Dashboard revisado y corregido (horas de despacho, alerts case-sensitivity, estado vacío, badge de rol, ARIA, signal tone, código muerto). Recomendaciones implementadas: dispatch board con estado basado en datos reales (eliminado tick simulation), auto-dismiss fade-out de alerts, 7 tests visuales del Dashboard (18 passed total), fallback de mapa vacío.
+ - Versión 4.0.0: login revisado, corregido timing attack, eliminado hack de `window.__password`, toggle de visibilidad de contraseña, indicador de fortaleza, token de recuperación visible en demo, AuthView extraído a componente dedicado. Dashboard revisado y corregido (horas de despacho, alerts case-sensitivity, estado vacío, badge de rol, ARIA, signal tone, código muerto).
 - Endpoint operativo `/api/health` validado y funcionando en modo memoria y con persistencia PostgreSQL cuando `DATABASE_URL` está configurada.
 - Backend Python verificado con `16 passed` en la suite de pruebas.
 - Frontend React validado con pruebas e2e reales contra FastAPI y microservicio TypeScript compilado con éxito.

@@ -2,7 +2,34 @@
 
 ## 2026-08-02
 
-### Fix: Revisión completa del login — seguridad, UX, código y diseño
+### Fix: Revisión completa del Dashboard de Horarios — errores funcionales, UX, código y diseño
+
+#### Frontend (`frontend/src/main.tsx`, `frontend/src/components/Admin.tsx`, `frontend/src/components/Item.tsx`)
+
+**Bug funcional crítico corregido: `createSchedule` enviaba `zone` (string) en lugar de `zone_id` (number)**
+- **Problema**: el formulario de creación de horarios en el panel administrativo enviaba `zone` como nombre de zona (string) al backend, pero el modelo Pydantic `ScheduleCreate` requiere `zone_id` como entero. Esto causaba que la creación de horarios fallara silenciosamente o produjera datos incorrectos.
+- **Solución**: se cambió el estado `newSchedule` para usar `zone_id` (número) en lugar de `zone` (string), y se actualizó el formulario para que el `<select>` de zona envíe el `id` de la zona. Se agregaron funciones `startEditSchedule`, `saveScheduleEdit` y `deleteSchedule` para completar el CRUD de horarios en el panel administrativo.
+
+**Bug del componente `Item`: texto de tag hardcodeado a "Activo"**
+- **Problema**: el componente `Item` siempre mostraba "Activo" como texto de la etiqueta, independientemente del contexto (horarios, rutas, contenedores, etc.).
+- **Solución**: se agregó un prop opcional `tag` al componente `Item`. El texto de la etiqueta ahora se pasa explícitamente. En la vista de horarios, se muestra el tipo de residuo como tag.
+
+**Bug de exportación CSV: valores no escapados**
+- **Problema**: `exportToCSV` usaba `JSON.stringify` para escapar valores, lo que no manejaba correctamente comas, comillas y saltos de línea dentro de los datos.
+- **Solución**: se reemplazó `JSON.stringify` por una función `escapeCSV` dedicada que envuelve valores en comillas y escapa comillas internas según la especificación RFC 4180. Se agregó `URL.revokeObjectURL` para liberar memoria.
+
+**Mejora UX: vista de horarios mejorada**
+- Se agregó ordenamiento por zona, día, hora y tipo de residuo con indicadores visuales de dirección.
+- Se agregó exportación PDF además de CSV para la vista de horarios.
+- Se reemplazaron estilos en línea por clases CSS (`.panel-header`, `.panel-actions`, `.empty-state`).
+- Se memoizó el array de días con `useMemo` para evitar recálculos innecesarios.
+- Se agregó `role="list"` y `aria-label` en la lista de horarios para mejor accesibilidad.
+
+#### Archivos modificados
+- `frontend/src/main.tsx` — `exportToCSV`, `Schedules` component
+- `frontend/src/components/Admin.tsx` — `createSchedule`, CRUD de horarios
+- `frontend/src/components/Item.tsx` — prop `tag` opcional
+- `frontend/src/styles.css` — `.panel-header`, `.panel-actions`, `.empty-state`
 
 #### Backend (`backend-python/app/main.py`)
 
@@ -219,45 +246,6 @@
 
 #### Verificación
 - Frontend: `npx tsc --noEmit` — 0 errores. `npm run build` — éxito. `npx vitest run` — **11 passed**.
-
-### Improvement: Recomendaciones implementadas del Dashboard
-
-**Estado del dispatch board basado en datos reales**
-- **Problema**: el tablero de despacho ciclaba estados con `tick % 3` cada 5 segundos, simulando "En curso" → "Completado" → "Programado" sin relación con datos reales. Causaba re-renders innecesarios cada 5s.
-- **Solución**: se elimina el estado `tick` y el intervalo. El estado se deriva del `progress` de la ruta real (`routeStatus`): 0→"Programado", 0<progress<100→"En curso", >=100→"Completado". Se agrega indicador visual `⏱️` con badge `.alert-delay-badge` cuando la ruta tiene delay.
-
-**Auto-dismiss con fade-out del `.app-alert`**
-- **Problema**: los mensajes de feedback (exito/error) persistían indefinidamente, requiriendo interacción del usuario para deshacerse.
-- **Solución**: `useEffect` que activa `messageHiding` después de 4s, aplicando la clase `.hiding` (opacity 0, translateY -4px) con transición CSS de 0.3s. El mensaje se limpia 300ms después, permitiendo que termine el fade-out.
-
-**Tests visuales del Dashboard**
-- Nuevo archivo `frontend/src/Dashboard.test.tsx` con 7 tests:
-  1. Dashboard renderiza metrics grid y role badge
-  2. Estado vacío de Alertas Activas
-  3. Alertas activas visibles cuando el monitor devuelve strings
-  4. Formato de horas correcto ("08:00", "09:00", "10:00")
-  5. No renderiza el botón "Cargar más" removido
-  6. Label muestra "asignaciones" en vez de "Operativo"
-  7. Fallback del mapa cuando zones está vacío
-- Verificación: 18 passed (11 existentes + 7 nuevos).
-
-**Fallback del Mapa vacío**
-- **Problema**: el componente `Map` no mostraba mensaje cuando `zones` estaba vacío.
-- **Solución**: cuando `zones.length === 0`, renderiza `.map.map-empty` con el mensaje "No hay zonas operativas." en lugar de inicializar Leaflet.
-
-#### Archivos modificados
-
-| Archivo | Cambios |
-|---------|---------|
-| `frontend/src/main.tsx` | routeStatus data-driven, eliminado tick interval, messageHiding auto-dismiss, Map empty state |
-| `frontend/src/styles.css` | `.app-alert.hiding`, `.alert-delayed`, `.alert-delay-badge`, `.map-empty`, `.signal*` |
-| `frontend/src/Dashboard.test.tsx` | **Nuevo**: 7 tests de renderizado del Dashboard |
-| `CHANGELOG.md` | Sección de recomendaciones implementadas |
-| `VERSION.md` | Dashboard con estado basado en datos, auto-dismiss, tests, fallback mapa |
-
-#### Verificación
-- Frontend: `tsc --noEmit` — 0 errores. `npm run build` — éxito. `vitest run` — **18 passed** (11 + 7).
-- Backend: `pytest -q` — **20 passed**.
 
 ## 2026-07-30
 

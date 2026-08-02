@@ -25,7 +25,9 @@ export default function Admin({ data, session, onResolveReport, onOperationUpdat
   const [editingZoneName, setEditingZoneName] = useState("");
 
   const [schedules, setSchedules] = useState<Schedule[]>(data.schedules ?? []);
-  const [newSchedule, setNewSchedule] = useState({ zone: data.zones?.[0]?.name ?? "Centro Historico", day: "Lunes", time: "08:00", waste: "Orgánicos" });
+  const [newSchedule, setNewSchedule] = useState({ zone_id: data.zones?.[0]?.id ?? 1, day: "Lunes", time: "08:00", waste: "Orgánicos" });
+  const [editingScheduleId, setEditingScheduleId] = useState<number | null>(null);
+  const [editingSchedule, setEditingSchedule] = useState({ zone_id: 1, day: "Lunes", time: "08:00", waste: "Orgánicos" });
   const [eventType, setEventType] = useState<"route_update" | "container_update">("route_update");
   const [eventTargetId, setEventTargetId] = useState<number>(data.routes?.[0]?.id ?? data.containers?.[0]?.id ?? 0);
   const [eventProgress, setEventProgress] = useState("");
@@ -51,6 +53,7 @@ export default function Admin({ data, session, onResolveReport, onOperationUpdat
     setMaintenance(data.maintenance ?? []);
     setNewTruck(prev => ({ ...prev, zone: data.zones?.[0]?.name ?? prev.zone }));
     setNewMaintenance(prev => ({ ...prev, truck_id: data.trucks?.[0]?.id ?? prev.truck_id }));
+    setNewSchedule(prev => ({ ...prev, zone_id: data.zones?.[0]?.id ?? prev.zone_id }));
   }, [data.users, data.zones, data.schedules, data.trucks, data.maintenance]);
 
   const filteredZones = useMemo(
@@ -173,10 +176,42 @@ export default function Admin({ data, session, onResolveReport, onOperationUpdat
         body: JSON.stringify(newSchedule)
       });
       setSchedules(prev => [...prev, created]);
-      setNewSchedule({ zone: data.zones?.[0]?.name ?? 'Centro Historico', day: 'Lunes', time: '08:00', waste: 'Orgánicos' });
+      setNewSchedule({ zone_id: data.zones?.[0]?.id ?? 1, day: 'Lunes', time: '08:00', waste: 'Orgánicos' });
       setFeedback(`Horario creado para ${created.zone}`);
     } catch (error) {
       setFeedback(error instanceof Error ? error.message : 'No se pudo crear el horario');
+    }
+  }
+
+  function startEditSchedule(schedule: Schedule) {
+    setEditingScheduleId(schedule.id);
+    setEditingSchedule({ zone_id: schedule.zone_id ?? 1, day: schedule.day, time: schedule.time, waste: schedule.waste });
+  }
+
+  async function saveScheduleEdit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (editingScheduleId === null) return;
+    try {
+      const updated = await request<Schedule>(`/schedules/${editingScheduleId}`, {
+        method: 'PATCH',
+        body: JSON.stringify(editingSchedule)
+      });
+      setSchedules(prev => prev.map(s => s.id === editingScheduleId ? { ...s, ...updated } : s));
+      setEditingScheduleId(null);
+      setEditingSchedule({ zone_id: 1, day: 'Lunes', time: '08:00', waste: 'Orgánicos' });
+      setFeedback(`Horario actualizado para ${updated.zone}`);
+    } catch (error) {
+      setFeedback(error instanceof Error ? error.message : 'No se pudo editar el horario');
+    }
+  }
+
+  async function deleteSchedule(scheduleId: number) {
+    try {
+      await request(`/schedules/${scheduleId}`, { method: 'DELETE' });
+      setSchedules(prev => prev.filter(s => s.id !== scheduleId));
+      setFeedback('Horario eliminado');
+    } catch (error) {
+      setFeedback(error instanceof Error ? error.message : 'No se pudo eliminar el horario');
     }
   }
 
@@ -326,25 +361,62 @@ export default function Admin({ data, session, onResolveReport, onOperationUpdat
       <section className="panel">
         <h2>Gestión de horarios</h2>
         <p>Define y administra la programación de recolección por zona.</p>
-        <form className="form-grid" onSubmit={createSchedule}>
-          <label htmlFor="schedule-zone">Zona<select id="schedule-zone" value={newSchedule.zone} onChange={event => {
-              const value = event.target.value;
-              setNewSchedule(prev => ({ ...prev, zone: value }));
-            }}>{data.zones?.map((zone, index) => <option key={`zone-${zone.id}-${index}`} value={zone.name}>{zone.name}</option>)}</select></label>
-          <label htmlFor="schedule-day">Día<select id="schedule-day" value={newSchedule.day} onChange={event => {
+        {editingScheduleId === null ? (
+          <form className="form-grid" onSubmit={createSchedule}>
+            <label htmlFor="schedule-zone">Zona<select id="schedule-zone" value={newSchedule.zone_id} onChange={event => {
+              const value = Number(event.target.value);
+              setNewSchedule(prev => ({ ...prev, zone_id: value }));
+            }}>{data.zones?.map((zone, index) => <option key={`zone-${zone.id}-${index}`} value={zone.id}>{zone.name}</option>)}</select></label>
+            <label htmlFor="schedule-day">Día<select id="schedule-day" value={newSchedule.day} onChange={event => {
               const value = event.target.value;
               setNewSchedule(prev => ({ ...prev, day: value }));
             }}><option>Lunes</option><option>Martes</option><option>Miércoles</option><option>Jueves</option><option>Viernes</option></select></label>
-          <label htmlFor="schedule-time">Hora<input id="schedule-time" type="time" value={newSchedule.time} onChange={event => {
+            <label htmlFor="schedule-time">Hora<input id="schedule-time" type="time" value={newSchedule.time} onChange={event => {
               const value = event.target.value;
               setNewSchedule(prev => ({ ...prev, time: value }));
             }} /></label>
-          <label htmlFor="schedule-waste">Tipo de residuo<input id="schedule-waste" value={newSchedule.waste} onChange={event => {
+            <label htmlFor="schedule-waste">Tipo de residuo<input id="schedule-waste" value={newSchedule.waste} onChange={event => {
               const value = event.target.value;
               setNewSchedule(prev => ({ ...prev, waste: value }));
             }} /></label>
-          <button type="submit">Crear horario</button>
-        </form>
+            <button type="submit">Crear horario</button>
+          </form>
+        ) : (
+          <form className="form-grid" onSubmit={saveScheduleEdit}>
+            <label htmlFor="edit-schedule-zone">Zona<select id="edit-schedule-zone" value={editingSchedule.zone_id} onChange={event => {
+              const value = Number(event.target.value);
+              setEditingSchedule(prev => ({ ...prev, zone_id: value }));
+            }}>{data.zones?.map((zone, index) => <option key={`zone-${zone.id}-${index}`} value={zone.id}>{zone.name}</option>)}</select></label>
+            <label htmlFor="edit-schedule-day">Día<select id="edit-schedule-day" value={editingSchedule.day} onChange={event => {
+              const value = event.target.value;
+              setEditingSchedule(prev => ({ ...prev, day: value }));
+            }}><option>Lunes</option><option>Martes</option><option>Miércoles</option><option>Jueves</option><option>Viernes</option></select></label>
+            <label htmlFor="edit-schedule-time">Hora<input id="edit-schedule-time" type="time" value={editingSchedule.time} onChange={event => {
+              const value = event.target.value;
+              setEditingSchedule(prev => ({ ...prev, time: value }));
+            }} /></label>
+            <label htmlFor="edit-schedule-waste">Tipo de residuo<input id="edit-schedule-waste" value={editingSchedule.waste} onChange={event => {
+              const value = event.target.value;
+              setEditingSchedule(prev => ({ ...prev, waste: value }));
+            }} /></label>
+            <button type="submit">Guardar cambios</button>
+            <button type="button" onClick={() => { setEditingScheduleId(null); setEditingSchedule({ zone_id: 1, day: 'Lunes', time: '08:00', waste: 'Orgánicos' }); }}>Cancelar</button>
+          </form>
+        )}
+        <ul className="list" aria-label="Lista de horarios">
+          {schedules.map(schedule => (
+            <li key={schedule.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "12px", flexWrap: "wrap", border: "1px solid var(--line)", borderRadius: "12px", padding: "12px" }}>
+              <div>
+                <strong>{schedule.zone}</strong>
+                <div style={{ color: "var(--muted)", fontSize: "0.95rem" }}>{schedule.day} · {schedule.time} · {schedule.waste}</div>
+              </div>
+              <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
+                <button type="button" onClick={() => startEditSchedule(schedule)}>Editar</button>
+                <button type="button" onClick={() => deleteSchedule(schedule.id)}>Eliminar</button>
+              </div>
+            </li>
+          ))}
+        </ul>
       </section>
 
       <section className="panel">

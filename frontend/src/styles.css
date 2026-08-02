@@ -504,11 +504,6 @@ textarea { min-height: 100px; resize: vertical; font-family: inherit; }
   background: color-mix(in srgb, var(--error) 8%, var(--panel));
   color: var(--error); border: 1px solid color-mix(in srgb, var(--error) 25%, transparent);
   font-weight: 600; font-size: 0.9rem;
-  opacity: 1; transform: translateY(0);
-  transition: opacity 0.3s ease, transform 0.3s ease;
-}
-.app-alert.hiding {
-  opacity: 0; transform: translateY(-4px);
 }
 
 .dashboard-role-row {
@@ -536,8 +531,12 @@ textarea { min-height: 100px; resize: vertical; font-family: inherit; }
 .shell > .panel { margin-top: 20px; margin-bottom: 28px; }
 
 .panel h2 { margin-top: 0; margin-bottom: 16px; font-size: 1.15rem; color: var(--ink); }
+.panel-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 8px; }
+.panel-header h2 { margin-bottom: 0; }
+.panel-actions { display: flex; gap: 8px; flex-wrap: wrap; }
 .panel-large { grid-column: 1 / 2; }
 .panel-alerts { grid-column: 2 / 3; }
+.empty-state { color: var(--muted); text-align: center; padding: 20px; }
 
 /* Metrics */
 .metrics-grid {
@@ -632,7 +631,6 @@ textarea { min-height: 100px; resize: vertical; font-family: inherit; }
 .alert-item.alert-activo { border-color: #ffcccc; background: color-mix(in srgb, var(--error) 6%, var(--panel)); }
 .alert-item.alert-pendiente { border-color: #ffe6cc; background: color-mix(in srgb, var(--warning) 7%, var(--panel)); }
 .alert-item.alert-resuelto { border-color: #d4edda; background: color-mix(in srgb, var(--success) 6%, var(--panel)); }
-.alert-item.alert-delayed { border-color: var(--warning); }
 .alert-item:hover { border-color: var(--eco-primary); box-shadow: 0 3px 10px rgba(27,115,69,0.06); }
 
 .alert-icon { font-size: 1.4rem; width: 38px; height: 38px; display: grid; place-items: center; flex-shrink: 0; }
@@ -641,14 +639,12 @@ textarea { min-height: 100px; resize: vertical; font-family: inherit; }
 .alert-content p { margin: 0; font-size: 0.82rem; color: var(--muted); }
 .alert-time { font-size: 0.72rem; color: var(--muted); margin-top: 1px; }
 .alert-status { font-size: 1.1rem; flex-shrink: 0; }
-.alert-delay-badge { font-size: 1.2rem; flex-shrink: 0; margin-left: 8px; }
 
 .load-more { display: flex; justify-content: center; padding-top: 10px; margin-top: 10px; border-top: 1px solid var(--line); }
 .load-more button { color: var(--eco-primary); padding: 6px 10px; font-size: 0.85rem; }
 
 /* Map */
 .map { width: 100%; height: 400px; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; background: #f0f5f2; }
-.map-empty { display: grid; place-items: center; color: var(--muted); font-style: italic; }
 
 /* Waste grid */
 .waste-grid { grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); padding: 20px 32px 32px; }

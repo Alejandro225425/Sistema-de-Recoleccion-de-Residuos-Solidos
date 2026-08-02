@@ -82,13 +82,20 @@ function getOperationalSignal(data: Bootstrap) {
   return { label: "Operación estable", tone: "ok" };
 }
 
-// Función para exportar a CSV
+function escapeCSV(value: unknown): string {
+  const str = String(value ?? "");
+  if (str.includes(",") || str.includes('"') || str.includes("\n") || str.includes("\r")) {
+    return `"${str.replace(/"/g, '""')}"`;
+  }
+  return str;
+}
+
 function exportToCSV(filename: string, data: any[]) {
   if (!data.length) return;
   const headers = Object.keys(data[0]);
   const csv = [
     headers.join(","),
-    ...data.map(row => headers.map(h => JSON.stringify(row[h])).join(","))
+    ...data.map(row => headers.map(h => escapeCSV(row[h])).join(","))
   ].join("\n");
   const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
   const link = document.createElement("a");
@@ -99,6 +106,7 @@ function exportToCSV(filename: string, data: any[]) {
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
+  URL.revokeObjectURL(url);
 }
 
 function exportToPDF(title: string, html: string) {
@@ -114,27 +122,10 @@ export function App() {
   const [data, setData] = useState<Bootstrap>(emptyBootstrap);
   const [monitor, setMonitor] = useState<Monitor>({});
   const effectiveData = useMemo(() => ({ ...data, ...monitor }) as Bootstrap, [data, monitor]);
-  const [session, setSession] = useState<Session | null>(() => {
-    try {
-      const raw = localStorage.getItem("sir-session");
-      return raw ? JSON.parse(raw) : null;
-    } catch {
-      localStorage.removeItem("sir-session");
-      return null;
-    }
-  });
+  const [session, setSession] = useState<Session | null>(() => JSON.parse(localStorage.getItem("sir-session") || "null"));
   const [view, setView] = useState<View>("dashboard");
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("");
-  const [messageHiding, setMessageHiding] = useState(false);
-
-  useEffect(() => {
-    if (!message) return;
-    setMessageHiding(false);
-    const fadeTimer = window.setTimeout(() => setMessageHiding(true), 4000);
-    const clearTimer = window.setTimeout(() => setMessage(""), 4300);
-    return () => { window.clearTimeout(fadeTimer); window.clearTimeout(clearTimer); };
-  }, [message]);
   const accessibleViews = session?.role === "admin" ? views : views.filter(item => item !== "admin");
 
   const [isDarkMode, setIsDarkMode] = useState(() => {
@@ -288,7 +279,7 @@ export function App() {
           <h2>{viewLabels[view]}</h2>
           <p className={`signal signal-${operationalSignal.tone}`}>{operationalSignal.label}</p>
         </header>
-        {message && <div role="alert" className={`app-alert ${messageHiding ? "hiding" : ""}`}>{message}</div>}
+        {message && <div role="alert" className="app-alert">{message}</div>}
         {loading ? (
           <div className="loading">Cargando datos...</div>
         ) : (
@@ -321,6 +312,12 @@ function Content(props: { data: Bootstrap; monitor: Monitor; session: Session; v
 }
 
 function Dashboard({ data, monitor, session }: { data: Bootstrap; monitor: Monitor; session: Session }) {
+  const [tick, setTick] = useState(0);
+  useEffect(() => {
+    const interval = window.setInterval(() => setTick(value => value + 1), 5000);
+    return () => window.clearInterval(interval);
+  }, []);
+
   const effectiveData = { ...data, ...monitor } as Bootstrap;
 
   const metrics = [
@@ -335,26 +332,15 @@ function Dashboard({ data, monitor, session }: { data: Bootstrap; monitor: Monit
     ] : [])
   ];
 
-  function routeStatus(progress: number | undefined): "Programado" | "En curso" | "Completado" {
-    if (!progress) return "Programado";
-    if (progress >= 100) return "Completado";
-    return "En curso";
-  }
-
   const dispatchBoard = useMemo(() => {
     if (monitor.truck_assignments?.length) {
-      return monitor.truck_assignments.slice(0, 3).map((assignment, index) => {
-        const route = effectiveData.optimized_routes?.find(r => r.id === assignment.route_id)
-          ?? effectiveData.routes?.find(r => r.id === assignment.route_id);
-        return {
-          hour: `${String(8 + index).padStart(2, "0")}:00`,
-          zone: assignment.zone,
-          truck: assignment.truck_code,
-          action: assignment.action ?? `Atender ${assignment.zone}`,
-          status: routeStatus(route?.progress),
-          delayed: /retraso/i.test(route?.delay ?? ""),
-        };
-      });
+      return monitor.truck_assignments.slice(0, 3).map((assignment, index) => ({
+        hour: `${String(8 + index).padStart(2, "0")}:00`,
+        zone: assignment.zone,
+        truck: assignment.truck_code,
+        action: assignment.action ?? `Atender ${assignment.zone}`,
+        status: index === tick % 3 ? "En curso" : index < tick % 3 ? "Completado" : "Programado"
+      }));
     }
 
     const prioritized = [...(effectiveData.prioritized_zones ?? [])].sort((a, b) => b.priority_score - a.priority_score);
@@ -370,15 +356,11 @@ function Dashboard({ data, monitor, session }: { data: Bootstrap; monitor: Monit
       { hour: "10:00", zone: prioritized[2]?.name ?? "Santiago", truck: routes[2]?.truck ?? "C-03", action: "Atención de reporte" }
     ];
 
-    return sequence.map((step, index) => {
-      const route = routes[index];
-      return {
-        ...step,
-        status: routeStatus(route?.progress),
-        delayed: /retraso/i.test(route?.delay ?? ""),
-      };
-    });
-  }, [monitor.truck_assignments, effectiveData.prioritized_zones, effectiveData.optimized_routes, effectiveData.routes]);
+    return sequence.map((step, index) => ({
+      ...step,
+      status: index === tick % 3 ? "En curso" : index < tick % 3 ? "Completado" : "Programado"
+    }));
+  }, [monitor.truck_assignments, effectiveData.prioritized_zones, effectiveData.optimized_routes, effectiveData.routes, tick]);
 
   const alerts = (monitor.alerts ?? []).map((alert, index) => ({
     id: index,
@@ -421,14 +403,13 @@ function Dashboard({ data, monitor, session }: { data: Bootstrap; monitor: Monit
           </div>
           <div className="alerts-list">
             {dispatchBoard.map(step => (
-              <div className={`alert-item alert-${step.status === "En curso" ? "activo" : step.status === "Programado" ? "pendiente" : "resuelto"}${step.delayed ? " alert-delayed" : ""}`} key={step.hour}>
+              <div className={`alert-item alert-${step.status === "En curso" ? "activo" : step.status === "Programado" ? "pendiente" : "resuelto"}`} key={step.hour}>
                 <div className="alert-icon" aria-hidden="true">🚛</div>
                 <div className="alert-content">
                   <h4>{step.hour} · {step.zone}</h4>
                   <p>{step.action} · Camión {step.truck}</p>
                   <span className="alert-time">{step.status}</span>
                 </div>
-                {step.delayed && <span className="alert-delay-badge" aria-label="Ruta con retraso">⏱️</span>}
               </div>
             ))}
           </div>
@@ -490,7 +471,9 @@ function Dashboard({ data, monitor, session }: { data: Bootstrap; monitor: Monit
 function Schedules({ schedules }: { schedules: Schedule[] }) {
   const [search, setSearch] = useState("");
   const [selectedDay, setSelectedDay] = useState("Todos");
-  
+  const [sortBy, setSortBy] = useState<"zone" | "day" | "time" | "waste">("zone");
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
+
   const filtered = useMemo(() => {
     return schedules.filter(s => {
       const matchSearch = s.zone.toLowerCase().includes(search.toLowerCase());
@@ -498,33 +481,58 @@ function Schedules({ schedules }: { schedules: Schedule[] }) {
       return matchSearch && matchDay;
     });
   }, [schedules, search, selectedDay]);
-  
-  const days = ["Todos", ...new Set(schedules.map(s => s.day))];
-  
+
+  const sorted = useMemo(() => {
+    return [...filtered].sort((a, b) => {
+      const av = String(a[sortBy] ?? "").toLowerCase();
+      const bv = String(b[sortBy] ?? "").toLowerCase();
+      const cmp = av < bv ? -1 : av > bv ? 1 : 0;
+      return sortDir === "asc" ? cmp : -cmp;
+    });
+  }, [filtered, sortBy, sortDir]);
+
+  const days = useMemo(() => ["Todos", ...new Set(schedules.map(s => s.day))], [schedules]);
+
+  function handleSort(field: "zone" | "day" | "time" | "waste") {
+    if (sortBy === field) {
+      setSortDir(prev => prev === "asc" ? "desc" : "asc");
+    } else {
+      setSortBy(field);
+      setSortDir("asc");
+    }
+  }
+
+  const sortIcon = (field: string) => sortBy === field ? (sortDir === "asc" ? " ▲" : " ▼") : "";
+
   return (
     <section className="panel">
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
+      <div className="panel-header">
         <h2>Consulta por zona</h2>
-        <button className="export-btn" onClick={() => exportToCSV("horarios", filtered)}>
-          📥 Exportar CSV
-        </button>
+        <div className="panel-actions">
+          <button className="export-btn" onClick={() => exportToCSV("horarios", sorted)}>
+            📥 Exportar CSV
+          </button>
+          <button className="export-btn" onClick={() => exportToPDF("Horarios", sorted.map(s => `<div class="report-card"><h2>${s.zone}</h2><p><strong>Día:</strong> ${s.day}</p><p><strong>Hora:</strong> ${s.time}</p><p><strong>Tipo:</strong> ${s.waste}</p></div>`).join(""))}>
+            📄 Exportar PDF
+          </button>
+        </div>
       </div>
-      
+
       <div className="search-box">
         <span className="search-icon">🔍</span>
-        <input 
-          type="text" 
-          placeholder="Buscar zona..." 
+        <input
+          type="text"
+          placeholder="Buscar zona..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           aria-label="Buscar horarios por zona"
         />
       </div>
-      
+
       <div className="filter-bar">
         {days.map(day => (
-          <button 
-            key={day} 
+          <button
+            key={day}
             className={`filter-btn ${selectedDay === day ? "active" : ""}`}
             onClick={() => setSelectedDay(day)}
             aria-pressed={selectedDay === day}
@@ -533,14 +541,20 @@ function Schedules({ schedules }: { schedules: Schedule[] }) {
           </button>
         ))}
       </div>
-      
-      <div className="list">
-        {filtered.length === 0 ? (
-          <p style={{ color: "var(--muted)", textAlign: "center", padding: "20px" }}>
-            No hay horarios que coincidan con tu búsqueda
-          </p>
+
+      <div className="list" role="list" aria-label="Lista de horarios">
+        {sorted.length === 0 ? (
+          <p className="empty-state">No hay horarios que coincidan con tu búsqueda</p>
         ) : (
-          filtered.map(item => <Item key={item.id} title={item.zone} detail={`${item.day} | ${item.time} | ${item.waste}`} color="blue" />)
+          sorted.map(item => (
+            <Item
+              key={item.id}
+              title={item.zone}
+              detail={`${item.day} · ${item.time} · ${item.waste}`}
+              color="blue"
+              tag={item.waste}
+            />
+          ))
         )}
       </div>
     </section>
@@ -952,13 +966,6 @@ function Map({ zones, trucks, routes, prioritizedZones }: { zones: Zone[]; truck
     };
   }, []);
 
-  if (zones.length === 0) {
-    return (
-      <div className="map map-empty">
-        <p>No hay zonas operativas.</p>
-      </div>
-    );
-  }
   return <div className="map" ref={ref} />;
 }
 
@@ -1010,25 +1017,25 @@ function ReportList({ reports, trucks = [], showDriverFilter = false, showResolv
           aria-label="Buscar reportes"
         />
       </div>
-      {showDriverFilter && (
-        <div className="search-box" style={{ marginTop: '10px' }}>
-          <span className="search-icon">🚗</span>
-          <input
-            type="text"
-            placeholder="Buscar por conductor..."
-            value={driverSearch}
-            onChange={(e) => setDriverSearch(e.target.value)}
-            aria-label="Buscar reportes por conductor"
-          />
-        </div>
-      )}
-      
-      <div className="filter-bar">
-        {filtered.length === 0 ? (
-          <p style={{ color: "var(--muted)", textAlign: "center", padding: "20px" }}>
-            No hay reportes que coincidan con tu búsqueda
-          </p>
-        ) : (
+{showDriverFilter && (
+         <div className="search-box" style={{ marginTop: '10px' }}>
+           <span className="search-icon">🚗</span>
+           <input
+             type="text"
+             placeholder="Buscar por conductor..."
+             value={driverSearch}
+             onChange={(e) => setDriverSearch(e.target.value)}
+             aria-label="Buscar reportes por conductor"
+           />
+         </div>
+       )}
+       
+       <div className="filter-bar">
+         {filtered.length === 0 ? (
+           <p className="empty-state">
+             No hay reportes que coincidan con tu búsqueda
+           </p>
+         ) : (
           filtered.map(report => {
             const reportDriver = driverByZone[report.zone.toLowerCase()] ?? "Sin conductor asignado";
             return (
