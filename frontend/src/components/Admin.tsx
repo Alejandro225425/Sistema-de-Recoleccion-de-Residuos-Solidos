@@ -11,12 +11,20 @@ type MaintenanceRecord = {
   created_at: string;
 };
 
+const initialUserFormValues = {
+  name: "",
+  email: "",
+  password: "",
+  role: "ciudadano" as Role,
+  zone: "Centro Historico",
+};
+
 export default function Admin({ data, session, onResolveReport, onOperationUpdate }: { data: Bootstrap; session: Session; onResolveReport: (id: number) => Promise<void>; onOperationUpdate: (payload: OperationUpdatePayload) => Promise<void>; }) {
   const [users, setUsers] = useState<Session[]>(data.users ?? []);
   const [userRoleDrafts, setUserRoleDrafts] = useState<Record<number, Role>>({});
   const [savingUserIds, setSavingUserIds] = useState<number[]>([]);
   const [feedback, setFeedback] = useState("");
-  const [formValues, setFormValues] = useState({ name: "", email: "", password: "", role: "ciudadano" as Role, zone: "Centro Historico" });
+  const [formValues, setFormValues] = useState(initialUserFormValues);
 
   const [zones, setZones] = useState<Zone[]>(data.zones ?? []);
   const [zoneSearch, setZoneSearch] = useState("");
@@ -112,8 +120,7 @@ export default function Admin({ data, session, onResolveReport, onOperationUpdat
         setUsers(prev => [...prev, { ...created, email: formValues.email, role: formValues.role, zone: formValues.zone }]);
       }
       setFeedback(`Usuario creado: ${formValues.name}`);
-      setFormValues({ name: "", email: "", password: "", role: "ciudadano", zone: "Centro Historico" });
-      (event.currentTarget as HTMLFormElement).reset();
+      setFormValues(initialUserFormValues);
     } catch (error) {
       const message = error instanceof Error ? error.message : 'No se pudo crear el usuario';
       setFeedback(message);
@@ -291,24 +298,28 @@ export default function Admin({ data, session, onResolveReport, onOperationUpdat
             }} /></label>
           <button type="submit">Crear usuario</button>
         </form>
-        {feedback && <p className="hint success" aria-live="polite">{feedback}</p>}
+        {feedback && <p className="hint success" role="status" aria-live="polite">{feedback}</p>}
         <ul className="list" aria-label="Lista de usuarios">
-          {users.map((user, index) => (
-            <li key={`user-${user.id ?? user.email}-${index}`} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "12px", flexWrap: "wrap", border: "1px solid var(--line)", borderRadius: "12px", padding: "12px" }}>
-              <div>
+          {users.length === 0 ? (
+            <li className="empty-state">No hay usuarios registrados todavía.</li>
+          ) : users.map((user, index) => (
+            <li key={`user-${user.id ?? user.email}-${index}`} className="admin-list-item">
+              <div className="admin-list-main">
                 <strong>{user.name ?? "Sin nombre"}</strong>
-                <div style={{ color: "var(--muted)", fontSize: "0.95rem" }}>{user.email} · {user.zone ?? "Sin zona"}</div>
+                <div className="admin-list-meta">{user.email} · {user.zone ?? "Sin zona"}</div>
               </div>
-              <select value={userRoleDrafts[user.id ?? 0] ?? user.role} onChange={event => {
-                const value = event.target.value as Role;
-                setUserRoleDrafts(prev => ({ ...prev, [user.id ?? 0]: value }));
-              }} aria-label={`Rol de ${user.name}`}>
-                <option value="ciudadano">Ciudadano</option>
-                <option value="operador">Operador</option>
-                <option value="admin">Administrador</option>
-                <option value="conductor">Conductor</option>
-              </select>
-              <button type="button" onClick={() => updateUserRole(user)} disabled={!user.id || savingUserIds.includes(user.id)}>{savingUserIds.includes(user.id ?? -1) ? "Guardando..." : "Guardar rol"}</button>
+              <div className="admin-list-actions">
+                <select value={userRoleDrafts[user.id ?? 0] ?? user.role} onChange={event => {
+                  const value = event.target.value as Role;
+                  setUserRoleDrafts(prev => ({ ...prev, [user.id ?? 0]: value }));
+                }} aria-label={`Rol de ${user.name}`}>
+                  <option value="ciudadano">Ciudadano</option>
+                  <option value="operador">Operador</option>
+                  <option value="admin">Administrador</option>
+                  <option value="conductor">Conductor</option>
+                </select>
+                <button type="button" onClick={() => updateUserRole(user)} disabled={!user.id || savingUserIds.includes(user.id)}>{savingUserIds.includes(user.id ?? -1) ? "Guardando..." : "Guardar rol"}</button>
+              </div>
             </li>
           ))}
         </ul>
@@ -343,13 +354,15 @@ export default function Admin({ data, session, onResolveReport, onOperationUpdat
             }} aria-label="Filtrar zonas" />
         </div>
         <ul className="list" aria-label="Lista de zonas">
-          {filteredZones.map(zone => (
-            <li key={zone.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "12px", flexWrap: "wrap", border: "1px solid var(--line)", borderRadius: "12px", padding: "12px" }}>
-              <div>
+          {filteredZones.length === 0 ? (
+            <li className="empty-state">No se encontraron zonas que coincidan con el filtro.</li>
+          ) : filteredZones.map(zone => (
+            <li key={zone.id} className="admin-list-item">
+              <div className="admin-list-main">
                 <strong>{zone.name ?? "Sin nombre"}</strong>
-                <div style={{ color: "var(--muted)", fontSize: "0.95rem" }}>Criticidad {zone.criticality ?? "Sin datos"}</div>
+                <div className="admin-list-meta">Criticidad {zone.criticality ?? "Sin datos"}</div>
               </div>
-              <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
+              <div className="admin-list-actions">
                 <button type="button" onClick={() => startEditZone(zone)}>Editar zona</button>
                 <button type="button" onClick={() => deleteZone(zone.id)}>Eliminar zona</button>
               </div>
@@ -404,13 +417,15 @@ export default function Admin({ data, session, onResolveReport, onOperationUpdat
           </form>
         )}
         <ul className="list" aria-label="Lista de horarios">
-          {schedules.map(schedule => (
-            <li key={schedule.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "12px", flexWrap: "wrap", border: "1px solid var(--line)", borderRadius: "12px", padding: "12px" }}>
-              <div>
+          {schedules.length === 0 ? (
+            <li className="empty-state">No hay horarios registrados aún.</li>
+          ) : schedules.map(schedule => (
+            <li key={schedule.id} className="admin-list-item">
+              <div className="admin-list-main">
                 <strong>{schedule.zone}</strong>
-                <div style={{ color: "var(--muted)", fontSize: "0.95rem" }}>{schedule.day} · {schedule.time} · {schedule.waste}</div>
+                <div className="admin-list-meta">{schedule.day} · {schedule.time} · {schedule.waste}</div>
               </div>
-              <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
+              <div className="admin-list-actions">
                 <button type="button" onClick={() => startEditSchedule(schedule)}>Editar</button>
                 <button type="button" onClick={() => deleteSchedule(schedule.id)}>Eliminar</button>
               </div>
@@ -451,7 +466,9 @@ export default function Admin({ data, session, onResolveReport, onOperationUpdat
           <button type="submit">Crear camión</button>
         </form>
         <ul className="list" aria-label="Lista de camiones">
-          {filteredTrucks.map((truck, index) => <li key={`truck-${truck.id}-${index}`}><Item title={`${truck.code} · ${truck.driver ?? 'Sin conductor'}`} detail={`${truck.zone} · ${truck.status}`} color={truck.status === 'Mantenimiento' ? 'yellow' : 'blue'} /></li>)}
+          {filteredTrucks.length === 0 ? (
+            <li className="empty-state">No hay camiones que coincidan con el filtro actual.</li>
+          ) : filteredTrucks.map((truck, index) => <li key={`truck-${truck.id}-${index}`}><Item title={`${truck.code} · ${truck.driver ?? 'Sin conductor'}`} detail={`${truck.zone} · ${truck.status}`} color={truck.status === 'Mantenimiento' ? 'yellow' : 'blue'} /></li>)}
         </ul>
       </section>
 
@@ -481,7 +498,9 @@ export default function Admin({ data, session, onResolveReport, onOperationUpdat
           <button type="submit">Crear mantenimiento</button>
         </form>
         <ul className="list" aria-label="Lista de mantenimiento">
-          {filteredMaintenance.map(item => <li key={item.id}><Item title={`Mantenimiento #${item.id}`} detail={`${item.description} · ${item.status}`} color={item.status === 'Pendiente' ? 'yellow' : 'blue'} /></li>)}
+          {filteredMaintenance.length === 0 ? (
+            <li className="empty-state">No hay registros de mantenimiento para el filtro seleccionado.</li>
+          ) : filteredMaintenance.map(item => <li key={item.id}><Item title={`Mantenimiento #${item.id}`} detail={`${item.description} · ${item.status}`} color={item.status === 'Pendiente' ? 'yellow' : 'blue'} /></li>)}
         </ul>
       </section>
 
