@@ -20,57 +20,70 @@ const initialUserFormValues = {
 };
 
 export default function Admin({ data, session, onResolveReport, onOperationUpdate }: { data: Bootstrap; session: Session; onResolveReport: (id: number) => Promise<void>; onOperationUpdate: (payload: OperationUpdatePayload) => Promise<void>; }) {
-  const [users, setUsers] = useState<Session[]>(data.users ?? []);
+  const safeData = useMemo(() => ({
+    zones: Array.isArray(data?.zones) ? data.zones : [],
+    schedules: Array.isArray(data?.schedules) ? data.schedules : [],
+    trucks: Array.isArray(data?.trucks) ? data.trucks : [],
+    routes: Array.isArray(data?.routes) ? data.routes : [],
+    reports: Array.isArray(data?.reports) ? data.reports : [],
+    collections: Array.isArray(data?.collections) ? data.collections : [],
+    users: Array.isArray(data?.users) ? data.users : [],
+    containers: Array.isArray(data?.containers) ? data.containers : [],
+    maintenance: Array.isArray(data?.maintenance) ? data.maintenance : [],
+  }), [data]);
+
+  const [users, setUsers] = useState<Session[]>(safeData.users);
   const [userRoleDrafts, setUserRoleDrafts] = useState<Record<number, Role>>({});
   const [savingUserIds, setSavingUserIds] = useState<number[]>([]);
   const [feedback, setFeedback] = useState("");
   const [formValues, setFormValues] = useState(initialUserFormValues);
 
-  const [zones, setZones] = useState<Zone[]>(data.zones ?? []);
+  const [zones, setZones] = useState<Zone[]>(safeData.zones);
   const [zoneSearch, setZoneSearch] = useState("");
   const [newZoneName, setNewZoneName] = useState("");
   const [editingZoneId, setEditingZoneId] = useState<number | null>(null);
   const [editingZoneName, setEditingZoneName] = useState("");
 
-  const [schedules, setSchedules] = useState<Schedule[]>(data.schedules ?? []);
-  const [newSchedule, setNewSchedule] = useState({ zone_id: data.zones?.[0]?.id ?? 1, day: "Lunes", time: "08:00", waste: "Orgánicos" });
+  const [schedules, setSchedules] = useState<Schedule[]>(safeData.schedules);
+  const [newSchedule, setNewSchedule] = useState({ zone_id: safeData.zones[0]?.id ?? 1, day: "Lunes", time: "08:00", waste: "Orgánicos" });
   const [editingScheduleId, setEditingScheduleId] = useState<number | null>(null);
   const [editingSchedule, setEditingSchedule] = useState({ zone_id: 1, day: "Lunes", time: "08:00", waste: "Orgánicos" });
   const [eventType, setEventType] = useState<"route_update" | "container_update">("route_update");
-  const [eventTargetId, setEventTargetId] = useState<number>(data.routes?.[0]?.id ?? data.containers?.[0]?.id ?? 0);
+  const [eventTargetId, setEventTargetId] = useState<number>(safeData.routes[0]?.id ?? safeData.containers[0]?.id ?? 0);
   const [eventProgress, setEventProgress] = useState("");
   const [eventDelay, setEventDelay] = useState("");
   const [eventFillLevel, setEventFillLevel] = useState("");
   const [eventStatus, setEventStatus] = useState("");
   const [eventNote, setEventNote] = useState("");
 
-  const [trucks, setTrucks] = useState<Truck[]>(data.trucks ?? []);
+  const [trucks, setTrucks] = useState<Truck[]>(safeData.trucks);
   const [truckDriverSearch, setTruckDriverSearch] = useState("");
   const [truckStatusFilter, setTruckStatusFilter] = useState("Todos");
-  const [newTruck, setNewTruck] = useState({ code: "", driver: "", status: "En ruta", zone: data.zones?.[0]?.name ?? "Centro Historico", latitude: 0, longitude: 0 });
+  const [newTruck, setNewTruck] = useState({ code: "", driver: "", status: "En ruta", zone_id: safeData.zones[0]?.id ?? 1, latitude: 0, longitude: 0 });
 
-  const [maintenance, setMaintenance] = useState<MaintenanceRecord[]>(data.maintenance ?? []);
+  const [maintenance, setMaintenance] = useState<MaintenanceRecord[]>(safeData.maintenance);
   const [maintenanceStatusFilter, setMaintenanceStatusFilter] = useState("Todos");
-  const [newMaintenance, setNewMaintenance] = useState({ truck_id: data.trucks?.[0]?.id ?? 0, description: "", status: "Pendiente" });
+  const [newMaintenance, setNewMaintenance] = useState({ truck_id: safeData.trucks[0]?.id ?? 0, description: "", status: "Pendiente" });
 
   useEffect(() => {
-    setUsers(data.users ?? []);
-    setZones(data.zones ?? []);
-    setSchedules(data.schedules ?? []);
-    setTrucks(data.trucks ?? []);
-    setMaintenance(data.maintenance ?? []);
-    setNewTruck(prev => ({ ...prev, zone: data.zones?.[0]?.name ?? prev.zone }));
-    setNewMaintenance(prev => ({ ...prev, truck_id: data.trucks?.[0]?.id ?? prev.truck_id }));
-    setNewSchedule(prev => ({ ...prev, zone_id: data.zones?.[0]?.id ?? prev.zone_id }));
-  }, [data.users, data.zones, data.schedules, data.trucks, data.maintenance]);
+    setUsers(safeData.users);
+    setZones(safeData.zones);
+    setSchedules(safeData.schedules);
+    setTrucks(safeData.trucks);
+    setMaintenance(safeData.maintenance);
+    setNewTruck(prev => ({ ...prev, zone_id: safeData.zones[0]?.id ?? prev.zone_id }));
+    setNewMaintenance(prev => ({ ...prev, truck_id: safeData.trucks[0]?.id ?? prev.truck_id }));
+    setNewSchedule(prev => ({ ...prev, zone_id: safeData.zones[0]?.id ?? prev.zone_id }));
+  }, [safeData]);
 
   const filteredZones = useMemo(
-    () => zones.filter(zone => String(zone.name ?? "").toLowerCase().includes(String(zoneSearch ?? "").toLowerCase().trim())),
+    () => (Array.isArray(zones) ? zones : []).filter(zone => zone && String(zone.name ?? "").toLowerCase().includes(String(zoneSearch ?? "").toLowerCase().trim())),
     [zones, zoneSearch]
   );
 
   const filteredTrucks = useMemo(
-    () => trucks.filter(truck => {
+    () => (Array.isArray(trucks) ? trucks : []).filter(truck => {
+      if (!truck) return false;
       const driver = String(truck.driver ?? "");
       const matchesDriver = driver.toLowerCase().includes(String(truckDriverSearch ?? "").toLowerCase().trim());
       const matchesStatus = truckStatusFilter === "Todos" || truck.status === truckStatusFilter;
@@ -80,7 +93,7 @@ export default function Admin({ data, session, onResolveReport, onOperationUpdat
   );
 
   const filteredMaintenance = useMemo(
-    () => maintenance.filter(item => maintenanceStatusFilter === "Todos" || item.status === maintenanceStatusFilter),
+    () => (Array.isArray(maintenance) ? maintenance : []).filter(item => item && (maintenanceStatusFilter === "Todos" || item.status === maintenanceStatusFilter)),
     [maintenance, maintenanceStatusFilter]
   );
 
@@ -230,7 +243,7 @@ export default function Admin({ data, session, onResolveReport, onOperationUpdat
         body: JSON.stringify(newTruck)
       });
       setTrucks(prev => [...prev, created]);
-      setNewTruck({ code: '', driver: '', status: 'En ruta', zone: data.zones?.[0]?.name ?? 'Centro Historico', latitude: 0, longitude: 0 });
+      setNewTruck({ code: '', driver: '', status: 'En ruta', zone_id: data.zones?.[0]?.id ?? 1, latitude: 0, longitude: 0 });
       setFeedback(`Camión creado: ${created.code}`);
     } catch (error) {
       setFeedback(error instanceof Error ? error.message : 'No se pudo crear el camión');
@@ -459,10 +472,10 @@ export default function Admin({ data, session, onResolveReport, onOperationUpdat
               const value = event.target.value;
               setNewTruck(prev => ({ ...prev, status: value }));
             }}><option>En ruta</option><option>Mantenimiento</option><option>Disponible</option></select></label>
-          <label htmlFor="truck-zone">Zona<select id="truck-zone" value={newTruck.zone} onChange={event => {
-              const value = event.target.value;
-              setNewTruck(prev => ({ ...prev, zone: value }));
-            }}>{data.zones?.map((zone, index) => <option key={`zone-${zone.id}-${index}`} value={zone.name}>{zone.name}</option>)}</select></label>
+          <label htmlFor="truck-zone">Zona<select id="truck-zone" value={newTruck.zone_id} onChange={event => {
+              const value = Number(event.target.value);
+              setNewTruck(prev => ({ ...prev, zone_id: value }));
+            }}>{data.zones?.map((zone, index) => <option key={`zone-${zone.id}-${index}`} value={zone.id}>{zone.name}</option>)}</select></label>
           <button type="submit">Crear camión</button>
         </form>
         <ul className="list" aria-label="Lista de camiones">

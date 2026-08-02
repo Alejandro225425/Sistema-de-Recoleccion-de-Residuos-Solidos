@@ -516,14 +516,21 @@ def simulate_container_fill(containers: list[dict[str, Any]]) -> list[dict[str, 
     return simulated
 
 
-def simulate_truck_positions(routes: list[dict[str, Any]]) -> list[dict[str, Any]]:
+def simulate_truck_positions(routes: list[dict[str, Any]], trucks: list[dict[str, Any]] | None = None) -> list[dict[str, Any]]:
+    truck_map = {str(t.get("code")): t for t in (trucks or [])}
     simulated: list[dict[str, Any]] = []
     for route in routes:
-        latitude = float(route.get("latitude", 0.0)) + 0.0015
-        longitude = float(route.get("longitude", 0.0)) + 0.0012
+        code = route.get("truck")
+        base_truck = truck_map.get(str(code), {})
+        latitude = float(route.get("latitude", base_truck.get("latitude", 0.0))) + 0.0015
+        longitude = float(route.get("longitude", base_truck.get("longitude", 0.0))) + 0.0012
         simulated.append({
-            "code": route.get("truck"),
-            "zone": route.get("zone"),
+            "id": base_truck.get("id") or route.get("id"),
+            "code": code,
+            "driver": base_truck.get("driver", "Sin conductor"),
+            "status": base_truck.get("status", "En ruta"),
+            "zone_id": base_truck.get("zone_id") or route.get("zone_id"),
+            "zone": route.get("zone") or base_truck.get("zone"),
             "latitude": latitude,
             "longitude": longitude,
             "progress": int(route.get("progress", 0)),
@@ -1065,7 +1072,7 @@ def get_current_user_optional(authorization: str | None = Header(default=None)) 
 def root() -> dict[str, Any]:
     return {
         "service": "SIR Cusco API",
-        "version": "4.0.0",
+        "version": "4.5.0",
         "status": "ok",
         "endpoints": {
             "health": "/api/health",
@@ -1086,7 +1093,7 @@ def health() -> dict[str, str]:
     return {
         "status": "ok",
         "database": db_status,
-        "version": "4.0.0",
+        "version": "4.5.0",
         "mode": "production" if db_status == "postgresql" else "demo"
     }
 
@@ -1304,7 +1311,7 @@ def build_monitor(simulate: bool = True) -> dict[str, Any]:
     assignments = suggest_truck_assignments(data.get("trucks", []), optimized_routes)
     intervention_plan = build_intervention_plan(prioritized_zones, optimized_routes)
     return {
-        "trucks": simulate_truck_positions(data.get("routes", [])),
+        "trucks": simulate_truck_positions(data.get("routes", []), data.get("trucks", [])),
         "alerts": build_alerts(routes=data.get("routes", []), containers=data.get("containers", [])),
         "containers": data.get("containers", []),
         "maintenance": data.get("maintenance", []),
