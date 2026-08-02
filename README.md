@@ -36,6 +36,7 @@ Sistema inteligente para la recoleccion de residuos solidos segregados en la ciu
 - Diseño visual moderno con paleta verde-dorada, tipografía Inter, sidebar con gradiente, tabs modernos en login, responsive completo con menú hamburguesa para móvil, modo claro/oscuro.
 - Página de login revisada en versión 4.0.0: toggle de visibilidad de contraseña, indicador de fortaleza en registro, token de recuperación visible en demo, ARIA mejorado, auto-enfoque en email, elimando el hack de `window.__password`.
 - Página de login mejorada: tabs de modo (Iniciar sesión / Registrarse / Recuperar), rol y zona solo en registro, enlace fantasma para recuperación de contraseña.
+- Corregido fondo negro en la vista de reportes del dashboard: eliminado centrado flex del `<body>` en `frontend/index.html` y ajustados estilos CSS en `frontend/src/styles.css` para que el contenido ocupe toda la ventana sin fondos oscuros alrededor.
 
 ## Progreso implementado hasta ahora
 

@@ -2,6 +2,16 @@
 
 ## 2026-08-02
 
+### Fix: Fondo negro en vista de reportes del dashboard
+
+- **Problema**: el `<body>` en `frontend/index.html` tenía `display: flex; align-items: center; justify-content: center`, lo que centraba el contenido vertical y horizontalmente. En la vista de reportes, al ser más corta que la ventana, se mostraba el fondo oscuro original `#0a1f14` alrededor, dando la sensación de pantalla negra.
+- **Solución**: eliminado el centrado flex del `<body>`, agregado `#root { min-height: 100vh; }` en `index.html` y reglas CSS en `styles.css` (`html, body, #root { height: 100%; }`, `body { display: block; }`, `.app-shell { background: var(--bg); }`) para restaurar el layout normal de documento.
+- **Archivos modificados**: `frontend/index.html`, `frontend/src/styles.css`.
+
+#### Verificación
+- Build de producción exitoso (`npx vite build`).
+- Tests del frontend: `npx vitest run` — **11 passed**.
+
 ### Fix: Revisión completa del Dashboard de Horarios — errores funcionales, UX, código y diseño
 
 #### Frontend (`frontend/src/main.tsx`, `frontend/src/components/Admin.tsx`, `frontend/src/components/Item.tsx`)
