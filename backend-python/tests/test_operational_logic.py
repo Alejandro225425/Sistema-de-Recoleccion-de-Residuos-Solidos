@@ -13,7 +13,7 @@ def test_health_endpoint_reports_ok():
     assert response.status_code == 200
     payload = response.json()
     assert payload["status"] == "ok"
-    assert payload["version"] == "3.0.0"
+    assert payload["version"] == "4.0.0"
     assert payload["database"] in {"memory", "postgresql", "memory (psycopg no instalado)"}
     assert payload["mode"] in {"demo", "production"}
 
@@ -223,3 +223,36 @@ def test_admin_crud_endpoints_for_trucks_zones_schedules_and_maintenance():
     assert delete_truck.status_code == 200
     delete_zone = client.delete(f"/api/zones/{zone['id']}", headers=headers)
     assert delete_zone.status_code == 200
+
+
+def test_login_nonexistent_email_returns_401_same_message():
+    """Timing attack mitigation: non-existent email returns 401 with same message as wrong password."""
+    client = TestClient(app)
+    response = client.post("/api/auth/login", json={"email": "nonexistent@ecocusco.pe", "password": "wrong-password-123"})
+    assert response.status_code == 401
+    assert response.json()["detail"] == "Credenciales inválidas"
+
+
+def test_login_wrong_password_returns_401():
+    client = TestClient(app)
+    response = client.post("/api/auth/login", json={"email": "admin@ecocusco.pe", "password": "wrong-password-123"})
+    assert response.status_code == 401
+    assert response.json()["detail"] == "Credenciales inválidas"
+
+
+def test_login_correct_password_returns_token():
+    client = TestClient(app)
+    response = client.post("/api/auth/login", json={"email": "admin@ecocusco.pe", "password": "admin123"})
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["token"]
+    assert payload["user"]["email"] == "admin@ecocusco.pe"
+    assert payload["user"]["role"] == "admin"
+
+
+def test_login_password_with_spaces_not_stripped():
+    """Password with leading/trailing spaces must reach backend without stripping."""
+    client = TestClient(app)
+    admin_password = "admin123"
+    response = client.post("/api/auth/login", json={"email": "admin@ecocusco.pe", "password": f" {admin_password} "})
+    assert response.status_code == 401

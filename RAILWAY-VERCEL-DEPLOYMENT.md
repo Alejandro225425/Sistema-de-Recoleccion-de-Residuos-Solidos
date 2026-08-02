@@ -227,7 +227,7 @@ El endpoint `/api/health` retorna:
 {
   "status": "ok",
   "database": "memory",
-    "version": "3.0.0",
+    "version": "4.0.0",
   "mode": "demo"
 }
 ```

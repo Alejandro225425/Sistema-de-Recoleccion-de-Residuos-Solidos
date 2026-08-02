@@ -15,14 +15,17 @@ import bcrypt
 import jwt
 from fastapi import Depends, FastAPI, Header, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel, ConfigDict, EmailStr, Field
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 
 
 class LoginRequest(BaseModel):
-    model_config = ConfigDict(str_strip_whitespace=True)
-
     email: EmailStr
     password: str = Field(min_length=8, max_length=120)
+
+    @field_validator("email")
+    @classmethod
+    def strip_email(cls, v: str) -> str:
+        return v.strip() if isinstance(v, str) else v
 
 
 def hash_password(password: str) -> str:
@@ -35,14 +38,20 @@ def verify_password(password: str, password_hash: str) -> bool:
     return bcrypt.checkpw(password.encode("utf-8"), password_hash.encode("utf-8"))
 
 
-class RegisterRequest(BaseModel):
-    model_config = ConfigDict(str_strip_whitespace=True)
+_DUMMY_PASSWORD_HASH = hash_password("dummy-password-for-timing-attack-prevention")
 
+
+class RegisterRequest(BaseModel):
     name: str = Field(min_length=2, max_length=120)
     email: EmailStr
     password: str = Field(min_length=8, max_length=120)
     role: str = Field(default="ciudadano")
     zone: str = Field(default="Centro Historico", min_length=2, max_length=80)
+
+    @field_validator("email")
+    @classmethod
+    def strip_email(cls, v: str) -> str:
+        return v.strip() if isinstance(v, str) else v
 
 
 class PasswordResetRequest(BaseModel):
@@ -228,7 +237,7 @@ def cors_origins() -> list[str]:
     ]
 
 
-app = FastAPI(title="SIR Cusco API", version="3.0.0")
+app = FastAPI(title="SIR Cusco API", version="4.0.0")
 
 app.add_middleware(
     CORSMiddleware,
@@ -1056,7 +1065,7 @@ def get_current_user_optional(authorization: str | None = Header(default=None)) 
 def root() -> dict[str, Any]:
     return {
         "service": "SIR Cusco API",
-        "version": "3.0.0",
+        "version": "4.0.0",
         "status": "ok",
         "endpoints": {
             "health": "/api/health",
@@ -1077,7 +1086,7 @@ def health() -> dict[str, str]:
     return {
         "status": "ok",
         "database": db_status,
-        "version": "3.0.0",
+        "version": "4.0.0",
         "mode": "production" if db_status == "postgresql" else "demo"
     }
 
@@ -1105,9 +1114,11 @@ def register(payload: RegisterRequest) -> dict[str, Any]:
 @app.post("/api/auth/login")
 def login(payload: LoginRequest) -> dict[str, Any]:
     user_record = get_user_record_by_email(str(payload.email))
-    if user_record is None:
+    user_exists = user_record is not None
+    password_hash = user_record.get("password_hash") if user_exists else _DUMMY_PASSWORD_HASH
+    if not user_exists:
+        verify_password(payload.password, _DUMMY_PASSWORD_HASH)
         raise HTTPException(status_code=401, detail="Credenciales inválidas")
-    password_hash = user_record.get("password_hash") or ""
     user = build_user_payload(user_record)
     if not verify_password(payload.password, password_hash):
         raise HTTPException(status_code=401, detail="Credenciales inválidas")

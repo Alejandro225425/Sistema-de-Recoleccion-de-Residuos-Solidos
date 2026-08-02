@@ -10,6 +10,7 @@ delete (L.Icon.Default.prototype as any)._getIconUrl;
 L.Icon.Default.mergeOptions({ iconUrl, iconRetinaUrl, shadowUrl });
 import "./styles.css";
 import Admin from "./components/Admin";
+import { AuthView } from "./components/AuthView";
 import Item, { Metric } from "./components/Item";
 import { request } from "./api";
 import {
@@ -169,24 +170,23 @@ export function App() {
     return () => window.clearInterval(monitorInterval);
   }, []);
 
-  async function login(nextSession: Session) {
+  async function login(email: string, password: string) {
     try {
       const payload = await request<{ token?: string; user?: Session; detail?: string }>('/auth/login', {
         method: 'POST',
-        body: JSON.stringify({ email: nextSession.email, password: String((window as Window & { __password?: string }).__password ?? '') })
+        body: JSON.stringify({ email, password })
       });
       if (!payload.token || !payload.user) {
-        throw new Error('No se recibió token válido del backend');
+        throw new Error(payload.detail || 'No se recibió token válido del backend');
       }
-      const session = { ...payload.user, email: nextSession.email };
-      localStorage.setItem('sir-session', JSON.stringify(session));
+      localStorage.setItem('sir-session', JSON.stringify(payload.user));
       localStorage.setItem('sir-token', payload.token);
-      setSession(session);
+      setSession(payload.user);
       setMessage('');
       await loadData();
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'No se pudo iniciar sesión';
-      setMessage(message);
+      const msg = error instanceof Error ? error.message : 'No se pudo iniciar sesión';
+      setMessage(msg);
       throw error;
     }
   }
@@ -291,176 +291,6 @@ export function App() {
             onConfirmCollection={confirmCollection}
           />
         )}
-      </section>
-    </main>
-  );
-}
-
-function AuthView({ zones, onLogin, message }: { zones: Zone[]; onLogin: (session: Session) => Promise<void>; message: string }) {
-  const fallbackZones = zones.length ? zones.map(zone => zone.name) : ["Centro Historico", "Wanchaq", "San Sebastian", "San Jeronimo", "Santiago"];
-  const [mode, setMode] = useState<"login" | "register" | "forgot">("login");
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [feedback, setFeedback] = useState("");
-
-  async function submit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    const form = new FormData(event.currentTarget);
-    const email = String(form.get("email")).trim();
-    const password = String(form.get("password")).trim();
-    const token = String(form.get("token") || "").trim();
-    const name = String(form.get("name") || "").trim();
-    const role = String(form.get("role") || "ciudadano") as Role;
-    const zone = String(form.get("zone") || "Centro Historico");
-    setIsSubmitting(true);
-    setFeedback("");
-    try {
-      if (mode === "register") {
-        const created = await request<{ token?: string; user?: Session }>('/auth/register', { method: 'POST', body: JSON.stringify({ name, email, password, role, zone }) });
-        if (!created.token || !created.user) throw new Error('No se pudo registrar el usuario');
-        localStorage.setItem('sir-token', created.token);
-        localStorage.setItem('sir-session', JSON.stringify({ ...created.user, email }));
-        window.location.reload();
-        return;
-      }
-      if (mode === "forgot") {
-        if (!email) throw new Error('Ingresa un correo para recuperar la contraseña');
-        if (!token) {
-          const response = await request<{ ok?: boolean; token?: string; message?: string }>('/auth/forgot-password', { method: 'POST', body: JSON.stringify({ email }) });
-          setFeedback(response.message || 'Si el correo existe, se enviará el token de recuperación');
-          return;
-        }
-        const response = await request<{ ok?: boolean; message?: string }>('/auth/reset-password', { method: 'POST', body: JSON.stringify({ token, password }) });
-        setFeedback(response.message || 'Contraseña actualizada correctamente');
-        setMode('login');
-        return;
-      }
-      (window as Window & { __password?: string }).__password = password;
-      await onLogin({ name, email, role, zone });
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'No se pudo completar la acción';
-      setFeedback(message);
-    } finally {
-      setIsSubmitting(false);
-    }
-  }
-
-  return (
-    <main className="auth-view">
-      <section className="auth-image-section">
-        <div className="auth-overlay">
-          <div className="auth-branding">
-            <h1 className="eco-logo"><span>🌿</span> EcoCusco</h1>
-            <p className="auth-tagline">Gestión Inteligente de Residuos Sólidos</p>
-            <div className="eco-features">
-              <div className="eco-feature">
-                <span>♻️</span>
-                <p>Recolección Segregada</p>
-              </div>
-              <div className="eco-feature">
-                <span>🌍</span>
-                <p>Impacto Ambiental Positivo</p>
-              </div>
-              <div className="eco-feature">
-                <span>🤝</span>
-                <p>Participación Comunitaria</p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <section className="auth-form-section">
-        <form className="auth-panel" onSubmit={submit}>
-          <div className="form-header">
-            <h2>Bienvenido a EcoCusco</h2>
-            <p>Plataforma de Gestión Ambiental Urbana</p>
-          </div>
-
-          <div className="auth-tabs">
-            <button type="button" className={`auth-tab ${mode === "login" ? "active" : ""}`} onClick={() => setMode("login")}>Iniciar sesión</button>
-            <button type="button" className={`auth-tab ${mode === "register" ? "active" : ""}`} onClick={() => setMode("register")}>Registrarme</button>
-            <button type="button" className={`auth-tab ${mode === "forgot" ? "active" : ""}`} onClick={() => setMode("forgot")}>Recuperar contraseña</button>
-          </div>
-
-          {mode === "register" && <div className="form-group">
-            <label htmlFor="name">Nombre Completo</label>
-            <input 
-              id="name"
-              name="name" 
-              required 
-              placeholder="Ej. Ana Quispe Huamán" 
-            />
-          </div>}
-
-          <div className="form-group">
-            <label htmlFor="email">Correo Electrónico</label>
-            <input 
-              id="email"
-              name="email" 
-              type="email" 
-              required 
-              placeholder="tu.email@ejemplo.com" 
-            />
-          </div>
-
-          {mode !== "forgot" && <div className="form-group">
-            <label htmlFor="password">Contraseña</label>
-            <input 
-              id="password"
-              name="password" 
-              type="password" 
-              required 
-              minLength={8}
-              placeholder="Mínimo 8 caracteres" 
-            />
-          </div>}
-
-          {mode === "forgot" && <div className="form-group">
-            <label htmlFor="token">Token de recuperación</label>
-            <input id="token" name="token" placeholder="Pega el token recibido por correo" />
-          </div>}
-
-          {mode === "forgot" && <div className="form-group">
-            <label htmlFor="new-password">Nueva contraseña</label>
-            <input id="new-password" name="password" type="password" required minLength={8} placeholder="Ingresa una nueva contraseña" />
-          </div>}
-
-          {mode === "register" && (
-            <div className="form-row">
-              <div className="form-group">
-                <label htmlFor="role">Rol de Usuario</label>
-                <select id="role" name="role">
-                  <option value="ciudadano">👤 Ciudadano</option>
-                  <option value="operador">👷 Operador Municipal</option>
-                  <option value="admin">👨‍💼 Administrador</option>
-                  <option value="conductor">🚗 Conductor</option>
-                </select>
-              </div>
-
-              <div className="form-group">
-                <label htmlFor="zone">Zona</label>
-                <select id="zone" name="zone">
-                  {fallbackZones.map(zone => (
-                    <option key={zone}>{zone}</option>
-                  ))}
-                </select>
-              </div>
-            </div>
-          )}
-
-          <div className="form-actions">
-            <button type="submit" className="btn-primary" disabled={isSubmitting}>{isSubmitting ? "Procesando..." : mode === "login" ? "Iniciar Sesión" : mode === "forgot" ? "Restablecer contraseña" : "Crear cuenta"}</button>
-          </div>
-
-          <div className="form-links">
-            {mode === "login" && <button type="button" className="ghost-link" onClick={() => setMode("forgot")}>¿Olvidaste tu contraseña?</button>}
-            <span className="divider">•</span>
-            <a href="#terms">Términos y Condiciones</a>
-          </div>
-
-          {feedback && <p className="hint success">{feedback}</p>}
-          {message && <p className="hint error">{message}</p>}
-        </form>
       </section>
     </main>
   );
