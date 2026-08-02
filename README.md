@@ -4,7 +4,7 @@ Sistema inteligente para la recoleccion de residuos solidos segregados en la ciu
 
 ## Version actual
 
-- **Version:** `4.5.0`
+- **Version:** `4.5.1`
 - **Rama:** `main` y `version-4.5`
 - **Repositorio:** `Alejandro225425/Sistema-de-Recoleccion-de-Residuos-Solidos`
 - **Estado:** Proyecto organizado y documentación consolidada. Configuración de despliegue lista. Backend en Render (`render.yaml`). Frontend en Vercel (dashboard). Ver `docs/DESPLIEGUE.md` y `DEPLOYMENT.md`.

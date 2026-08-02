@@ -237,7 +237,7 @@ def cors_origins() -> list[str]:
     ]
 
 
-app = FastAPI(title="SIR Cusco API", version="4.5.0")
+app = FastAPI(title="SIR Cusco API", version="4.5.1")
 
 app.add_middleware(
     CORSMiddleware,
@@ -1072,7 +1072,7 @@ def get_current_user_optional(authorization: str | None = Header(default=None)) 
 def root() -> dict[str, Any]:
     return {
         "service": "SIR Cusco API",
-        "version": "4.5.0",
+        "version": "4.5.1",
         "status": "ok",
         "endpoints": {
             "health": "/api/health",
@@ -1093,7 +1093,7 @@ def health() -> dict[str, str]:
     return {
         "status": "ok",
         "database": db_status,
-        "version": "4.5.0",
+        "version": "4.5.1",
         "mode": "production" if db_status == "postgresql" else "demo"
     }
 
@@ -1525,3 +1525,4 @@ def confirm_collection(collection_id: int, current_user: dict[str, Any] = Depend
 @app.get("/api/analytics/summary")
 def get_analytics() -> dict[str, Any]:
     return bootstrap()["analytics"]
+

@@ -1,6 +1,6 @@
 # EcoCusco - Gestión Ambiental Urbana
 
-**Versión:** 4.5.0
+**Versión:** 4.5.1
 
 Sistema inteligente para la recolección de residuos sólidos segregados en la ciudad del Cusco. El proyecto integra un frontend React + TypeScript, una API principal en FastAPI y un servicio auxiliar TypeScript para alertas y geolocalización.
 

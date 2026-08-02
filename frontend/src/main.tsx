@@ -139,9 +139,9 @@ class ErrorBoundary extends React.Component<
   render() {
     if (this.state.hasError) {
       return (
-        <div className="panel" style={{ margin: "32px", padding: "24px", color: "var(--ink)" }}>
+        <div className="panel" style={{ margin: "32px" }}>
           <h2>Se produjo un error al renderizar esta sección</h2>
-          <p style={{ margin: "12px 0", color: "var(--error)" }}>
+          <p className="hint error" style={{ margin: "12px 0" }}>
             {this.state.error?.message || "Error inesperado de interfaz"}
           </p>
           <button
@@ -199,7 +199,7 @@ export function App() {
   useEffect(() => {
     localStorage.setItem("eco-dark-mode", JSON.stringify(isDarkMode));
     document.documentElement.dataset.theme = isDarkMode ? "dark" : "light";
-    document.documentElement.style.colorScheme = isDarkMode ? "dark" : "light";
+    document.documentElement.style.colorScheme = "light dark";
   }, [isDarkMode]);
 
   async function loadData() {
@@ -350,21 +350,23 @@ export function App() {
           <p className={`signal signal-${operationalSignal.tone}`}>{operationalSignal.label}</p>
         </header>
         {message && <div role="alert" className="app-alert">{message}</div>}
-        {loading ? (
-          <div className="loading">Cargando datos...</div>
-        ) : (
-          <Content
-            data={effectiveData}
-            monitor={monitor}
-            session={session}
-            view={view}
-            onCreateReport={createReport}
-            onResolveReport={resolveReport}
-            onOperationUpdate={updateOperation}
-            onCreateCollection={createCollection}
-            onConfirmCollection={confirmCollection}
-          />
-        )}
+        <ErrorBoundary>
+          {loading ? (
+            <div className="loading">Cargando datos...</div>
+          ) : (
+            <Content
+              data={effectiveData}
+              monitor={monitor}
+              session={session}
+              view={view}
+              onCreateReport={createReport}
+              onResolveReport={resolveReport}
+              onOperationUpdate={updateOperation}
+              onCreateCollection={createCollection}
+              onConfirmCollection={confirmCollection}
+            />
+          )}
+        </ErrorBoundary>
       </section>
     </main>
   );

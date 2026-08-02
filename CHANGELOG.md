@@ -4,42 +4,36 @@
 
 ### Version 4.5.1 - Corrección definitiva: Dashboard de Administración muestra pantalla en blanco/negro
 
-#### Causas raíz identificadas y corregidas
+#### Correcciones aplicadas
 
-1. **`.search-box` sin `position: relative`** (causa principal):
-   - El CSS definía `.search-icon { position: absolute; }` sin que el contenedor padre tuviera `position: relative`.
-   - Esto causaba que los íconos de búsqueda flotaran fuera del layout, colapsando los inputs de búsqueda y rompiendo visualmente todos los formularios del panel Admin.
-   - **Solución**: se agregó `position: relative; display: flex; align-items: center; margin-bottom: 14px;` a `.search-box` en `styles.css`.
+1. **ErrorBoundary envuelve el contenido principal** (`frontend/src/main.tsx`):
+   - Antes, el `ErrorBoundary` no envolvía el `<Content>` ni el estado de carga `<div className="loading">`, por lo que si el componente Admin lanzaba un error durante el render, toda la app caía sin recovery UI.
+   - **Solución**: se envolvió `{loading ? <div className="loading">...</div> : <Content ... />}` dentro de `<ErrorBoundary>` para capturar errores del componente Admin y mostrando un mensaje con botón "Reintentar".
 
-2. **Layout incorrecto: Admin usaba clase `two-col` con 6 paneles** (causa de layout):
-   - `Admin.tsx` usaba `className="two-col admin-shell"` pero `.two-col` es un grid de 2 columnas (`1.2fr / 0.8fr`) diseñado para exactamente 2 hijos.
-   - Con 6 paneles sin asignación de `grid-column`, el layout colapsaba produciendo superposición y contenido invisible.
-   - **Solución**: se creó la nueva clase `.admin-grid` en `styles.css` con `grid-template-columns: repeat(2, minmax(0, 1fr))` y responsive a 1 columna en pantallas ≤1024px.
+2. **Estilos inline del ErrorBoundary reemplazados por clases CSS con fallbacks** (`frontend/src/main.tsx`):
+   - El fallback del ErrorBoundary usaba `style={{ color: "var(--ink)" }}` e `style={{ color: "var(--error)" }}`, que quedaban invisibles si las variables CSS no resolvían correctamente.
+   - **Solución**: se usan las clases CSS `.panel` (con `background: var(--panel, #ffffff)`) y `.hint.error` (con `color: var(--error, #c94735)`), garantizando visibilidad con valores por defecto.
 
-3. **Estilos inline conflictivos con el sistema de temas** (causa de colores):
-   - `Admin.tsx` usaba `style={{ backgroundColor: "var(--bg, #f0f5f2)", color: "var(--ink, #1d2730)" }}` con fallbacks de tema claro hardcodeados.
-   - En modo oscuro, si las variables CSS no resolvían correctamente, el texto oscuro sobre fondo oscuro era invisible.
-   - **Solución**: se eliminó el `style` inline; los colores ahora vienen exclusivamente de `.admin-shell` que referencia las variables CSS sin fallbacks hardcodeados.
+3. **CSS fallbacks agregados a todas las clases admin** (`frontend/src/styles.css`):
+   - `.admin-grid`, `.admin-shell`, `.page-header`, `.main-content`, `.app-shell`, `.loading` y `.hint.error` ahora tienen valores por defecto hardcodeados (ej. `var(--bg, #f0f5f2)`) para garantizar que el dashboard sea visible incluso si las variables CSS no están definidas.
 
-4. **Token JWT expirado sin manejo → estado inconsistente** (causa de datos vacíos):
-   - Si el token expiraba, `/bootstrap` devolvía 401 pero la sesión local seguía activa, causando que el Admin renderizara con arrays vacíos sin ningún mensaje de error claro.
-   - **Solución**: `loadData()` en `main.tsx` ahora detecta errores 401/token-inválido y limpia la sesión automáticamente, redirigiendo al login.
+4. **`color-scheme: light dark` agregado** (`frontend/src/styles.css` y `frontend/src/main.tsx`):
+   - Se añadió `color-scheme: light dark` a la regla `html, body, #root`.
+   - Se cambió `document.documentElement.style.colorScheme` de `isDarkMode ? "dark" : "light"` a `"light dark"` para permitir que el navegador adapte automáticamente los controles nativos al tema activo.
 
-5. **Estado de carga (`.loading`) sin estilos explícitos**:
-   - El spinner de carga no tenía estilos CSS dedicados, dependiendo del contexto del padre para visibilidad.
-   - **Solución**: se agregó `.loading` con `display: flex; align-items: center; justify-content: center; background: var(--bg); color: var(--muted);`.
+5. **Contraste mejorado en modo oscuro para `.admin-list-item`** (`frontend/src/styles.css`):
+   - La clase `html[data-theme="dark"] .admin-list-item` usaba un gradiente lineal con `rgba()` que podía colapsar a negro total si `--panel` no estaba definido.
+   - **Solución**: se cambió a `color-mix(in srgb, var(--panel, #1a1f27) 85%, var(--bg, #0f1419) 15%)` con fallbacks.
 
 #### Archivos modificados
-- `frontend/src/styles.css` — `position: relative` en `.search-box`, nueva clase `.admin-grid`, `.loading` mejorado, responsive para `.admin-grid`
-- `frontend/src/components/Admin.tsx` — `two-col` → `admin-grid`, eliminación de `style` inline
-- `frontend/src/components/Admin.test.tsx` — test actualizado para verificar clases en lugar de estilos inline
-- `frontend/src/main.tsx` — manejo de token JWT expirado en `loadData()`
+- `frontend/src/main.tsx` — ErrorBoundary envuelve Content; fallback usa clases CSS; `color-scheme` global
+- `frontend/src/styles.css` — fallbacks en todas las clases admin; `color-scheme` en root
+- `frontend/src/components/Admin.test.tsx` — 2 tests nuevos (paneles visibles, datos undefined/null)
 
 #### Verificación
-- Tests unitarios del Admin: `npx vitest run src/components/Admin.test.tsx` — **2 passed**
-- Tests completos del frontend: `npx vitest run` — **todos aprobados**
-- Verificado en modo claro y oscuro
-- Commits realizados en ramas `main` y `version-4.5`
+- Tests frontend: `npx vitest run` — **16 passed** (4 test files)
+- TypeScript: `npx tsc --noEmit` — 0 errores
+- Build: `npx vite build` — exitoso (25 módulos, 42.10 kB CSS, 406.84 kB JS)
 
 ---
 

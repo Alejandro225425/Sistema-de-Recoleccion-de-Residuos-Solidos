@@ -89,6 +89,7 @@ html[data-theme="dark"] {
 html, body, #root {
   height: 100%;
   margin: 0;
+  color-scheme: light dark;
 }
 body {
   display: block;
@@ -253,17 +254,17 @@ button.btn-gold:hover { background: var(--eco-gold-light); box-shadow: 0 6px 20p
 
 /* Main layout */
 .app-shell {
-  display: flex; min-height: 100vh; padding-left: 280px; background: var(--bg);
+  display: flex; min-height: 100vh; padding-left: 280px; background: var(--bg, #f0f5f2);
 }
 
 .main-content {
-  flex: 1; min-width: 0; padding: 0; background: var(--bg);
+  flex: 1; min-width: 0; padding: 0; background: var(--bg, #f0f5f2);
   transition: margin-left 0.3s ease;
 }
 
 .page-header {
   padding: 24px 32px 16px; display: flex; flex-direction: column; gap: 4px;
-  background: var(--panel); border-bottom: 1px solid var(--line);
+  background: var(--panel, #ffffff); border-bottom: 1px solid var(--line, #e0e7e3);
 }
 .page-header h2 {
   font-size: 1.4rem; color: var(--ink);
@@ -479,7 +480,7 @@ textarea { min-height: 100px; resize: vertical; font-family: inherit; }
   font-weight: 600; font-size: 0.88rem;
 }
 .hint { color: var(--muted); font-size: 0.88rem; margin: 8px 0 0 0; }
-.hint.error { color: var(--error); font-weight: 600; }
+.hint.error { color: var(--error, #c94735); font-weight: 600; }
 .hint.success { color: var(--eco-primary); font-weight: 600; }
 
 .auth-message {
@@ -546,8 +547,8 @@ textarea { min-height: 100px; resize: vertical; font-family: inherit; }
 
 /* Panels */
 .admin-shell {
-  background: var(--bg);
-  color: var(--ink);
+  background: var(--bg, #f0f5f2);
+  color: var(--ink, #1d2730);
   min-height: 100%;
 }
 
@@ -557,8 +558,8 @@ textarea { min-height: 100px; resize: vertical; font-family: inherit; }
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 20px;
   padding: 20px 32px 32px;
-  background: var(--bg);
-  color: var(--ink);
+  background: var(--bg, #f0f5f2);
+  color: var(--ink, #1d2730);
 }
 
 /* Loading state */
@@ -567,10 +568,10 @@ textarea { min-height: 100px; resize: vertical; font-family: inherit; }
   align-items: center;
   justify-content: center;
   min-height: 200px;
-  color: var(--muted);
+  color: var(--muted, #5a6670);
   font-size: 1rem;
   font-weight: 500;
-  background: var(--bg);
+  background: var(--bg, #f0f5f2);
   padding: 32px;
 }
 
@@ -653,7 +654,7 @@ textarea { min-height: 100px; resize: vertical; font-family: inherit; }
   background: linear-gradient(180deg, rgba(255,255,255,0.9), rgba(240,245,242,0.92));
 }
 html[data-theme="dark"] .admin-list-item {
-  background: linear-gradient(180deg, rgba(26, 31, 39, 0.95), rgba(15, 20, 25, 0.95));
+  background: color-mix(in srgb, var(--panel, #1a1f27) 85%, var(--bg, #0f1419) 15%);
 }
 .admin-list-main { display: grid; gap: 4px; min-width: 0; }
 .admin-list-meta { color: var(--muted); font-size: 0.95rem; }
