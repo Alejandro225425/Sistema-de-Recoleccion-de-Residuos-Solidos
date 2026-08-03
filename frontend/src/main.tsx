@@ -121,12 +121,12 @@ function exportToPDF(title: string, html: string) {
 }
 
 class ErrorBoundary extends React.Component<
-  { children: React.ReactNode },
-  { hasError: boolean; error: Error | null }
+  { children: React.ReactNode; fallback?: React.ReactNode },
+  { hasError: boolean; error: Error | null; errorInfo: React.ErrorInfo | null }
 > {
-  constructor(props: { children: React.ReactNode }) {
+  constructor(props: { children: React.ReactNode; fallback?: React.ReactNode }) {
     super(props);
-    this.state = { hasError: false, error: null };
+    this.state = { hasError: false, error: null, errorInfo: null };
   }
 
   static getDerivedStateFromError(error: Error) {
@@ -134,20 +134,27 @@ class ErrorBoundary extends React.Component<
   }
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
+    this.setState({ errorInfo });
     console.error("Error capturado en ErrorBoundary:", error, errorInfo);
+    console.error("Stack:", error.stack);
   }
 
   render() {
     if (this.state.hasError) {
+      if (this.props.fallback) return this.props.fallback;
+      const stack = this.state.errorInfo?.componentStack ?? "";
       return (
         <div className="panel" style={{ margin: "32px" }}>
           <h2>Se produjo un error al renderizar esta sección</h2>
           <p className="hint error" style={{ margin: "12px 0" }}>
             {this.state.error?.message || "Error inesperado de interfaz"}
           </p>
+          {import.meta.env.DEV && stack && (
+            <pre style={{ fontSize: "0.7rem", whiteSpace: "pre-wrap", color: "var(--muted, #5a6670)" }}>{stack}</pre>
+          )}
           <button
             type="button"
-            onClick={() => this.setState({ hasError: false, error: null })}
+            onClick={() => this.setState({ hasError: false, error: null, errorInfo: null })}
           >
             Reintentar
           </button>
@@ -162,27 +169,29 @@ export function App() {
   const [data, setData] = useState<Bootstrap>(emptyBootstrap);
   const [monitor, setMonitor] = useState<Monitor>({});
   const effectiveData = useMemo(() => {
-    const mergedTrucks = (monitor.trucks && monitor.trucks.length > 0)
-      ? monitor.trucks.map(mt => {
-          const base = (data.trucks ?? []).find(t => t.code === mt.code || t.id === mt.id);
+    const safeData = data ?? emptyBootstrap;
+    const safeMonitor = monitor ?? {};
+    const mergedTrucks = (safeMonitor.trucks && Array.isArray(safeMonitor.trucks) && safeMonitor.trucks.length > 0)
+      ? safeMonitor.trucks.map(mt => {
+          const base = (Array.isArray(safeData.trucks) ? safeData.trucks : []).find(t => t.code === mt.code || t.id === mt.id);
           return { ...base, ...mt };
         })
-      : (data.trucks ?? []);
+      : (safeData.trucks ?? []);
 
     return {
-      ...data,
-      ...monitor,
+      ...safeData,
+      ...safeMonitor,
       trucks: mergedTrucks,
-      zones: data.zones ?? [],
-      schedules: data.schedules ?? [],
-      routes: monitor.optimized_routes ?? monitor.routes ?? data.routes ?? [],
-      reports: data.reports ?? [],
-      collections: data.collections ?? [],
-      analytics: data.analytics ?? emptyBootstrap.analytics,
-      users: data.users ?? [],
-      containers: monitor.containers ?? data.containers ?? [],
-      maintenance: monitor.maintenance ?? data.maintenance ?? [],
-      notifications: monitor.notifications ?? data.notifications ?? [],
+      zones: safeData.zones ?? [],
+      schedules: safeData.schedules ?? [],
+      routes: safeMonitor.optimized_routes ?? safeMonitor.routes ?? safeData.routes ?? [],
+      reports: safeData.reports ?? [],
+      collections: safeData.collections ?? [],
+      analytics: safeData.analytics ?? emptyBootstrap.analytics,
+      users: safeData.users ?? [],
+      containers: safeMonitor.containers ?? safeData.containers ?? [],
+      maintenance: safeMonitor.maintenance ?? safeData.maintenance ?? [],
+      notifications: safeMonitor.notifications ?? safeData.notifications ?? [],
     } as Bootstrap;
   }, [data, monitor]);
   const [session, setSession] = useState<Session | null>(() => JSON.parse(localStorage.getItem("sir-session") || "null"));
@@ -381,13 +390,14 @@ export function App() {
 
 function Content(props: { data: Bootstrap; monitor: Monitor; session: Session; view: View; onCreateReport: (report: Omit<Report, "id" | "status">) => Promise<void>; onResolveReport: (id: number) => Promise<void>; onOperationUpdate: (payload: OperationUpdatePayload) => Promise<void>; onCreateCollection: (payload: { truck_id: number; zone_id: number; kg: number }) => Promise<void>; onConfirmCollection: (collectionId: number) => Promise<void>; }) {
   const { data, monitor, session, view, onOperationUpdate, onResolveReport, onCreateCollection, onConfirmCollection } = props;
-  if (view === "dashboard") return <Dashboard data={data} monitor={monitor} session={session} />;
-  if (view === "admin") return <Admin data={data} session={session} onResolveReport={onResolveReport} onOperationUpdate={onOperationUpdate} />;
+  const safeData = data ?? emptyBootstrap;
+  if (view === "dashboard") return <Dashboard data={safeData} monitor={monitor} session={session} />;
+  if (view === "admin") return <Admin data={safeData} session={session} onResolveReport={onResolveReport} onOperationUpdate={onOperationUpdate} />;
   if (view === "schedules") return <Schedules schedules={Array.isArray(data?.schedules) ? data.schedules : []} />;
-  if (view === "reports") return <Reports {...props} />;
+  if (view === "reports") return <Reports {...props} data={safeData} />;
   if (view === "waste") return <Waste />;
-  if (view === "routes") return <Routes data={data} monitor={monitor} session={session} onCreateCollection={onCreateCollection} />;
-  return <Analytics data={data} session={session} onConfirmCollection={onConfirmCollection} />;
+  if (view === "routes") return <Routes data={safeData} monitor={monitor} session={session} onCreateCollection={onCreateCollection} />;
+  return <Analytics data={safeData} session={session} onConfirmCollection={onConfirmCollection} />;
 }
 
 function Dashboard({ data, monitor, session }: { data: Bootstrap; monitor: Monitor; session: Session }) {
