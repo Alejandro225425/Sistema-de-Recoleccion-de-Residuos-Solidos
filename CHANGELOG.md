@@ -35,6 +35,27 @@
 - TypeScript: `npx tsc --noEmit` — 0 errores
 - Build: `npx vite build` — exitoso (25 módulos, 42.10 kB CSS, 406.84 kB JS)
 
+#### Fix: null checks defensivas en componentes de vista (v4.5.1-patch)
+
+Después del despliegue de v4.5.1, el ErrorBoundary atrapó un error en runtime: **"Cannot read properties of null (reading 'value')"**. Este error ocurría porque ciertas funciones de cálculo y componentes de vista accedían a propiedades de objetos `data` o `monitor` que podían ser `null` cuando el backend retornaba respuestas incompletas o el monitor se actualizaba con valores parciales.
+
+**Correcciones aplicadas en `frontend/src/main.tsx`:**
+
+1. **`getOperationalSignal`** (fuera del ErrorBoundary): se agregaron null checks (`data?.analytics ?? {...}`, `data?.routes ?? []`, `route?.delay ?? ""`). Se envolvió la llamada en `try-catch` con fallback a `{ label: "Estado desconocido", tone: "danger" }` para prevenir crashes del componente App completo.
+
+2. **`Dashboard.effectiveData`**: el `useMemo` usaba `{ ...data, ...monitor }` sin fallbacks explícitos. Se replicó el patrón de null-check del App component (`zones: data.zones ?? []`, `analytics: data.analytics ?? emptyBootstrap.analytics`, etc.) y se agregó `Array.isArray` en `monitor.trucks`.
+
+3. **`Content` (Schedules route)**: `data.schedules` → `Array.isArray(data?.schedules) ? data.schedules : []`.
+
+4. **`Routes` component**: `monitor.trucks ?? data.trucks` → `monitor.trucks ?? data.trucks ?? []`; `monitor.optimized_routes ?? data.routes` → `monitor.optimized_routes ?? data.routes ?? []`; `data.zones[0]` → `data.zones?.[0]`; `data.zones.map(...)` → `(data.zones ?? []).map(...)`.
+
+5. **`Analytics` component**: `data.reports.reduce(...)` → `safeReports.reduce(...)` con `Array.isArray`; `data.collections.reduce(...)` → `safeCollections.reduce(...)`; `data.analytics.total_kg` → `analytics.total_kg` con `data?.analytics ?? emptyBootstrap.analytics`.
+
+#### Verificación (patch)
+- Tests frontend: `npx vitest run` — **16 passed**
+- TypeScript: `npx tsc --noEmit` — 0 errores
+- Build: `npx vite build` — exitoso
+
 ---
 
 ## 2026-08-02
