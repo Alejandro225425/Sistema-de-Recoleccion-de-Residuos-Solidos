@@ -73,11 +73,12 @@ function statusTone(status: string | undefined | null) {
 }
 
 function getOperationalSignal(data: Bootstrap) {
-  const delayedRoutes = (data.routes ?? []).filter(route => String(route.delay ?? "").toLowerCase().includes("retraso")).length;
-  if (data.analytics.open_reports > 2 || delayedRoutes > 0) {
-    return { label: `${data.analytics.open_reports} incidencias abiertas`, tone: "warning" };
+  const analytics = data?.analytics ?? { open_reports: 0, active_trucks: 0 };
+  const delayedRoutes = (data?.routes ?? []).filter(route => String(route?.delay ?? "").toLowerCase().includes("retraso")).length;
+  if (analytics.open_reports > 2 || delayedRoutes > 0) {
+    return { label: `${analytics.open_reports} incidencias abiertas`, tone: "warning" };
   }
-  if (data.analytics.active_trucks === 0) {
+  if (analytics.active_trucks === 0) {
     return { label: "Sin camiones activos", tone: "danger" };
   }
   return { label: "Operación estable", tone: "ok" };
@@ -309,7 +310,13 @@ export function App() {
     return <AuthView zones={data.zones} onLogin={login} message={message} />;
   }
 
-  const operationalSignal = getOperationalSignal({ ...data, ...monitor });
+  let operationalSignal;
+  try {
+    operationalSignal = getOperationalSignal({ ...data, ...monitor });
+  } catch (error) {
+    console.error("Error en getOperationalSignal:", error);
+    operationalSignal = { label: "Estado desconocido", tone: "danger" };
+  }
 
   return (
     <main className="app-shell">
@@ -376,7 +383,7 @@ function Content(props: { data: Bootstrap; monitor: Monitor; session: Session; v
   const { data, monitor, session, view, onOperationUpdate, onResolveReport, onCreateCollection, onConfirmCollection } = props;
   if (view === "dashboard") return <Dashboard data={data} monitor={monitor} session={session} />;
   if (view === "admin") return <Admin data={data} session={session} onResolveReport={onResolveReport} onOperationUpdate={onOperationUpdate} />;
-  if (view === "schedules") return <Schedules schedules={data.schedules} />;
+  if (view === "schedules") return <Schedules schedules={Array.isArray(data?.schedules) ? data.schedules : []} />;
   if (view === "reports") return <Reports {...props} />;
   if (view === "waste") return <Waste />;
   if (view === "routes") return <Routes data={data} monitor={monitor} session={session} onCreateCollection={onCreateCollection} />;
@@ -400,7 +407,30 @@ function Dashboard({ data, monitor, session }: { data: Bootstrap; monitor: Monit
     };
   }, []);
 
-  const effectiveData = useMemo(() => ({ ...data, ...monitor }) as Bootstrap, [data, monitor]);
+  const effectiveData = useMemo(() => {
+    const mergedTrucks = (monitor.trucks && Array.isArray(monitor.trucks) && monitor.trucks.length > 0)
+      ? monitor.trucks.map(mt => {
+          const base = (Array.isArray(data.trucks) ? data.trucks : []).find(t => t.code === mt.code || t.id === mt.id);
+          return { ...base, ...mt };
+        })
+      : (data.trucks ?? []);
+
+    return {
+      ...data,
+      ...monitor,
+      trucks: mergedTrucks,
+      zones: data.zones ?? [],
+      schedules: data.schedules ?? [],
+      routes: monitor.optimized_routes ?? monitor.routes ?? data.routes ?? [],
+      reports: data.reports ?? [],
+      collections: data.collections ?? [],
+      analytics: data.analytics ?? emptyBootstrap.analytics,
+      users: data.users ?? [],
+      containers: monitor.containers ?? data.containers ?? [],
+      maintenance: monitor.maintenance ?? data.maintenance ?? [],
+      notifications: monitor.notifications ?? data.notifications ?? [],
+    } as Bootstrap;
+  }, [data, monitor]);
 
   const metrics = [
     [effectiveData.analytics.zones, "Zonas Activas", "🗺️"],
@@ -754,12 +784,12 @@ function Waste() {
 
 function Routes({ data, monitor, session, onCreateCollection }: { data: Bootstrap; monitor: Monitor; session?: Session | null; onCreateCollection?: (payload: { truck_id: number; zone_id: number; kg: number }) => Promise<void>; }) {
   const [alerts, setAlerts] = useState<string[]>([]);
-  const trucks = monitor.trucks ?? data.trucks;
-  const routes = monitor.optimized_routes ?? data.routes;
+  const trucks = monitor.trucks ?? data.trucks ?? [];
+  const routes = monitor.optimized_routes ?? data.routes ?? [];
   const prioritizedZones = monitor.prioritized_zones ?? data.prioritized_zones ?? [];
   const [kgValue, setKgValue] = useState(0);
   const [selectedTruck, setSelectedTruck] = useState<number | "">(trucks[0]?.id ?? "");
-  const [selectedZone, setSelectedZone] = useState<number | "">(data.zones[0]?.id ?? "");
+  const [selectedZone, setSelectedZone] = useState<number | "">(data.zones?.[0]?.id ?? "");
   const [submittingCollection, setSubmittingCollection] = useState(false);
 
   useEffect(() => {
@@ -782,7 +812,7 @@ function Routes({ data, monitor, session, onCreateCollection }: { data: Bootstra
   return (
     <>
       <div className="two-col">
-        <section className="panel"><h2>Mapa operativo OpenStreetMap</h2><Map zones={data.zones} trucks={trucks} routes={routes} prioritizedZones={prioritizedZones} /></section>
+        <section className="panel"><h2>Mapa operativo OpenStreetMap</h2><Map zones={data.zones ?? []} trucks={trucks} routes={routes} prioritizedZones={prioritizedZones} /></section>
         <section className="panel">
           <h2>Seguimiento GPS</h2>
           <div className="list">
@@ -802,7 +832,7 @@ function Routes({ data, monitor, session, onCreateCollection }: { data: Bootstra
             </label>
             <label>Zona
               <select value={selectedZone} onChange={event => setSelectedZone(event.target.value ? Number(event.target.value) : "")}>
-                {data.zones.map(zone => <option key={zone.id} value={zone.id}>{zone.name}</option>)}
+                {(data.zones ?? []).map(zone => <option key={zone.id} value={zone.id}>{zone.name}</option>)}
               </select>
             </label>
             <label>Kg recolectados
@@ -969,32 +999,35 @@ export function Operations({ data, monitor, onOperationUpdate }: { data: Bootstr
 
 function Analytics({ data, session, onConfirmCollection }: { data: Bootstrap; session?: Session | null; onConfirmCollection?: (id: number) => Promise<void>; }) {
   const performance = data.performance;
-  const reportCounts = data.reports.reduce((acc, report) => {
+  const safeReports = Array.isArray(data.reports) ? data.reports : [];
+  const safeCollections = Array.isArray(data.collections) ? data.collections : [];
+  const reportCounts = safeReports.reduce((acc, report) => {
     acc[report.status] = (acc[report.status] ?? 0) + 1;
     return acc;
   }, { Pendiente: 0, "En revision": 0, Resuelto: 0 } as Record<string, number>);
-  const collectionCounts = data.collections.reduce((acc, item) => {
+  const collectionCounts = safeCollections.reduce((acc, item) => {
     acc[item.status] = (acc[item.status] ?? 0) + 1;
     return acc;
   }, {} as Record<string, number>);
+  const analytics = data?.analytics ?? emptyBootstrap.analytics;
   const metricsCSV = [
-    { nombre: "Residuos registrados", valor: `${data.analytics.total_kg} kg` },
-    { nombre: "Cumplimiento de rutas", valor: `${data.analytics.compliance}%` },
-    { nombre: "Reportes abiertos", valor: data.analytics.open_reports },
-    { nombre: "Camiones activos", valor: data.analytics.active_trucks },
+    { nombre: "Residuos registrados", valor: `${analytics.total_kg} kg` },
+    { nombre: "Cumplimiento de rutas", valor: `${analytics.compliance}%` },
+    { nombre: "Reportes abiertos", valor: analytics.open_reports },
+    { nombre: "Camiones activos", valor: analytics.active_trucks },
     { nombre: "Rutas con retraso", valor: performance?.delayed_routes ?? 0 },
     { nombre: "Progreso medio", valor: `${performance?.average_progress ?? 0}%` },
     { nombre: "Llenado promedio contenedores", valor: `${performance?.average_container_fill ?? 0}%` },
-    { nombre: "Recolecciones confirmadas", valor: `${collectionCounts["Confirmada"] ?? 0}/${data.collections.length}` }
+    { nombre: "Recolecciones confirmadas", valor: `${collectionCounts["Confirmada"] ?? 0}/${safeCollections.length}` }
   ];
 
   return (
     <>
       <div className="grid metrics">
-        <Metric value={`${data.analytics.total_kg} kg`} label="Residuos registrados" />
-        <Metric value={`${data.analytics.compliance}%`} label="Cumplimiento de rutas" />
-        <Metric value={`${data.analytics.open_reports}`} label="Reportes abiertos" />
-        <Metric value={`${data.analytics.active_trucks}`} label="Camiones activos" />
+        <Metric value={`${analytics.total_kg} kg`} label="Residuos registrados" />
+        <Metric value={`${analytics.compliance}%`} label="Cumplimiento de rutas" />
+        <Metric value={`${analytics.open_reports}`} label="Reportes abiertos" />
+        <Metric value={`${analytics.active_trucks}`} label="Camiones activos" />
         <Metric value={`${performance?.delayed_routes ?? 0}`} label="Rutas con retraso" />
         <Metric value={`${performance?.average_progress ?? 0}%`} label="Progreso medio" />
         <Metric value={`${performance?.average_container_fill ?? 0}%`} label="Llenado promedio" />
