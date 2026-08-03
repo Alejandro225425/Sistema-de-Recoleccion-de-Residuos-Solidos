@@ -2,6 +2,12 @@
 
 ## 2026-08-03
 
+### Version 4.5.3 - Interfaz fija en modo claro
+
+- Se dejó la interfaz fija en modo claro por defecto.
+- Se eliminó la opción de alternar al modo oscuro desde la barra lateral del frontend.
+- Se actualizó la documentación principal para reflejar este cambio visual en la experiencia de usuario.
+
 ### Version 4.5.2 - Corrección del Dashboard de Administración
 
 - Solucionado el error en el Dashboard de Administración cuando no hay rutas o contenedores disponibles para actualizar eventos.

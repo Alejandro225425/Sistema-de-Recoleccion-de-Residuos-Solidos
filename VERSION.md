@@ -1,4 +1,11 @@
-# Sistema de Recolección de Residuos Sólidos - Versión 4.5.2
+# Sistema de Recolección de Residuos Sólidos - Versión 4.5.3
+
+## Versión 4.5.3 - Interfaz fija en modo claro
+
+### Cambios destacados
+- La interfaz del frontend queda fija en modo claro por defecto.
+- Se eliminó el selector de tema oscuro desde la barra lateral.
+- La documentación principal fue actualizada para reflejar este comportamiento.
 
 ## Versión 4.5.2 - Fix de despliegue en Vercel
 
