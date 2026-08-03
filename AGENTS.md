@@ -86,6 +86,7 @@ cd backend-typescript && npm run build
 | Admin | `admin2@ecocusco.pe` | `Test12345!` | San Sebastian |
 
 - El sistema funciona en modo memoria sin `DATABASE_URL`.
+- Estas cuentas existen tanto en el backend local como en el backend de producción (Render).
 
 ## Despliegue
 

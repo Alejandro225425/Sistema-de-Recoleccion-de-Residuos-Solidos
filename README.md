@@ -266,6 +266,7 @@ Para iniciar sesión en modo demo:
 | Admin | `admin2@ecocusco.pe` | `Test12345!` | San Sebastian |
 
 - También puedes registrarte con un nuevo correo y contraseña desde la pantalla de autenticación.
+- Estas cuentas existen tanto en el backend local como en el backend de producción (Render).
 
 ## Seguridad implementada
 
