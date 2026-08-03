@@ -584,8 +584,15 @@ export function Dashboard({ data, monitor, session, onConfirmCollection }: { dat
           <div className="metric-card">
             <span className="metric-icon" aria-hidden="true">📍</span>
             <div className="metric-content">
-              <strong className="metric-value">{data.zones?.length ?? 0}</strong>
-              <span className="metric-label">Zonas disponibles</span>
+              <strong className="metric-value">{zoneSummary}</strong>
+              <span className="metric-label">Mi zona</span>
+            </div>
+          </div>
+          <div className="metric-card">
+            <span className="metric-icon" aria-hidden="true">🧮</span>
+            <div className="metric-content">
+              <strong className="metric-value">{myReports.length}</strong>
+              <span className="metric-label">Mis reportes</span>
             </div>
           </div>
         </div>
@@ -888,7 +895,7 @@ function Schedules({ schedules }: { schedules: Schedule[] }) {
 
 export function Reports({ data, session, onCreateReport, onResolveReport }: { data: Bootstrap; session: Session; onCreateReport: (report: Omit<Report, "id" | "status">) => Promise<void>; onResolveReport: (id: number) => Promise<void>; }) {
   const [submitting, setSubmitting] = useState(false);
-  const [formZone, setFormZone] = useState("");
+  const [formZone, setFormZone] = useState(() => String(session.zone ?? "").trim());
   const [formType, setFormType] = useState("");
   const [formDetail, setFormDetail] = useState("");
   const [filterStatus, setFilterStatus] = useState("Todos");
@@ -1257,28 +1264,46 @@ function Analytics({ data, session, onConfirmCollection }: { data: Bootstrap; se
     return acc;
   }, {} as Record<string, number>);
   const analytics = data?.analytics ?? emptyBootstrap.analytics;
-  const metricsCSV = [
-    { nombre: "Residuos registrados", valor: `${analytics.total_kg} kg` },
-    { nombre: "Cumplimiento de rutas", valor: `${analytics.compliance}%` },
-    { nombre: "Reportes abiertos", valor: analytics.open_reports },
-    { nombre: "Camiones activos", valor: analytics.active_trucks },
-    { nombre: "Rutas con retraso", valor: performance?.delayed_routes ?? 0 },
-    { nombre: "Progreso medio", valor: `${performance?.average_progress ?? 0}%` },
-    { nombre: "Llenado promedio contenedores", valor: `${performance?.average_container_fill ?? 0}%` },
-    { nombre: "Recolecciones confirmadas", valor: `${collectionCounts["Confirmada"] ?? 0}/${safeCollections.length}` }
-  ];
+  const metricsCSV = isCitizen
+    ? [
+        { nombre: "Mis reportes pendientes", valor: reportCounts.Pendiente },
+        { nombre: "Mis reportes resueltos", valor: reportCounts.Resuelto },
+        { nombre: "Recolecciones confirmadas", valor: `${collectionCounts["Confirmada"] ?? 0}/${safeCollections.length}` },
+        { nombre: "Total reportes", valor: safeReports.length },
+      ]
+    : [
+        { nombre: "Residuos registrados", valor: `${analytics.total_kg} kg` },
+        { nombre: "Cumplimiento de rutas", valor: `${analytics.compliance}%` },
+        { nombre: "Reportes abiertos", valor: analytics.open_reports },
+        { nombre: "Camiones activos", valor: analytics.active_trucks },
+        { nombre: "Rutas con retraso", valor: performance?.delayed_routes ?? 0 },
+        { nombre: "Progreso medio", valor: `${performance?.average_progress ?? 0}%` },
+        { nombre: "Llenado promedio contenedores", valor: `${performance?.average_container_fill ?? 0}%` },
+        { nombre: "Recolecciones confirmadas", valor: `${collectionCounts["Confirmada"] ?? 0}/${safeCollections.length}` }
+      ];
 
   return (
     <>
       <div className="grid metrics">
-        <Metric value={`${analytics.total_kg} kg`} label="Residuos registrados" />
-        <Metric value={`${analytics.compliance}%`} label="Cumplimiento de rutas" />
-        <Metric value={`${analytics.open_reports}`} label="Reportes abiertos" />
-        <Metric value={`${analytics.active_trucks}`} label="Camiones activos" />
-        <Metric value={`${performance?.delayed_routes ?? 0}`} label="Rutas con retraso" />
-        <Metric value={`${performance?.average_progress ?? 0}%`} label="Progreso medio" />
-        <Metric value={`${performance?.average_container_fill ?? 0}%`} label="Llenado promedio" />
-        <Metric value={`${collectionCounts["Confirmada"] ?? 0}/${safeCollections.length}`} label="Recolectas confirmadas" />
+        {isCitizen ? (
+          <>
+            <Metric value={reportCounts.Pendiente} label="Mis reportes pendientes" />
+            <Metric value={reportCounts.Resuelto} label="Mis reportes resueltos" />
+            <Metric value={`${collectionCounts["Confirmada"] ?? 0}/${safeCollections.length}`} label="Recolectas confirmadas" />
+            <Metric value={safeReports.length} label="Total mis reportes" />
+          </>
+        ) : (
+          <>
+            <Metric value={`${analytics.total_kg} kg`} label="Residuos registrados" />
+            <Metric value={`${analytics.compliance}%`} label="Cumplimiento de rutas" />
+            <Metric value={`${analytics.open_reports}`} label="Reportes abiertos" />
+            <Metric value={`${analytics.active_trucks}`} label="Camiones activos" />
+            <Metric value={`${performance?.delayed_routes ?? 0}`} label="Rutas con retraso" />
+            <Metric value={`${performance?.average_progress ?? 0}%`} label="Progreso medio" />
+            <Metric value={`${performance?.average_container_fill ?? 0}%`} label="Llenado promedio" />
+            <Metric value={`${collectionCounts["Confirmada"] ?? 0}/${safeCollections.length}`} label="Recolectas confirmadas" />
+          </>
+        )}
       </div>
       <section className="panel">
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>

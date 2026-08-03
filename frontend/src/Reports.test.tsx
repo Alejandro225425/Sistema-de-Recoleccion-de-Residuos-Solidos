@@ -51,7 +51,7 @@ describe('Reports view', () => {
 
     render(<Dashboard data={baseData} monitor={{}} session={citizenSession} />);
 
-    expect(screen.getByText(/mis reportes/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/mis reportes/i).length).toBeGreaterThan(0);
     expect(screen.getAllByText(/recolecciones pendientes/i).length).toBeGreaterThan(0);
     expect(screen.queryByText(/tablero de despacho/i)).not.toBeInTheDocument();
     expect(screen.getByText(/bache en la plaza/i)).toBeInTheDocument();
