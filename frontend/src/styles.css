@@ -657,6 +657,13 @@ html[data-theme="dark"] .admin-list-item {
 .item-row strong, .item span, .item p, .alert-content, .alert-content h4, .alert-content p, .metric-label, .metric-value {
   overflow-wrap: anywhere; word-break: break-word;
 }
+.item-actions { display: flex; justify-content: flex-end; margin-top: 4px; }
+.report-action-btn {
+  width: auto; min-width: 130px; padding: 8px 12px; border-radius: 8px;
+  background: var(--eco-primary); color: white; font-weight: 600;
+}
+.report-action-btn:hover:not(:disabled) { background: var(--eco-primary-light); transform: translateY(-1px); }
+.report-action-btn:disabled { opacity: 0.7; }
 
 .tag {
   display: inline-flex; align-items: center; width: max-content;

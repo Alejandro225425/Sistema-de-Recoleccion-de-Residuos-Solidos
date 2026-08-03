@@ -1,4 +1,11 @@
-# Sistema de Recolección de Residuos Sólidos - Versión 4.5.3
+# Sistema de Recolección de Residuos Sólidos - Versión 5.5.0
+
+## Versión 5.5.0 - Revisión completa del Dashboard de Reportes
+
+### Cambios destacados
+- Se corrigió el filtrado de reportes por rol para ciudadanos, operadores y administradores.
+- Se mejoró la experiencia de envío y resolución de incidencias con validaciones y acciones más claras.
+- Se incorporaron pruebas de regresión y se verificó el build del frontend sin errores.
 
 ## Versión 4.5.3 - Interfaz fija en modo claro
 
