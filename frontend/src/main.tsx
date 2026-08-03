@@ -13,6 +13,7 @@ import Admin from "./components/Admin";
 import { AuthView } from "./components/AuthView";
 import Item, { Metric } from "./components/Item";
 import { request } from "./api";
+import { shouldAutoLoginAsAdmin } from "./demoAuth";
 import {
   Bootstrap,
   Collection,
@@ -204,6 +205,16 @@ export function App() {
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("");
   const accessibleViews = session?.role === "admin" ? views : views.filter(item => item !== "admin");
+
+  useEffect(() => {
+    if (session || typeof window === "undefined") return;
+    const shouldAutoLogin = shouldAutoLoginAsAdmin(window.location.href);
+    if (!shouldAutoLogin) return;
+
+    void login("admin@ecocusco.pe", "admin123").catch(() => {
+      setMessage("No se pudo entrar automáticamente como administrador. Prueba con las credenciales de demo.");
+    });
+  }, [session]);
 
   const [isDarkMode, setIsDarkMode] = useState(() => {
     const saved = localStorage.getItem("eco-dark-mode");
