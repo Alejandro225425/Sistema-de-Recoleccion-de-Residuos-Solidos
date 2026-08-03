@@ -1,8 +1,14 @@
 # Changelog
 
-## 2026-08-02
+## 2026-08-03
 
-### Version 4.5.2 - Fix de despliegue en Vercel: `npm install` falla por Playwright
+### Version 4.5.2 - Corrección del Dashboard de Administración
+
+- Solucionado el error en el Dashboard de Administración cuando no hay rutas o contenedores disponibles para actualizar eventos.
+- El select de `Objetivo` ahora usa un estado `eventTargetId` que permite `null`, evita que el valor controlado se desincronice y agrega un placeholder seguro.
+- Se agregó una prueba de regresión para el panel de administración y se confirmó que el frontend compila y pasa `npm test`.
+
+### Version 4.5.1 - Fix de despliegue en Vercel: `npm install` falla por Playwright
 
 #### Problema
 - Vercel fallaba en el paso `npm install` con el mensaje: `Command "cd frontend && npm install" exited with 1`.

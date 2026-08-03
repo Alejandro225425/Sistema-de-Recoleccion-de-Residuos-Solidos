@@ -324,10 +324,9 @@ export function App() {
     return <AuthView zones={data.zones} onLogin={login} message={message} />;
   }
 
-  const safeMonitorForSignal: Monitor = Object.fromEntries(Object.entries(monitor ?? {}).filter(([, v]) => v !== null)) as Monitor;
   let operationalSignal;
   try {
-    operationalSignal = getOperationalSignal({ ...data, ...safeMonitorForSignal });
+    operationalSignal = getOperationalSignal({ ...data, ...monitor });
   } catch (error) {
     console.error("Error en getOperationalSignal:", error);
     operationalSignal = { label: "Estado desconocido", tone: "danger" };
@@ -428,9 +427,8 @@ function Dashboard({ data, monitor, session }: { data: Bootstrap; monitor: Monit
   }, []);
 
   const effectiveData = useMemo(() => {
-    const safeMonitor: Monitor = Object.fromEntries(Object.entries(monitor ?? {}).filter(([, v]) => v !== null)) as Monitor;
-    const mergedTrucks = (safeMonitor.trucks && Array.isArray(safeMonitor.trucks) && safeMonitor.trucks.length > 0)
-      ? safeMonitor.trucks.map(mt => {
+    const mergedTrucks = (monitor.trucks && Array.isArray(monitor.trucks) && monitor.trucks.length > 0)
+      ? monitor.trucks.map(mt => {
           const base = (Array.isArray(data.trucks) ? data.trucks : []).find(t => t.code === mt.code || t.id === mt.id);
           return { ...base, ...mt };
         })
@@ -438,23 +436,18 @@ function Dashboard({ data, monitor, session }: { data: Bootstrap; monitor: Monit
 
     return {
       ...data,
-      ...safeMonitor,
+      ...monitor,
       trucks: mergedTrucks,
       zones: data.zones ?? [],
       schedules: data.schedules ?? [],
-      routes: safeMonitor.optimized_routes ?? safeMonitor.routes ?? data.routes ?? [],
+      routes: monitor.optimized_routes ?? monitor.routes ?? data.routes ?? [],
       reports: data.reports ?? [],
       collections: data.collections ?? [],
       analytics: data.analytics ?? emptyBootstrap.analytics,
       users: data.users ?? [],
-      containers: safeMonitor.containers ?? data.containers ?? [],
-      maintenance: safeMonitor.maintenance ?? data.maintenance ?? [],
-      notifications: safeMonitor.notifications ?? data.notifications ?? [],
-      prioritized_zones: safeMonitor.prioritized_zones ?? data.prioritized_zones ?? [],
-      optimized_routes: safeMonitor.optimized_routes ?? data.optimized_routes ?? [],
-      truck_assignments: safeMonitor.truck_assignments ?? data.truck_assignments ?? [],
-      intervention_plan: safeMonitor.intervention_plan ?? data.intervention_plan ?? [],
-      performance: safeMonitor.performance ?? data.performance ?? { total_routes: 0, delayed_routes: 0, low_progress_routes: 0, average_progress: 0, open_reports: 0, average_container_fill: 0, compliance_estimate: 0 },
+      containers: monitor.containers ?? data.containers ?? [],
+      maintenance: monitor.maintenance ?? data.maintenance ?? [],
+      notifications: monitor.notifications ?? data.notifications ?? [],
     } as Bootstrap;
   }, [data, monitor]);
 
@@ -873,8 +866,7 @@ function Routes({ data, monitor, session, onCreateCollection }: { data: Bootstra
 }
 
 export function Operations({ data, monitor, onOperationUpdate }: { data: Bootstrap; monitor: Monitor; onOperationUpdate: (payload: OperationUpdatePayload) => Promise<void>; }) {
-  const safeMonitor: Monitor = Object.fromEntries(Object.entries(monitor ?? {}).filter(([, v]) => v !== null)) as Monitor;
-  const effectiveData = { ...data, ...safeMonitor } as Bootstrap;
+  const effectiveData = { ...data, ...monitor } as Bootstrap;
   const alerts = [
     ...(effectiveData.notifications?.length ? effectiveData.notifications : data.notifications ?? []).map(item => `${item.title}: ${item.message}`),
     ...((effectiveData.containers?.length ? effectiveData.containers : data.containers ?? [])).filter(container => container.fill_level >= 80).map(container => `Contenedor ${container.name} en ${container.status}`),

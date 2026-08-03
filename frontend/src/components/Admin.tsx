@@ -52,11 +52,11 @@ export default function Admin({ data, session, onResolveReport, onOperationUpdat
   const [editingZoneName, setEditingZoneName] = useState("");
 
   const [schedules, setSchedules] = useState<Schedule[]>(safeData.schedules);
-  const [newSchedule, setNewSchedule] = useState({ zone_id: safeData.zones[0]?.id ?? 1, day: "Lunes", time: "08:00", waste: "Orgánicos" });
+  const [newSchedule, setNewSchedule] = useState({ zone_id: safeData.zones[0]?.id ?? 0, day: "Lunes", time: "08:00", waste: "Orgánicos" });
   const [editingScheduleId, setEditingScheduleId] = useState<number | null>(null);
-  const [editingSchedule, setEditingSchedule] = useState({ zone_id: 1, day: "Lunes", time: "08:00", waste: "Orgánicos" });
+  const [editingSchedule, setEditingSchedule] = useState({ zone_id: safeData.zones[0]?.id ?? 0, day: "Lunes", time: "08:00", waste: "Orgánicos" });
   const [eventType, setEventType] = useState<"route_update" | "container_update">("route_update");
-  const [eventTargetId, setEventTargetId] = useState<number>(safeData.routes[0]?.id ?? safeData.containers[0]?.id ?? 0);
+  const [eventTargetId, setEventTargetId] = useState<number | null>(safeData.routes[0]?.id ?? safeData.containers[0]?.id ?? null);
   const [eventProgress, setEventProgress] = useState("");
   const [eventDelay, setEventDelay] = useState("");
   const [eventFillLevel, setEventFillLevel] = useState("");
@@ -82,6 +82,19 @@ export default function Admin({ data, session, onResolveReport, onOperationUpdat
     setNewMaintenance(prev => ({ ...prev, truck_id: safeData.trucks[0]?.id ?? prev.truck_id }));
     setNewSchedule(prev => ({ ...prev, zone_id: safeData.zones[0]?.id ?? prev.zone_id }));
   }, [safeData]);
+
+  useEffect(() => {
+    const routeIds = safeData.routes.map(route => route.id);
+    const containerIds = safeData.containers.map(container => container.id);
+    const availableIds = eventType === "route_update" ? routeIds : containerIds;
+    if (availableIds.length === 0) {
+      setEventTargetId(null);
+      return;
+    }
+    if (eventTargetId === null || !availableIds.includes(eventTargetId)) {
+      setEventTargetId(availableIds[0]);
+    }
+  }, [eventType, safeData.routes, safeData.containers, eventTargetId]);
 
   const filteredZones = useMemo(
     () => (Array.isArray(zones) ? zones : []).filter(zone => zone && String(zone.name ?? "").toLowerCase().includes(String(zoneSearch ?? "").toLowerCase().trim())),
@@ -275,6 +288,10 @@ export default function Admin({ data, session, onResolveReport, onOperationUpdat
 
   async function submitEventUpdate(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (eventTargetId === null) {
+      setFeedback('Selecciona primero una ruta o contenedor válido.');
+      return;
+    }
     const payload: OperationUpdatePayload = {
       type: eventType,
       id: eventTargetId,
@@ -532,10 +549,18 @@ export default function Admin({ data, session, onResolveReport, onOperationUpdat
             <option value="route_update">Actualización de ruta</option>
             <option value="container_update">Actualización de contenedor</option>
           </select></label>
-          <label htmlFor="event-target">Objetivo<select id="event-target" value={eventTargetId} onChange={event => setEventTargetId(Number(event.currentTarget.value))}>
+          <label htmlFor="event-target">Objetivo<select id="event-target" value={eventTargetId ?? ""} onChange={event => {
+              const value = event.currentTarget.value;
+              setEventTargetId(value ? Number(value) : null);
+            }}>
+            <option value="" disabled>{eventType === "route_update" ? "Selecciona una ruta" : "Selecciona un contenedor"}</option>
             {eventType === "route_update"
-              ? safeData.routes.map((route, index) => <option key={`route-${route.id}-${index}`} value={route.id}>{`Ruta ${route.truck} - ${route.zone}`}</option>)
-              : safeData.containers.map((container, index) => <option key={`container-${container.id}-${index}`} value={container.id}>{`${container.name} (${container.fill_level}%)`}</option>)}
+              ? safeData.routes.length > 0
+                ? safeData.routes.map((route, index) => <option key={`route-${route.id}-${index}`} value={route.id}>{`Ruta ${route.truck} - ${route.zone}`}</option>)
+                : null
+              : safeData.containers.length > 0
+                ? safeData.containers.map((container, index) => <option key={`container-${container.id}-${index}`} value={container.id}>{`${container.name} (${container.fill_level}%)`}</option>)
+                : null}
           </select></label>
           {eventType === "route_update" ? (
             <>

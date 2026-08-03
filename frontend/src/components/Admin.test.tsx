@@ -117,6 +117,26 @@ describe('Admin dashboard', () => {
     expect(screen.getByTestId('admin-shell')).toBeInTheDocument();
     expect(screen.getAllByText('Centro Historico').length).toBeGreaterThan(0);
   });
+
+  it('muestra la opción predeterminada cuando no hay rutas ni contenedores disponibles', () => {
+    const emptyData = {
+      ...baseData,
+      routes: [],
+      containers: [],
+    } as unknown as Bootstrap;
+
+    render(
+      <Admin
+        data={emptyData}
+        session={adminSession}
+        onResolveReport={noop}
+        onOperationUpdate={noop}
+      />
+    );
+
+    expect(screen.getByLabelText(/Objetivo/i)).toHaveValue("");
+    expect(screen.getByText(/Selecciona una ruta|Selecciona un contenedor/i)).toBeInTheDocument();
+  });
 });
 
 
