@@ -2,6 +2,21 @@
 
 ## 2026-08-03
 
+### Version 5.5.0 - Revisión completa del Dashboard de Reportes
+
+- Se corrigió el filtro por ciudadano en la vista de reportes para que los usuarios con rol ciudadano solo vean sus propias incidencias.
+- Se mejoró la experiencia de operador/admin con acciones de resolución accesibles y feedback visual al procesar reportes.
+- Se reforzó la validación del formulario de registro de incidencias para evitar envíos incompletos y mejorar la UX.
+- Se mejoró el diseño del listado de reportes con acciones más claras, mejor contraste y estado vacío más informativo.
+- Se aplicaron mejoras de accesibilidad y sanitización básica en exportaciones PDF/CSV para evitar problemas de renderizado.
+- Se añadieron pruebas de regresión para el flujo de reportes y se verificó el build del frontend.
+
+### Version 4.5.3 - Interfaz fija en modo claro
+
+- Se dejó la interfaz fija en modo claro por defecto.
+- Se eliminó la opción de alternar al modo oscuro desde la barra lateral del frontend.
+- Se actualizó la documentación principal para reflejar este cambio visual en la experiencia de usuario.
+
 ### Version 4.5.2 - Corrección del Dashboard de Administración
 
 - Solucionado el error en el Dashboard de Administración cuando no hay rutas o contenedores disponibles para actualizar eventos.

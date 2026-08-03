@@ -93,6 +93,15 @@ function escapeCSV(value: unknown): string {
   return str;
 }
 
+function escapeHtml(value: unknown): string {
+  return String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/\"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
 function exportToCSV(filename: string, data: any[]) {
   if (!data.length) return;
   const headers = Object.keys(data[0]);
@@ -115,7 +124,7 @@ function exportToCSV(filename: string, data: any[]) {
 function exportToPDF(title: string, html: string) {
   const printWindow = window.open("", "_blank", "width=900,height=700");
   if (!printWindow) return;
-  printWindow.document.write(`<!DOCTYPE html><html><head><title>${title}</title><style>body{font-family:system-ui, sans-serif;padding:20px;color:#1f2937;}h1,h2{margin:0 0 16px;}h1{font-size:24px;}h2{font-size:18px;}table{width:100%;border-collapse:collapse;margin-top:16px;}th,td{border:1px solid #d1d5db;padding:10px;text-align:left;}tr:nth-child(even){background:#f9fafb;} .report-card{border:1px solid #d1d5db;border-radius:10px;padding:16px;margin-bottom:16px;} .tag{display:inline-block;background:#e5e7eb;color:#111827;padding:4px 10px;border-radius:999px;font-size:12px;margin-top:8px;}</style></head><body><h1>${title}</h1>${html}</body></html>`);
+  printWindow.document.write(`<!DOCTYPE html><html><head><title>${escapeHtml(title)}</title><style>body{font-family:system-ui, sans-serif;padding:20px;color:#1f2937;}h1,h2{margin:0 0 16px;}h1{font-size:24px;}h2{font-size:18px;}table{width:100%;border-collapse:collapse;margin-top:16px;}th,td{border:1px solid #d1d5db;padding:10px;text-align:left;}tr:nth-child(even){background:#f9fafb;} .report-card{border:1px solid #d1d5db;border-radius:10px;padding:16px;margin-bottom:16px;} .tag{display:inline-block;background:#e5e7eb;color:#111827;padding:4px 10px;border-radius:999px;font-size:12px;margin-top:8px;}</style></head><body><h1>${escapeHtml(title)}</h1>${html}</body></html>`);
   printWindow.document.close();
   printWindow.focus();
   printWindow.print();
@@ -703,28 +712,39 @@ function Schedules({ schedules }: { schedules: Schedule[] }) {
   );
 }
 
-function Reports({ data, session, onCreateReport, onResolveReport }: { data: Bootstrap; session: Session; onCreateReport: (report: Omit<Report, "id" | "status">) => Promise<void>; onResolveReport: (id: number) => Promise<void>; }) {
+export function Reports({ data, session, onCreateReport, onResolveReport }: { data: Bootstrap; session: Session; onCreateReport: (report: Omit<Report, "id" | "status">) => Promise<void>; onResolveReport: (id: number) => Promise<void>; }) {
   const [submitting, setSubmitting] = useState(false);
   const [formZone, setFormZone] = useState("");
   const [formType, setFormType] = useState("");
   const [formDetail, setFormDetail] = useState("");
   const [filterStatus, setFilterStatus] = useState("Todos");
   const [searchQuery, setSearchQuery] = useState("");
+  const [formError, setFormError] = useState("");
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    const trimmedDetail = formDetail.trim();
+    if (!formZone || !formType || !trimmedDetail) {
+      setFormError("Completa zona, tipo y detalle para enviar el reporte.");
+      return;
+    }
+
     setSubmitting(true);
+    setFormError("");
     try {
       await onCreateReport({
         citizen: session.name,
         zone: formZone,
         type: formType,
-        detail: formDetail.trim()
+        detail: trimmedDetail
       });
       setFormZone("");
       setFormType("");
       setFormDetail("");
       event.currentTarget.reset();
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : "No se pudo enviar el reporte.";
+      setFormError(msg);
     } finally {
       setSubmitting(false);
     }
@@ -737,22 +757,22 @@ function Reports({ data, session, onCreateReport, onResolveReport }: { data: Boo
   const safeTrucks = useMemo(() => (Array.isArray(data.trucks) ? data.trucks : []), [data.trucks]);
 
   const filteredReports = useMemo(() => {
-    let result = safeReports;
-    if (filterStatus !== "Todos") {
-      result = result.filter(r => r.status === filterStatus);
-    }
-    if (searchQuery.trim()) {
-      const q = searchQuery.toLowerCase().trim();
-      result = result.filter(r => {
-        const type = String(r.type ?? "").toLowerCase();
-        const zone = String(r.zone ?? "").toLowerCase();
-        const citizen = String(r.citizen ?? "").toLowerCase();
-        const detail = String(r.detail ?? "").toLowerCase();
-        return type.includes(q) || zone.includes(q) || citizen.includes(q) || detail.includes(q);
-      });
-    }
-    return result;
-  }, [safeReports, filterStatus, searchQuery]);
+    const roleFilteredReports = isCitizen
+      ? safeReports.filter(report => String(report.citizen ?? "").toLowerCase() === String(session.name ?? "").toLowerCase())
+      : safeReports;
+
+    const normalizedQuery = searchQuery.trim().toLowerCase();
+    return roleFilteredReports.filter(report => {
+      if (filterStatus !== "Todos" && report.status !== filterStatus) {
+        return false;
+      }
+      if (!normalizedQuery) {
+        return true;
+      }
+      const haystack = [report.type, report.zone, report.citizen, report.detail].join(" ").toLowerCase();
+      return haystack.includes(normalizedQuery);
+    });
+  }, [safeReports, filterStatus, searchQuery, isCitizen, session.name]);
 
   const exportReportsCSV = useCallback(() => {
     exportToCSV("reportes", filteredReports.length > 0 ? filteredReports : safeReports);
@@ -760,7 +780,7 @@ function Reports({ data, session, onCreateReport, onResolveReport }: { data: Boo
 
   const exportReportsPDF = useCallback(() => {
     const source = filteredReports.length > 0 ? filteredReports : safeReports;
-    exportToPDF("Reportes", source.map(report => `<div class="report-card"><h2>${report.type}</h2><div class="tag ${statusTone(report.status)}">${report.status}</div><p><strong>Zona:</strong> ${report.zone}</p><p><strong>Ciudadano:</strong> ${report.citizen}</p><p>${report.detail}</p></div>`).join(""));
+    exportToPDF("Reportes", source.map(report => `<div class="report-card"><h2>${escapeHtml(report.type)}</h2><div class="tag ${statusTone(report.status)}">${escapeHtml(report.status)}</div><p><strong>Zona:</strong> ${escapeHtml(report.zone)}</p><p><strong>Ciudadano:</strong> ${escapeHtml(report.citizen)}</p><p>${escapeHtml(report.detail)}</p></div>`).join(""));
   }, [filteredReports, safeReports]);
 
   return (
@@ -768,10 +788,23 @@ function Reports({ data, session, onCreateReport, onResolveReport }: { data: Boo
       <section className="panel">
         <h2>Registrar incidencia</h2>
         <form className="form-grid" onSubmit={submit}>
-          <label>Zona<select name="zone" value={formZone} onChange={e => setFormZone(e.target.value)}><option value="">Seleccionar zona</option>{safeZones.map(zone => <option key={zone.id} value={zone.name}>{zone.name}</option>)}</select></label>
-          <label>Tipo<select name="type" value={formType} onChange={e => setFormType(e.target.value)}><option value="">Seleccionar tipo</option><option>Acumulacion de basura</option><option>Retraso</option><option>Contenedor lleno</option><option>Otro</option></select></label>
-          <label className="wide">Detalle<textarea name="detail" required minLength={8} maxLength={600} placeholder="Describe el problema encontrado" value={formDetail} onChange={e => setFormDetail(e.target.value)} /></label>
-          <button disabled={submitting}>{submitting ? "Enviando..." : "Enviar reporte"}</button>
+          <label htmlFor="report-zone">Zona</label>
+          <select id="report-zone" name="zone" value={formZone} onChange={e => setFormZone(e.target.value)}>
+            <option value="">Seleccionar zona</option>
+            {safeZones.map(zone => <option key={zone.id} value={zone.name}>{zone.name}</option>)}
+          </select>
+          <label htmlFor="report-type">Tipo</label>
+          <select id="report-type" name="type" value={formType} onChange={e => setFormType(e.target.value)}>
+            <option value="">Seleccionar tipo</option>
+            <option>Acumulacion de basura</option>
+            <option>Retraso</option>
+            <option>Contenedor lleno</option>
+            <option>Otro</option>
+          </select>
+          <label className="wide" htmlFor="report-detail">Detalle</label>
+          <textarea id="report-detail" name="detail" required minLength={8} maxLength={600} placeholder="Describe el problema encontrado" value={formDetail} onChange={e => setFormDetail(e.target.value)} />
+          {formError && <p className="hint error wide" role="alert">{formError}</p>}
+          <button type="submit" disabled={submitting}>{submitting ? "Enviando..." : "Enviar reporte"}</button>
         </form>
       </section>
       <section className="panel">
@@ -796,7 +829,7 @@ function Reports({ data, session, onCreateReport, onResolveReport }: { data: Boo
             <button key={status} type="button" className={`filter-btn ${filterStatus === status ? "active" : ""}`} onClick={() => setFilterStatus(status)} aria-pressed={filterStatus === status}>{status}</button>
           ))}
         </div>
-        <ReportList reports={filteredReports.length > 0 ? filteredReports : safeReports} trucks={safeTrucks} showDriverFilter={!isCitizen} showResolve={canResolve} onResolveReport={onResolveReport} />
+        <ReportList reports={filteredReports} trucks={safeTrucks} showDriverFilter={!isCitizen} showResolve={canResolve} onResolveReport={onResolveReport} />
       </section>
     </div>
   );
@@ -1169,8 +1202,6 @@ function Map({ zones, trucks, routes, prioritizedZones }: { zones: Zone[]; truck
 }
 
 export function ReportList({ reports, trucks = [], showDriverFilter = false, showResolve = false, onResolveReport }: { reports: Report[]; trucks?: Truck[]; showDriverFilter?: boolean; showResolve?: boolean; onResolveReport?: (id: number) => Promise<void>; }) {
-  const [search, setSearch] = useState("");
-  const [filterStatus, setFilterStatus] = useState("Todos");
   const [driverSearch, setDriverSearch] = useState("");
   const [resolvingId, setResolvingId] = useState<number | null>(null);
   const safeReports = useMemo(() => (Array.isArray(reports) ? reports : []), [reports]);
@@ -1181,81 +1212,81 @@ export function ReportList({ reports, trucks = [], showDriverFilter = false, sho
     safeTrucks.forEach(truck => {
       const zoneKey = String(truck.zone ?? "").toLowerCase();
       if (!map[zoneKey]) {
-        map[zoneKey] = String(truck.driver ?? "").toLowerCase();
+        map[zoneKey] = String(truck.driver ?? "");
       }
     });
     return map;
   }, [safeTrucks]);
 
   const filtered = useMemo(() => {
-    const normalizedSearch = search.toLowerCase().trim();
     const normalizedDriver = driverSearch.toLowerCase().trim();
 
-    return safeReports.filter(r => {
-      const zoneKey = String(r.zone ?? "").toLowerCase();
+    return safeReports.filter(report => {
+      const zoneKey = String(report.zone ?? "").toLowerCase();
       const reportDriver = driverByZone[zoneKey] ?? "";
-      const matchSearch = String(r.type ?? "").toLowerCase().includes(normalizedSearch) ||
-                          zoneKey.includes(normalizedSearch) ||
-                          String(r.citizen ?? "").toLowerCase().includes(normalizedSearch) ||
-                          String(r.detail ?? "").toLowerCase().includes(normalizedSearch) ||
-                          reportDriver.includes(normalizedDriver);
-      const matchStatus = filterStatus === "Todos" || r.status === filterStatus;
-      const matchDriver = !normalizedDriver || reportDriver.includes(normalizedDriver);
-      return matchSearch && matchStatus && matchDriver;
+      const matchDriver = !normalizedDriver || reportDriver.toLowerCase().includes(normalizedDriver);
+      return matchDriver;
     });
-  }, [safeReports, search, filterStatus, driverSearch, driverByZone]);
-  
-  const statuses: Array<"Todos" | ReportStatus> = ["Todos", "Pendiente", "En revision", "Resuelto"];
-  
+  }, [safeReports, driverSearch, driverByZone]);
+
+  async function handleResolve(reportId: number) {
+    if (!onResolveReport) return;
+    setResolvingId(reportId);
+    try {
+      await onResolveReport(reportId);
+    } finally {
+      setResolvingId(null);
+    }
+  }
+
   return (
     <div>
-      <div className="search-box">
-        <span className="search-icon">🔍</span>
-        <input 
-          type="text" 
-          placeholder="Buscar reporte..." 
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          aria-label="Buscar reportes"
-        />
-      </div>
-{showDriverFilter && (
-          <div className="search-box driver-search">
-            <span className="search-icon">🚗</span>
-            <input
-              type="text"
-              placeholder="Buscar por conductor..."
-              value={driverSearch}
-              onChange={(e) => setDriverSearch(e.target.value)}
-              aria-label="Buscar reportes por conductor"
-            />
-          </div>
-        )}
-       
-       <div className="filter-bar">
-         {filtered.length === 0 ? (
-           <p className="empty-state">
-             No hay reportes que coincidan con tu búsqueda
-           </p>
-         ) : (
-           filtered.map(report => {
+      {showDriverFilter && (
+        <div className="search-box driver-search">
+          <span className="search-icon">🚗</span>
+          <input
+            type="text"
+            placeholder="Buscar por conductor..."
+            value={driverSearch}
+            onChange={(e) => setDriverSearch(e.target.value)}
+            aria-label="Buscar reportes por conductor"
+          />
+        </div>
+      )}
+
+      {filtered.length === 0 ? (
+        <p className="empty-state">No hay reportes que coincidan con tu búsqueda</p>
+      ) : (
+        <div className="list" role="list" aria-label="Lista de reportes">
+          {filtered.map(report => {
             const zoneKey = String(report.zone ?? "").toLowerCase();
             const reportDriver = driverByZone[zoneKey] ?? "Sin conductor asignado";
             return (
               <article className="item" key={report.id}>
                 <div className="item-row">
                   <strong>{report.type ?? "Sin tipo"}</strong>
-                  <span className={`tag ${statusTone(report.status)}`}>
-                     {report.status ?? "Sin estado"}
-                  </span>
+                  <span className={`tag ${statusTone(report.status)}`}>{report.status ?? "Sin estado"}</span>
                 </div>
                 <span>{report.zone ?? "Sin zona"} | {report.citizen ?? "Sin ciudadano"} | {reportDriver}</span>
                 <p>{report.detail ?? "Sin detalle"}</p>
+                {showResolve && (
+                  <div className="item-actions">
+                    <button
+                      type="button"
+                      className="report-action-btn"
+                      onClick={() => void handleResolve(report.id)}
+                      disabled={resolvingId === report.id}
+                      aria-label={`Resolver reporte ${report.id}`}
+                    >
+                      {resolvingId === report.id ? "Procesando..." : "Resolver reporte"}
+                    </button>
+                  </div>
+                )}
               </article>
             );
-          })
-        )}
-      </div>
+          })}
+        </div>
+      )}
     </div>
   );
 }
