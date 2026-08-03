@@ -9,6 +9,7 @@
 - Se corrigió el filtro por ciudadano en la vista de reportes para que los usuarios con rol ciudadano solo vean sus propias incidencias.
 - **Seguridad**: se filtraron las recolecciones por zona para ciudadanos en `/api/bootstrap` y `/api/collections`, y se añadió validación de zona en `confirm_collection_by_citizen` para que un ciudadano solo pueda confirmar recolecciones de su zona asignada.
 - **Bug corregido**: se arregló el test de Reports que fallaba por texto duplicado "recolecciones pendientes" entre dashboard y analytics.
+- **Cuentas de prueba**: se crearon cuentas para cada rol (`ciudadano`, `operador`, `conductor`, `admin`) para facilitar pruebas manuales.
 - Se mejoró la experiencia de operador/admin con acciones de resolución accesibles y feedback visual al procesar reportes.
 - Se reforzó la validación del formulario de registro de incidencias para evitar envíos incompletos y mejorar la UX.
 - Se mejoró el diseño del listado de reportes con acciones más claras, mejor contraste y estado vacío más informativo.

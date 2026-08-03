@@ -257,7 +257,14 @@ El sistema funciona sin PostgreSQL. Si no existe `DATABASE_URL` o la base de dat
 
 Para iniciar sesión en modo demo:
 
-- Usuario administrador: `admin@ecocusco.pe` / `admin123`
+| Rol | Email | Password | Zona |
+|-----|-------|----------|------|
+| Admin | `admin@ecocusco.pe` | `admin123` | Centro Historico |
+| Ciudadano | `ciudadano@ecocusco.pe` | `Test12345!` | Centro Historico |
+| Operador | `operador@ecocusco.pe` | `Test12345!` | Wanchaq |
+| Conductor | `conductor@ecocusco.pe` | `Test12345!` | Santiago |
+| Admin | `admin2@ecocusco.pe` | `Test12345!` | San Sebastian |
+
 - También puedes registrarte con un nuevo correo y contraseña desde la pantalla de autenticación.
 
 ## Seguridad implementada
