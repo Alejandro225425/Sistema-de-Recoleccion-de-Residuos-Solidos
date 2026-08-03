@@ -5,6 +5,7 @@
 ### Version 4.5.2 - Corrección del Dashboard de Administración
 
 - Solucionado el error en el Dashboard de Administración cuando no hay rutas o contenedores disponibles para actualizar eventos.
+- Corregido el fallo en el formulario de creación de usuarios y el login de administrador que causaba `Cannot read properties of null (reading 'value')` al acceder al panel administrativo.
 - El select de `Objetivo` ahora usa un estado `eventTargetId` que permite `null`, evita que el valor controlado se desincronice y agrega un placeholder seguro.
 - Se agregó una prueba de regresión para el panel de administración y se confirmó que el frontend compila y pasa `npm test`.
 
