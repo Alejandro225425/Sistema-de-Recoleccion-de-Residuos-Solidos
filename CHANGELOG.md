@@ -56,6 +56,23 @@ Después del despliegue de v4.5.1, el ErrorBoundary atrapó un error en runtime:
 - TypeScript: `npx tsc --noEmit` — 0 errores
 - Build: `npx vite build` — exitoso
 
+#### Fix: null-safety defensiva en App component y ErrorBoundary (v4.5.1-final)
+
+**Correcciones aplicadas en `frontend/src/main.tsx`:**
+
+1. **App `effectiveData`**: `data` y `monitor` pueden ser `null` (si el backend retorna `null`). Se agregaron `safeData = data ?? emptyBootstrap` y `safeMonitor = monitor ?? {}` antes de acceder a sus propiedades.
+
+2. **`Content` component**: `data` null check con fallback a `emptyBootstrap` antes de pasar a Admin/Dashboard/Routes/Analytics.
+
+3. **`ErrorBoundary`**: ahora muestra `componentStack` en modo desarrollo para identificar rápidamente el componente que lanza el error. Acepta prop `fallback` opcional. Estado incluye `errorInfo`.
+
+#### Verificación (final)
+- Tests frontend: `npx vitest run` — **16 passed** (4 test files)
+- TypeScript: `npx tsc --noEmit` — 0 errores
+- Build: `npx vite build` — exitoso (25 módulos, 42.10 kB CSS)
+- Tests backend: `pytest -q` — **20 passed**
+- Push a `main` y `version-4.5`: completado
+
 ---
 
 ## 2026-08-02
