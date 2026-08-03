@@ -59,7 +59,7 @@ export function AuthView({ zones, onLogin, message }: AuthViewProps) {
   const [recoveryToken, setRecoveryToken] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
-  const [registerPassword, setRegisterPassword] = useState("");
+  const [password, setPassword] = useState("");
 
   const emailRef = useRef<HTMLInputElement>(null);
 
@@ -134,7 +134,7 @@ export function AuthView({ zones, onLogin, message }: AuthViewProps) {
     setRecoveryToken("");
     setShowPassword(false);
     setShowNewPassword(false);
-    setRegisterPassword("");
+    setPassword("");
     emailRef.current?.focus();
   };
 
@@ -260,9 +260,8 @@ export function AuthView({ zones, onLogin, message }: AuthViewProps) {
                   minLength={8}
                   autoComplete={mode === "login" ? "current-password" : "new-password"}
                   placeholder="Mínimo 8 caracteres"
-                  value={mode === "register" ? registerPassword : undefined}
-                  onChange={mode === "register" ? (e) => setRegisterPassword(e.target.value) : undefined}
-                  defaultValue={mode === "register" ? undefined : ""}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
                 />
                 <button
                   type="button"
@@ -276,7 +275,7 @@ export function AuthView({ zones, onLogin, message }: AuthViewProps) {
                 </button>
               </div>
 
-              {mode === "register" && <PasswordStrength password={registerPassword} />}
+              {mode === "register" && <PasswordStrength password={password} />}
             </div>
           )}
 

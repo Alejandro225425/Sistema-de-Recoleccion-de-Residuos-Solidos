@@ -320,10 +320,22 @@ export default function Admin({ data, session, onResolveReport, onOperationUpdat
         <h2>Gestión de usuarios</h2>
         <p>Administra roles, accesos y usuarios del sistema.</p>
         <form className="form-grid" onSubmit={createUser}>
-          <label htmlFor="admin-user-name">Nombre<input id="admin-user-name" required value={formValues.name} onChange={event => setFormValues(prev => ({ ...prev, name: event.currentTarget.value }))} /></label>
-          <label htmlFor="admin-user-email">Correo<input id="admin-user-email" required type="email" value={formValues.email} onChange={event => setFormValues(prev => ({ ...prev, email: event.currentTarget.value }))} /></label>
-          <label htmlFor="admin-user-password">Contraseña<input id="admin-user-password" required type="password" minLength={8} value={formValues.password} onChange={event => setFormValues(prev => ({ ...prev, password: event.currentTarget.value }))} /></label>
-          <label htmlFor="admin-user-role">Rol<select id="admin-user-role" value={formValues.role} onChange={event => setFormValues(prev => ({ ...prev, role: event.currentTarget.value as Role }))}>
+          <label htmlFor="admin-user-name">Nombre<input id="admin-user-name" required value={formValues.name} onChange={event => {
+              const value = event.currentTarget.value;
+              setFormValues(prev => ({ ...prev, name: value }));
+            }} /></label>
+          <label htmlFor="admin-user-email">Correo<input id="admin-user-email" required type="email" value={formValues.email} onChange={event => {
+              const value = event.currentTarget.value;
+              setFormValues(prev => ({ ...prev, email: value }));
+            }} /></label>
+          <label htmlFor="admin-user-password">Contraseña<input id="admin-user-password" required type="password" minLength={8} value={formValues.password} onChange={event => {
+              const value = event.currentTarget.value;
+              setFormValues(prev => ({ ...prev, password: value }));
+            }} /></label>
+          <label htmlFor="admin-user-role">Rol<select id="admin-user-role" value={formValues.role} onChange={event => {
+              const value = event.currentTarget.value as Role;
+              setFormValues(prev => ({ ...prev, role: value }));
+            }}>
             <option value="ciudadano">Ciudadano</option>
             <option value="operador">Operador</option>
             <option value="admin">Administrador</option>
