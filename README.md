@@ -13,7 +13,7 @@ Sistema inteligente para la recoleccion de residuos solidos segregados en la ciu
 
 - Plataforma funcional en modo demo y con autenticación real.
 - Interfaz responsive para computadora, tablet y celular.
-- API preparada para trabajar con PostgreSQL mediante `DATABASE_URL` y con modo memoria si no hay base de datos.
+- API preparada para trabajar con PostgreSQL mediante `DATABASE_URL` (provisionada automáticamente en Render) y con modo memoria (demo) si no hay base de datos. El backend ejecuta `init_db()` al arranque para crear el esquema y cargar los datos semilla de forma idempotente.
 - Mapa operativo con Leaflet/OpenStreetMap.
 - Bloque de seguridad implementado: registro, login seguro, JWT, roles, recuperación de contraseña y administración de usuarios por rol.
 - Gestión operativa integrada con CRUD completo de zonas, horarios, camiones y mantenimiento expuesto en la API y en el panel administrativo del frontend.
@@ -233,7 +233,7 @@ El backend incluye un endpoint de salud en `/api/health` para verificar que el s
 Invoke-RestMethod http://localhost:8000/api/health
 ```
 
-Devuelve un JSON con los campos `status`, `database`, `version` y `mode`.
+Devuelve un JSON con los campos `status`, `database`, `connected`, `version` y `mode`. En producción (`DATABASE_URL` configurada y conectada) devuelve `"mode": "production"` y `"connected": true`.
 
 Opcion manual, en tres terminales:
 
@@ -253,7 +253,9 @@ Luego abre `http://localhost:5173`.
 
 ## Modo Demo
 
-El sistema funciona sin PostgreSQL. Si no existe `DATABASE_URL` o la base de datos no esta disponible, FastAPI responde con datos en memoria para poder probar login, horarios, rutas, reportes, mapa y estadisticas.
+El sistema funciona sin PostgreSQL en **modo demo/memoria**. Si no existe `DATABASE_URL` o la base de datos no está disponible, FastAPI responde con datos en memoria para poder probar login, horarios, rutas, reportes, mapa y estadísticas.
+
+En **producción**, `render.yaml` provisiona PostgreSQL 16 automáticamente y el backend ejecuta `init_db()` al arranque para crear el esquema y cargar los datos semilla.
 
 Para iniciar sesión en modo demo:
 
@@ -361,10 +363,14 @@ La respuesta debe indicar:
 
 ```json
 {
+  "status": "ok",
   "database": "postgresql",
+  "connected": true,
   "mode": "production"
 }
 ```
+
+Si `connected` es `false` o `mode` es `"demo"`, la base de datos no se conectó. Revisa que `DATABASE_URL` esté configurada y que el esquema se haya creado (el backend ejecuta `init_db()` automáticamente al arranque).
 
 ### Backup y restauración de PostgreSQL
 
@@ -574,7 +580,7 @@ python verify_system.py
 | Puerto 5173 ocupado | Vite suele elegir otro puerto; revisa la terminal |
 | El mapa no carga | Verifica que Leaflet tenga un contenedor con dimensiones fijas (`.map { height: 400px }`) y que la inicialización del mapa ocurra antes de agregar marcadores. |
 | No conecta con API | Revisa `http://localhost:8000/api/health` y el proxy en `frontend/vite.config.ts` |
-| PostgreSQL falla | El sistema cae a modo demo en memoria; revisa `DATABASE_URL` |
+| PostgreSQL falla | El sistema cae a modo demo en memoria y registra un `WARNING` en los logs; revisa `DATABASE_URL`, que el esquema se haya creado (`init_db()` al arranque) y que el endpoint `/api/health` muestre `"connected": true` |
 | `dockerDesktopLinuxEngine` no existe | Docker Desktop esta instalado pero apagado; abre Docker Desktop y ejecuta `docker info` otra vez |
 | `\.venv\Scripts\python.exe` no se reconoce desde `database` | Vuelve a la raiz con `cd ..` o usa `python` si el entorno virtual esta activado |
 | `ERR_ADDRESS_INVALID` en `http://0.0.0.0:8000/` | Abre `http://localhost:8000/api/health`; `0.0.0.0` no se usa como URL del navegador |

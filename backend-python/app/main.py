@@ -1,7 +1,10 @@
 from __future__ import annotations
 
+import logging
 import os
+from contextlib import asynccontextmanager
 from datetime import date, datetime, timedelta, timezone
+from pathlib import Path
 from typing import Any, Optional
 
 try:
@@ -16,6 +19,9 @@ import jwt
 from fastapi import Depends, FastAPI, Header, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
+
+logging.basicConfig(level=os.getenv("LOG_LEVEL", "INFO").upper(), format="%(asctime)s %(levelname)s %(name)s: %(message)s")
+logger = logging.getLogger("sir-cusco")
 
 
 class LoginRequest(BaseModel):
@@ -246,7 +252,13 @@ def cors_origin_regex() -> Optional[str]:
     return r"https://.*\.vercel\.app|https://.*\.vercel\.sh|http://localhost:5173|http://127\.0\.0\.1:5173"
 
 
-app = FastAPI(title="SIR Cusco API", version="5.5.0")
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    init_db()
+    yield
+
+
+app = FastAPI(title="SIR Cusco API", version="5.5.3", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
@@ -275,6 +287,55 @@ def database_mode() -> str:
     if database_url() and psycopg is None:
         return "memory (psycopg no instalado)"
     return "memory"
+
+
+DB_CONNECTED = False
+
+
+def _resolve_sql_file(filename: str) -> Optional[str]:
+    """Localizar un archivo .sql de base de datos en posibles ubicaciones del despliegue."""
+    candidates = [
+        os.path.join(os.path.dirname(__file__), "..", "..", "database", filename),
+        os.path.join(os.path.dirname(__file__), "..", "database", filename),
+        os.path.join(os.getcwd(), "database", filename),
+        f"/app/database/{filename}",
+    ]
+    for candidate in candidates:
+        normalized = os.path.normpath(candidate)
+        if os.path.isfile(normalized):
+            return normalized
+    return None
+
+
+def init_db() -> bool:
+    """Crear el esquema y cargar datos semilla si DATABASE_URL está configurada.
+
+    Es idempotente (CREATE TABLE IF NOT EXISTS / ON CONFLICT DO UPDATE) y segura
+    para ejecutar en cada arranque. Retorna True si la conexión fue exitosa.
+    """
+    global DB_CONNECTED
+    if not database_url() or psycopg is None:
+        DB_CONNECTED = False
+        return False
+    try:
+        with psycopg.connect(database_url()) as conn:
+            schema_path = _resolve_sql_file("schema.sql")
+            if schema_path:
+                with open(schema_path, encoding="utf-8") as handle:
+                    conn.execute(handle.read())
+            seed_path = _resolve_sql_file("seed.sql")
+            if seed_path:
+                with open(seed_path, encoding="utf-8") as handle:
+                    conn.execute(handle.read())
+            conn.execute("SELECT 1")
+            conn.commit()
+        DB_CONNECTED = True
+        logger.info("Base de datos PostgreSQL inicializada y conectada correctamente.")
+        return True
+    except Exception as exc:
+        DB_CONNECTED = False
+        logger.warning("No se pudo inicializar o conectar la base de datos: %s", exc)
+        return False
 
 
 def memory_payload() -> dict[str, Any]:
@@ -336,11 +397,14 @@ def execute_one(query: str, params: tuple[Any, ...]) -> dict[str, Any]:
     with psycopg.connect(database_url(), row_factory=dict_row) as conn:
         with conn.cursor() as cur:
             cur.execute(query, params)
-            row = cur.fetchone()
+            if cur.description is not None:
+                row = cur.fetchone()
+                conn.commit()
+                if row is None:
+                    raise HTTPException(status_code=404, detail="Registro no encontrado")
+                return dict(row)
             conn.commit()
-            if row is None:
-                raise HTTPException(status_code=404, detail="Registro no encontrado")
-            return dict(row)
+            return {}
 
 
 def normalize_dates(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
@@ -605,7 +669,11 @@ def create_user_record(payload: RegisterRequest) -> dict[str, Any]:
         )
         user = build_user_payload({**row, "password_hash": hashed})
         return user
-    except Exception:
+    except Exception as exc:
+        logger.warning(
+            "create_user_record: la base de datos falló (%s); creando usuario en memoria (NO persiste tras reinicio).",
+            exc,
+        )
         user = {
             "id": len(memory.users) + 1,
             "name": payload.name,
@@ -1059,7 +1127,12 @@ def bootstrap() -> dict[str, Any]:
         }
         rows["analytics"] = analytics_from(rows)
         return rows
-    except Exception:
+    except Exception as exc:
+        logger.warning(
+            "bootstrap: la base de datos no responde (%s); usando datos en memoria. "
+            "Verifique DATABASE_URL y que init_db() haya ejecutado schema.sql",
+            exc,
+        )
         payload = memory_payload()
         payload["users"] = list_users()
         payload["containers"] = memory.containers
@@ -1107,7 +1180,7 @@ def get_current_user_optional(authorization: str | None = Header(default=None)) 
 def root() -> dict[str, Any]:
     return {
         "service": "SIR Cusco API",
-        "version": "5.5.0",
+        "version": "5.5.3",
         "status": "ok",
         "endpoints": {
             "health": "/api/health",
@@ -1123,13 +1196,14 @@ def root() -> dict[str, Any]:
 
 
 @app.get("/api/health")
-def health() -> dict[str, str]:
+def health() -> dict[str, Any]:
     db_status = database_mode()
     return {
-        "status": "ok",
+        "status": "ok" if DB_CONNECTED or db_status == "memory" else "degraded",
         "database": db_status,
-        "version": "5.5.0",
-        "mode": "production" if db_status == "postgresql" else "demo"
+        "connected": DB_CONNECTED,
+        "version": "5.5.3",
+        "mode": "production" if DB_CONNECTED else "demo",
     }
 
 

@@ -9,5 +9,8 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copiar codigo del backend
 COPY backend-python/ .
 
+# Copiar scripts de base de datos (esquema y semilla) para init en tiempo de ejecución
+COPY database/ ./database/
+
 # Puerto expuesto por Railway via $PORT
 CMD uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}

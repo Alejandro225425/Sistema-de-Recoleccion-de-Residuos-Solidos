@@ -1,6 +1,23 @@
-# Sistema de Recolección de Residuos Sólidos - Versión 5.5.2
+# Sistema de Recolección de Residuos Sólidos - Versión 5.5.3
 
-## Versión 5.5.2 - Revisión y mejoras del Dashboard de Administrador
+## Versión 5.5.3 - Corrección de persistencia de datos en producción
+
+### Causa raíz
+Las cuentas y datos creados no se guardaban permanentemente porque el backend en producción (Render) no tenía configurada la base de datos PostgreSQL (`DATABASE_URL` era `sync: false` / opcional en `render.yaml` y no se provisionaba ninguna base de datos), por lo que el backend arrancaba en **modo memoria (in-memory)** y perdía todos los datos en cada reinicio o cambio de proceso.
+
+### Solución aplicada
+
+1. **`render.yaml`**: se agregó un recurso de base de datos PostgreSQL 16 (`sir-cusco-db`) y `DATABASE_URL` se conecta automáticamente desde ella vía `fromDatabase`, eliminando la dependencia manual.
+2. **`backend-python/app/main.py`**: se agregó `init_db()` que ejecuta `schema.sql` + `seed.sql` al arranque (`lifespan`), creando el esquema y cargando datos semilla de forma idempotente. Se corrigió `execute_one()` que lanzaba `HTTPException(404)` en consultas UPDATE/DELETE (sin `RETURNING`), lo que hacía caer silenciosamente las operaciones de edición y borrado al modo memoria. El endpoint `/api/health` ahora reporta `"connected": true/false` con verificación real de conectividad.
+3. **`Dockerfile`**: se agregó `COPY database/ ./database/` para contenedores.
+4. **`database/seed.sql`**: se corrigió el hash de `admin@ecocusco.pe` (no coincidía con `admin123`) y se agregaron las cuentas `ciudadano`, `operador`, `conductor` y `admin2`.
+
+### Verificación
+- Tests backend sin `DATABASE_URL` (modo memoria): **21 passed, 1 skipped**.
+- Tests backend con `DATABASE_URL` (modo PostgreSQL): **26 passed** (21 existentes + 5 nuevos de persistencia).
+- Verificación manual contra PostgreSQL 17: `init_db()` crea las 11 tablas desde cero; CRUD completo (crear/editar/eliminar/consultar) persiste; la cuenta creada sobrevive a un reinicio del backend.
+
+### Versión 5.5.2 - Revisión y mejoras del Dashboard de Administrador
 
 ### Cambios destacados
 - Se corrigió el endpoint `/api/bootstrap` para filtrar datos administrativos sensibles (`users`, `maintenance`, `notifications`) para usuarios no-admin. Solo el rol `admin` puede ver la gestión completa de usuarios, camiones, mantenimiento y notificaciones.

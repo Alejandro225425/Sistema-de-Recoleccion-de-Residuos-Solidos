@@ -13,7 +13,7 @@ def test_health_endpoint_reports_ok():
     assert response.status_code == 200
     payload = response.json()
     assert payload["status"] == "ok"
-    assert payload["version"] == "5.5.0"
+    assert payload["version"] == "5.5.3"
     assert payload["database"] in {"memory", "postgresql", "memory (psycopg no instalado)"}
     assert payload["mode"] in {"demo", "production"}
 

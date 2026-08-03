@@ -139,8 +139,8 @@ Esta es la combinación principal del proyecto.
    uvicorn app.main:app --app-dir backend-python --host 0.0.0.0 --port $PORT
    ```
 9. En **Environment**, agrega:
-   - `JWT_SECRET`: genera un string robusto único (mínimo 32 caracteres aleatorios).
-   - `DATABASE_URL`: pega la Internal Database URL si creaste PostgreSQL (opcional).
+    - `JWT_SECRET`: genera un string robusto único (mínimo 32 caracteres aleatorios).
+    - `DATABASE_URL`: **se inyecta automáticamente** desde la base de datos PostgreSQL provisionada en `render.yaml`. El backend ejecuta `init_db()` al arranque para crear el esquema (`schema.sql`) y cargar los datos semilla (`seed.sql`).
    - `CORS_ORIGIN_REGEX`: `https://.*(\.vercel\.app|\.netlify\.app)`
    - `CORS_ORIGINS`: `http://localhost:5173,http://127.0.0.1:5173`
 10. Crea el servicio y espera a que quede **Live**.
@@ -283,7 +283,7 @@ VITE_GEO_URL = https://sir-cusco-api.up.railway.app
 |--------------------|-----------------------------------------------|---------------------------------------|
 | `CORS_ORIGINS`      | Lista de URLs permitidas (separadas por `,`)  | `http://localhost:5173`               |
 | `CORS_ORIGIN_REGEX` | Regex para permitir dominios de Vercel/Netlify | `https://.*(\.vercel\.app\|\.netlify\.app)` |
-| `DATABASE_URL`      | URL de PostgreSQL (opcional)                  | `postgresql://user:pass@host/db`      |
+| `DATABASE_URL`      | URL de PostgreSQL (auto-provisionada en Render vía `render.yaml`) | `postgresql://user:pass@host/db` o modo memoria si no está configurada |
 | `JWT_SECRET`        | Secreto para firmar tokens JWT (obligatorio en producción) | Genera un string robusto único |
 
 ### Frontend (`frontend/.env.production` o variables en Vercel)
@@ -301,7 +301,7 @@ Después de cualquier despliegue, verifica estos endpoints:
 
 ```
 # API Python
-GET /api/health           → { "status": "ok", "database": "memory", "mode": "demo" }
+GET /api/health           → { "status": "ok", "database": "postgresql", "connected": true, "mode": "production" }
 GET /docs                 → Swagger UI interactivo
 
 # Servicio Geo (TypeScript)
@@ -441,18 +441,21 @@ Repetir para `sir-cusco-geo`:
 6. Anotar URL final: `https://sir-cusco.vercel.app`
 
 **Post-despliegue:**
-1. Verificar `/api/health` → debe devolver `"mode": "demo"` (si `DATABASE_URL` no está configurada).
-2. Verificar login con `admin@ecocusco.pe` / `admin123`.
+ 1. Verificar `/api/health` → debe devolver `"connected": true`, `"database": "postgresql"` y `"mode": "production"`. Si devuelve `"mode": "demo"`, la base de datos no se conectó.
+ 2. Verificar login con `admin@ecocusco.pe` / `admin123`.
 3. Verificar dashboard, mapa y paneles en la URL de Vercel.
 4. Verificar CORS: no hay errores en consola del navegador.
 
 #### Checklist de verificación post-despliegue
 
-- [ ] `/api/health` devuelve `"status": "ok"` y `"mode": "demo"` (si `DATABASE_URL` no está configurada).
+- [ ] `/api/health` devuelve `"status": "ok"`, `"database": "postgresql"`, `"connected": true` y `"mode": "production"`.
 - [ ] Login con `admin@ecocusco.pe` / `admin123` funciona correctamente.
+- [ ] Login con `operador@ecocusco.pe` / `Test12345!` funciona correctamente.
+- [ ] Registrar un nuevo usuario y recargar la página confirma que persiste (no se pierde al reiniciar).
 - [ ] Frontend carga el dashboard, mapa y paneles sin errores.
+- [ ] Panel administrativo carga zones, horarios, camiones y mantenimiento.
+- [ ] CRUD completo en admin: crear, editar y eliminar zonas/camiones/horarios/mantenimiento persiste en la base de datos.
 - [ ] Reportes se pueden crear y listar.
-- [ ] Panel administrativo carga zonas, horarios, camiones y mantenimiento.
 - [ ] Filtros de búsqueda por conductor y por estado funcionan.
 - [ ] Exportación a CSV y PDF funciona desde reportes y analytics.
 - [ ] CORS permite el dominio de Vercel (no hay errores en consola del navegador).
@@ -602,9 +605,11 @@ Este error ocurre cuando el build falla en Render. Causas y soluciones:
 - Si no se quiere ingresar tarjeta, usar **Render** o **Railway**.
 
 ### Base de datos
+- En **producción (Render)**, `render.yaml` provisiona automáticamente una base de datos PostgreSQL 16 (`sir-cusco-db`) y `DATABASE_URL` se inyecta desde ella.
+- El backend ejecuta `init_db()` al arranque: crea el esquema (`schema.sql`) y carga los datos semilla (`seed.sql`) de forma idempotente. Si la base de datos ya tiene tablas, `CREATE TABLE IF NOT EXISTS` no duplica nada.
+- El endpoint `/api/health` reporta `"connected": true` y `"mode": "production"` solo cuando la conexión a PostgreSQL es exitosa. Si la base de datos no responde, el backend cae al modo memoria (demo) y el endpoint lo reporta claramente.
 - El backend opera en **modo demo / memoria** si `DATABASE_URL` no está configurada.
-- Para persistencia real: usar [Supabase](https://supabase.com/), [Neon](https://neon.tech/) o [Railway PostgreSQL](https://railway.app/).
-- Render ofrece PostgreSQL gratuito (90 MB, 10 conexiones) desde su dashboard.
+- Para persistencia real fuera de Render: usar [Supabase](https://supabase.com/), [Neon](https://neon.tech/) o [Railway PostgreSQL](https://railway.app/).
 
 ### CORS
 - `render.yaml` incluye `CORS_ORIGIN_REGEX: https://.*(\.vercel\.app|\.netlify\.app)` que permite ambos dominios.

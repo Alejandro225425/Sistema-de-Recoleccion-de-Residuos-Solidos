@@ -1,7 +1,7 @@
 # AGENTS.md - Convenciones del Proyecto SIR Cusco
 
-> **Versión:** 5.5.0
-> **Rama de producción:** `main` y `version-4.5`
+> **Versión:** 5.5.3
+> **Rama de producción:** `main` y `version-5.5`
 
 ## Estructura del proyecto
 
@@ -85,7 +85,8 @@ cd backend-typescript && npm run build
 | Conductor | `conductor@ecocusco.pe` | `Test12345!` | Santiago |
 | Admin | `admin2@ecocusco.pe` | `Test12345!` | San Sebastian |
 
-- El sistema funciona en modo memoria sin `DATABASE_URL`.
+- El sistema funciona en **modo memoria (demo)** sin `DATABASE_URL`.
+- En **producción** (Render), `render.yaml` provisiona automáticamente una base de datos PostgreSQL 16 y el backend inicializa el esquema y datos semilla vía `init_db()` al arranque. Las cuentas y datos persisten en la base de datos real.
 - Estas cuentas existen tanto en el backend local como en el backend de producción (Render).
 
 ## Despliegue
