@@ -213,7 +213,13 @@ export function App() {
   const [view, setView] = useState<View>("dashboard");
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("");
-  const accessibleViews = session?.role === "admin" ? views : views.filter(item => item !== "admin");
+  const roleViews: Record<Role, View[]> = {
+    admin: views,
+    operador: ["dashboard", "reports", "routes", "analytics"],
+    conductor: ["dashboard", "routes", "analytics"],
+    ciudadano: ["dashboard", "reports", "schedules", "waste", "analytics"],
+  };
+  const accessibleViews = session ? roleViews[session.role] ?? roleViews.ciudadano : roleViews.ciudadano;
 
   useEffect(() => {
     if (session || typeof window === "undefined") return;
@@ -416,7 +422,7 @@ export function App() {
 function Content(props: { data: Bootstrap; monitor: Monitor; session: Session; view: View; onCreateReport: (report: Omit<Report, "id" | "status">) => Promise<void>; onResolveReport: (id: number) => Promise<void>; onOperationUpdate: (payload: OperationUpdatePayload) => Promise<void>; onCreateCollection: (payload: { truck_id: number; zone_id: number; kg: number }) => Promise<void>; onConfirmCollection: (collectionId: number) => Promise<void>; }) {
   const { data, monitor, session, view, onOperationUpdate, onResolveReport, onCreateCollection, onConfirmCollection } = props;
   const safeData = data ?? emptyBootstrap;
-  if (view === "dashboard") return <Dashboard data={safeData} monitor={monitor} session={session} />;
+  if (view === "dashboard") return <Dashboard data={safeData} monitor={monitor} session={session} onConfirmCollection={onConfirmCollection} />;
   if (view === "admin") return (
     <ErrorBoundary fallback={<div className="panel" style={{ margin: 32 }}><h2>Error en Administración</h2><p className="hint error">El panel de administración encontró un error al cargar. Reintenta desde el menú lateral.</p><button type="button" onClick={() => window.location.reload()}>Recargar página</button></div>}>
       <Admin data={safeData} session={session} onResolveReport={onResolveReport} onOperationUpdate={onOperationUpdate} />
@@ -429,12 +435,14 @@ function Content(props: { data: Bootstrap; monitor: Monitor; session: Session; v
   return <Analytics data={safeData} session={session} onConfirmCollection={onConfirmCollection} />;
 }
 
-function Dashboard({ data, monitor, session }: { data: Bootstrap; monitor: Monitor; session: Session }) {
+export function Dashboard({ data, monitor, session, onConfirmCollection }: { data: Bootstrap; monitor: Monitor; session: Session; onConfirmCollection?: (collectionId: number) => Promise<void>; }) {
   const [tick, setTick] = useState(0);
   const tickRef = useRef(0);
   const intervalRef = useRef<number | null>(null);
+  const isCitizen = session.role === "ciudadano";
 
   useEffect(() => {
+    if (isCitizen) return;
     intervalRef.current = window.setInterval(() => {
       tickRef.current += 1;
       setTick(tickRef.current);
@@ -444,7 +452,7 @@ function Dashboard({ data, monitor, session }: { data: Bootstrap; monitor: Monit
         window.clearInterval(intervalRef.current);
       }
     };
-  }, []);
+  }, [isCitizen]);
 
   const effectiveData = useMemo(() => {
     const mergedTrucks = (monitor.trucks && Array.isArray(monitor.trucks) && monitor.trucks.length > 0)
@@ -471,19 +479,45 @@ function Dashboard({ data, monitor, session }: { data: Bootstrap; monitor: Monit
     } as Bootstrap;
   }, [data, monitor]);
 
+  const safeReports = useMemo(() => (Array.isArray(data.reports) ? data.reports : []), [data.reports]);
+  const safeCollections = useMemo(() => (Array.isArray(data.collections) ? data.collections : []), [data.collections]);
+  const myReports = useMemo(() => {
+    if (!isCitizen) return [];
+    return safeReports.filter(report => String(report.citizen ?? "").toLowerCase() === String(session.name ?? "").toLowerCase());
+  }, [isCitizen, safeReports, session.name]);
+  const pendingReports = useMemo(() => myReports.filter(report => !String(report.status ?? "").toLowerCase().includes("resuelto")), [myReports]);
+  const pendingCollections = useMemo(() => {
+    if (!isCitizen) return [];
+    return safeCollections.filter(collection => !String(collection.status ?? "").toLowerCase().includes("confirmada"));
+  }, [isCitizen, safeCollections]);
+  const zoneSummary = useMemo(() => {
+    const zone = (data.zones ?? []).find(item => String(item.name).toLowerCase() === String(session.zone ?? "").toLowerCase());
+    return zone ? `${zone.name} · ${zone.criticality}` : session.zone || "Sin zona asignada";
+  }, [data.zones, session.zone]);
+
   const metrics = [
-    [effectiveData.analytics.zones, "Zonas Activas", "🗺️"],
-    [effectiveData.analytics.active_trucks, "Camiones en Ruta", "🚛"],
-    [effectiveData.analytics.open_reports, "Alertas Pendientes", "🚨"],
-    [`${effectiveData.analytics.confirmed_collections}/${effectiveData.collections.length}`, "Recolecciones", "✅"],
-    ...(monitor.performance ? [
-      [monitor.performance.delayed_routes, "Rutas con retraso", "⏱️"],
-      [`${monitor.performance.average_progress}%`, "Progreso medio", "📈"],
-      [monitor.performance.compliance_estimate, "Índice de cumplimiento", "✅"]
-    ] : [])
+    ...(isCitizen
+      ? [
+          [pendingReports.length, "Reportes pendientes", "🧾"],
+          [pendingCollections.length, "Recolecciones pendientes", "✅"],
+          [myReports.filter(r => String(r.status ?? "").toLowerCase().includes("resuelto")).length, "Reportes resueltos", "👍"],
+          [safeCollections.length, "Recolecciones en mi zona", "📍"],
+        ]
+      : [
+          [effectiveData.analytics.zones, "Zonas Activas", "🗺️"],
+          [effectiveData.analytics.active_trucks, "Camiones en Ruta", "🚛"],
+          [effectiveData.analytics.open_reports, "Alertas Pendientes", "🚨"],
+          [`${effectiveData.analytics.confirmed_collections}/${effectiveData.collections.length}`, "Recolecciones", "✅"],
+          ...(monitor.performance ? [
+            [monitor.performance.delayed_routes, "Rutas con retraso", "⏱️"],
+            [`${monitor.performance.average_progress}%`, "Progreso medio", "📈"],
+            [monitor.performance.compliance_estimate, "Índice de cumplimiento", "✅"]
+          ] : [])
+        ]),
   ];
 
   const dispatchBoard = useMemo(() => {
+    if (isCitizen) return [];
     if (monitor.truck_assignments?.length) {
       return monitor.truck_assignments.slice(0, 3).map((assignment, index) => ({
         hour: `${String(8 + index).padStart(2, "0")}:00`,
@@ -511,16 +545,156 @@ function Dashboard({ data, monitor, session }: { data: Bootstrap; monitor: Monit
       ...step,
       status: index === tick % 3 ? "En curso" : index < tick % 3 ? "Completado" : "Programado"
     }));
-  }, [monitor.truck_assignments, effectiveData.prioritized_zones, effectiveData.optimized_routes, effectiveData.routes, tick]);
+  }, [monitor.truck_assignments, effectiveData.prioritized_zones, effectiveData.optimized_routes, effectiveData.routes, tick, isCitizen]);
 
-  const alerts = useMemo(() => (monitor.alerts ?? []).map((alert, index) => ({
+  const alerts = useMemo(() => isCitizen ? [] : (monitor.alerts ?? []).map((alert, index) => ({
     id: index,
     icon: String(alert ?? "").toLowerCase().includes("retraso") ? "🚛" : "🔔",
     title: alert ?? "Alerta",
     description: alert ?? "Alerta",
     time: "Ahora",
     status: String(alert ?? "").toLowerCase().includes("retraso") ? "pendiente" : "activo"
-  })), [monitor.alerts]);
+  })), [monitor.alerts, isCitizen]);
+
+  if (isCitizen) {
+    return (
+      <>
+        <div className="metrics-grid citizen-summary-grid">
+          <div className="metric-card citizen-hero-card">
+            <span className="metric-icon" aria-hidden="true">👤</span>
+            <div className="metric-content">
+              <strong className="metric-value">{session.name}</strong>
+              <span className="metric-label">Ciudadano · {zoneSummary}</span>
+            </div>
+          </div>
+          <div className="metric-card">
+            <span className="metric-icon" aria-hidden="true">🧾</span>
+            <div className="metric-content">
+              <strong className="metric-value">{pendingReports.length}</strong>
+              <span className="metric-label">Reportes pendientes</span>
+            </div>
+          </div>
+          <div className="metric-card">
+            <span className="metric-icon" aria-hidden="true">✅</span>
+            <div className="metric-content">
+              <strong className="metric-value">{pendingCollections.length}</strong>
+              <span className="metric-label">Recolecciones pendientes</span>
+            </div>
+          </div>
+          <div className="metric-card">
+            <span className="metric-icon" aria-hidden="true">📍</span>
+            <div className="metric-content">
+              <strong className="metric-value">{data.zones?.length ?? 0}</strong>
+              <span className="metric-label">Zonas disponibles</span>
+            </div>
+          </div>
+        </div>
+
+        <div className="dashboard-role-row">
+          <span className="dashboard-role-badge" aria-label={`Rol activo: ${session.role}`}>
+            {session.role}
+          </span>
+        </div>
+
+        <div className="dashboard-sections citizen-dashboard-grid">
+          <section className="panel">
+            <h2>📍 Mi zona y seguimiento</h2>
+            <div className="citizen-card-list">
+              <div className="citizen-info-card">
+                <strong>{zoneSummary}</strong>
+                <p>Tu zona cuenta con atención prioritaria y seguimiento del equipo municipal.</p>
+              </div>
+              <div className="citizen-info-card">
+                <strong>Próximos pasos</strong>
+                <p>Revisa tus reportes y confirma las recolecciones cuando el servicio esté completado.</p>
+              </div>
+            </div>
+          </section>
+
+          <section className="panel">
+            <h2>🧾 Mis reportes</h2>
+            <div className="list">
+              {myReports.length === 0 ? (
+                <p className="empty-state">Aún no has enviado reportes. Puedes crear uno desde la vista de reportes.</p>
+              ) : (
+                myReports.map(report => (
+                  <article className="item" key={report.id}>
+                    <div className="item-row">
+                      <strong>{report.type}</strong>
+                      <span className={`tag ${statusTone(report.status)}`}>{report.status}</span>
+                    </div>
+                    <span>{report.zone}</span>
+                    <p>{report.detail}</p>
+                  </article>
+                ))
+              )}
+            </div>
+          </section>
+
+          <section className="panel">
+            <h2>✅ Recolecciones pendientes</h2>
+            <div className="list">
+              {pendingCollections.length === 0 ? (
+                <p className="empty-state">No hay recolecciones pendientes por confirmar.</p>
+              ) : (
+                pendingCollections.map(collection => (
+                  <article className="item" key={collection.id}>
+                    <div className="item-row">
+                      <strong>{collection.zone}</strong>
+                      <span className="tag blue">{collection.status}</span>
+                    </div>
+                    <span>{collection.truck} · {collection.kg} kg</span>
+                    <p>{collection.date}</p>
+                    {onConfirmCollection && (
+                      <div className="item-actions">
+                        <button type="button" className="report-action-btn" onClick={() => void onConfirmCollection(collection.id)}>
+                          Confirmar recolección
+                        </button>
+                      </div>
+                    )}
+                  </article>
+                ))
+              )}
+            </div>
+          </section>
+
+          <section className="panel">
+            <h2>📋 Mis recolecciones</h2>
+            <div className="list">
+              {safeCollections.length === 0 ? (
+                <p className="empty-state">Aún no hay recolecciones registradas en tu zona.</p>
+              ) : (
+                safeCollections.map(collection => (
+                  <article className="item" key={collection.id}>
+                    <div className="item-row">
+                      <strong>{collection.zone}</strong>
+                      <span className={`tag ${String(collection.status).toLowerCase().includes("confirmada") ? "blue" : "yellow"}`}>{collection.status}</span>
+                    </div>
+                    <span>{collection.truck} · {collection.kg} kg</span>
+                    <p>{collection.date}</p>
+                  </article>
+                ))
+              )}
+            </div>
+          </section>
+
+          <section className="panel">
+            <h2>💡 Recomendaciones del sistema</h2>
+            <div className="citizen-card-list">
+              <div className="citizen-info-card">
+                <strong>Registra incidencias</strong>
+                <p>Reporta residuos, contenedores llenos o problemas de limpieza para recibir apoyo rápido.</p>
+              </div>
+              <div className="citizen-info-card">
+                <strong>Revisa el estado</strong>
+                <p>Tu historial queda disponible para que puedas verificar qué se ha atendido y qué falta.</p>
+              </div>
+            </div>
+          </section>
+        </div>
+      </>
+    );
+  }
 
   return (
     <>
@@ -1062,8 +1236,18 @@ export function Operations({ data, monitor, onOperationUpdate }: { data: Bootstr
 
 function Analytics({ data, session, onConfirmCollection }: { data: Bootstrap; session?: Session | null; onConfirmCollection?: (id: number) => Promise<void>; }) {
   const performance = data.performance;
-  const safeReports = Array.isArray(data.reports) ? data.reports : [];
-  const safeCollections = Array.isArray(data.collections) ? data.collections : [];
+  const isCitizen = session?.role === "ciudadano";
+  const safeReports = useMemo(() => {
+    const reports = Array.isArray(data.reports) ? data.reports : [];
+    if (!isCitizen || !session) return reports;
+    return reports.filter(report => String(report.citizen ?? "").toLowerCase() === String(session.name ?? "").toLowerCase());
+  }, [data.reports, isCitizen, session?.name]);
+  const safeCollections = useMemo(() => {
+    const collections = Array.isArray(data.collections) ? data.collections : [];
+    if (!isCitizen) return collections;
+    const citizenZone = String(session?.zone ?? "").toLowerCase();
+    return collections.filter(col => !citizenZone || String(col.zone ?? "").toLowerCase() === citizenZone);
+  }, [data.collections, isCitizen, session?.zone]);
   const reportCounts = safeReports.reduce((acc, report) => {
     acc[report.status] = (acc[report.status] ?? 0) + 1;
     return acc;
@@ -1094,7 +1278,7 @@ function Analytics({ data, session, onConfirmCollection }: { data: Bootstrap; se
         <Metric value={`${performance?.delayed_routes ?? 0}`} label="Rutas con retraso" />
         <Metric value={`${performance?.average_progress ?? 0}%`} label="Progreso medio" />
         <Metric value={`${performance?.average_container_fill ?? 0}%`} label="Llenado promedio" />
-        <Metric value={`${collectionCounts["Confirmada"] ?? 0}/${data.collections.length}`} label="Recolectas confirmadas" />
+        <Metric value={`${collectionCounts["Confirmada"] ?? 0}/${safeCollections.length}`} label="Recolectas confirmadas" />
       </div>
       <section className="panel">
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
@@ -1127,7 +1311,7 @@ function Analytics({ data, session, onConfirmCollection }: { data: Bootstrap; se
           </section>
         </div>
         <div className="list">
-          {data.collections.map(item => (
+          {safeCollections.map(item => (
             <article className="item" key={item.id}>
               <div className="item-row">
                 <strong>{`${item.date} - ${item.zone}`}</strong>

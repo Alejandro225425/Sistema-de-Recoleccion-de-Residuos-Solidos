@@ -246,7 +246,7 @@ def cors_origin_regex() -> Optional[str]:
     return r"https://.*\.vercel\.app|https://.*\.vercel\.sh|http://localhost:5173|http://127\.0\.0\.1:5173"
 
 
-app = FastAPI(title="SIR Cusco API", version="4.5.1")
+app = FastAPI(title="SIR Cusco API", version="5.5.0")
 
 app.add_middleware(
     CORSMiddleware,
@@ -972,21 +972,47 @@ def create_collection_record(payload: CollectionCreate, created_by: dict[str, An
 def confirm_collection_by_citizen(collection_id: int, citizen: dict[str, Any]) -> dict[str, Any]:
     try:
         if database_mode() == "postgresql":
-            row = execute_one("update collections set status = %s where id = %s returning id, kg, status, date, truck_id, zone_id", ("Confirmada por ciudadano", collection_id))
+            row = execute_one(
+                "select c.id, c.kg, c.status, c.date, c.truck_id, c.zone_id, z.name as zone_name from collections c join zones z on z.id = c.zone_id where c.id = %s",
+                (collection_id,),
+            )
+            if row is None:
+                raise HTTPException(status_code=404, detail="Recolección no encontrada")
+            citizen_zone = str(citizen.get("zone", "")).strip().lower()
+            collection_zone = str(row.get("zone_name", "")).strip().lower()
+            if citizen_zone and collection_zone and citizen_zone != collection_zone:
+                raise HTTPException(status_code=403, detail="Solo puedes confirmar recolecciones de tu zona asignada")
+            execute_one("update collections set status = %s where id = %s", ("Confirmada por ciudadano", collection_id))
+            row["status"] = "Confirmada por ciudadano"
             return {
                 "id": row.get("id"),
-                "zone": get_zone_name(row.get("zone_id")),
+                "zone": row.get("zone_name"),
                 "truck": next((t.get("code") for t in bootstrap().get("trucks", []) if int(t.get("id", 0)) == int(row.get("truck_id", 0))), str(row.get("truck_id"))),
                 "kg": row.get("kg"),
                 "status": row.get("status"),
                 "date": row.get("date"),
             }
+    except HTTPException:
+        raise
     except Exception:
-        for col in memory.collections:
-            if int(col.get("id", 0)) == int(collection_id):
-                col["status"] = "Confirmada por ciudadano"
-                return col
+        pass
+
+    collection = None
+    for col in memory.collections:
+        if int(col.get("id", 0)) == int(collection_id):
+            collection = col
+            break
+
+    if collection is None:
         raise HTTPException(status_code=404, detail="Recolección no encontrada")
+
+    citizen_zone = str(citizen.get("zone", "")).strip().lower()
+    collection_zone = str(collection.get("zone", "")).strip().lower()
+    if citizen_zone and collection_zone and citizen_zone != collection_zone:
+        raise HTTPException(status_code=403, detail="Solo puedes confirmar recolecciones de tu zona asignada")
+
+    collection["status"] = "Confirmada por ciudadano"
+    return collection
 
 
 def create_password_reset_token(email: str, token: str, expires_at: datetime) -> dict[str, Any]:
@@ -1081,7 +1107,7 @@ def get_current_user_optional(authorization: str | None = Header(default=None)) 
 def root() -> dict[str, Any]:
     return {
         "service": "SIR Cusco API",
-        "version": "4.5.1",
+        "version": "5.5.0",
         "status": "ok",
         "endpoints": {
             "health": "/api/health",
@@ -1102,7 +1128,7 @@ def health() -> dict[str, str]:
     return {
         "status": "ok",
         "database": db_status,
-        "version": "4.5.1",
+        "version": "5.5.0",
         "mode": "production" if db_status == "postgresql" else "demo"
     }
 
@@ -1114,6 +1140,13 @@ def get_bootstrap(current_user: dict[str, Any] | None = Depends(get_current_user
         data.pop("users", None)
         data.pop("maintenance", None)
         data.pop("notifications", None)
+    elif normalize_role(str(current_user.get("role", "ciudadano"))) == "ciudadano":
+        citizen_zone = str(current_user.get("zone", "")).strip().lower()
+        filtered_collections = [
+            col for col in data.get("collections", [])
+            if not citizen_zone or str(col.get("zone", "")).strip().lower() == citizen_zone
+        ]
+        data["collections"] = filtered_collections
     return data
 
 
@@ -1511,8 +1544,16 @@ def resolve_report(report_id: int, current_user: dict[str, Any] = Depends(requir
 
 
 @app.get("/api/collections")
-def get_collections() -> list[dict[str, Any]]:
-    return bootstrap()["collections"]
+def get_collections(current_user: dict[str, Any] = Depends(require_current_user)) -> list[dict[str, Any]]:
+    collections = bootstrap()["collections"]
+    role = normalize_role(str(current_user.get("role", "ciudadano")))
+    if role == "ciudadano":
+        citizen_zone = str(current_user.get("zone", "")).strip().lower()
+        return [
+            col for col in collections
+            if not citizen_zone or str(col.get("zone", "")).strip().lower() == citizen_zone
+        ]
+    return collections
 
 
 @app.post("/api/collections", dependencies=[Depends(require_role({"conductor"}))])

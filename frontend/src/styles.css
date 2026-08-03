@@ -544,6 +544,32 @@ textarea { min-height: 100px; resize: vertical; font-family: inherit; }
   box-shadow: 0 2px 8px rgba(27, 115, 69, 0.15);
   text-transform: capitalize;
 }
+.citizen-summary-grid {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 16px; margin-bottom: 18px; padding: 0 32px; padding-top: 24px;
+}
+.citizen-hero-card {
+  background: linear-gradient(135deg, rgba(27,115,69,0.08), rgba(74,144,226,0.08));
+  border-color: rgba(27,115,69,0.25);
+}
+.citizen-dashboard-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.citizen-card-list {
+  display: grid; gap: 12px;
+}
+.citizen-info-card {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 14px;
+  background: color-mix(in srgb, var(--panel) 90%, var(--eco-secondary) 10%);
+}
+.citizen-info-card strong {
+  display: block; margin-bottom: 6px; color: var(--ink);
+}
+.citizen-info-card p {
+  margin: 0; color: var(--muted); line-height: 1.55;
+}
 
 /* Panels */
 .admin-shell {

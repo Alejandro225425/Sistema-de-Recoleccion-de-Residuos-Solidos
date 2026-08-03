@@ -2,9 +2,13 @@
 
 ## 2026-08-03
 
-### Version 5.5.0 - Revisión completa del Dashboard de Reportes
+### Version 5.5.0 - Auditoría completa de dashboards por rol y seguridad
 
+- Se adaptó el dashboard ciudadano con métricas personalizadas (reportes pendientes, recolecciones pendientes, reportes resueltos, recolecciones en zona), se agregó la sección "Mis recolecciones" y se optimizó el rendimiento evitando cálculos innecesarios de tablero de despacho y alertas para ciudadanos.
+- Se ajustaron los permisos de navegación por rol para que ciudadanos accedan solo a las vistas relevantes para su contexto y operadores/administradores mantengan acceso a monitoreo y operaciones.
 - Se corrigió el filtro por ciudadano en la vista de reportes para que los usuarios con rol ciudadano solo vean sus propias incidencias.
+- **Seguridad**: se filtraron las recolecciones por zona para ciudadanos en `/api/bootstrap` y `/api/collections`, y se añadió validación de zona en `confirm_collection_by_citizen` para que un ciudadano solo pueda confirmar recolecciones de su zona asignada.
+- **Bug corregido**: se arregló el test de Reports que fallaba por texto duplicado "recolecciones pendientes" entre dashboard y analytics.
 - Se mejoró la experiencia de operador/admin con acciones de resolución accesibles y feedback visual al procesar reportes.
 - Se reforzó la validación del formulario de registro de incidencias para evitar envíos incompletos y mejorar la UX.
 - Se mejoró el diseño del listado de reportes con acciones más claras, mejor contraste y estado vacío más informativo.

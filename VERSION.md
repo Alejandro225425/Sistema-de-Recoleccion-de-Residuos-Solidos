@@ -1,9 +1,12 @@
 # Sistema de Recolección de Residuos Sólidos - Versión 5.5.0
 
-## Versión 5.5.0 - Revisión completa del Dashboard de Reportes
+## Versión 5.5.0 - Revisión y auditoría completa de dashboards por rol
 
 ### Cambios destacados
+- Se adaptó el dashboard principal al rol ciudadano, mostrando métricas personalizadas (reportes pendientes, recolecciones pendientes, reportes resueltos, recolecciones en zona), seguimiento de reportes propios, recolecciones pendientes por confirmar, historial de recolecciones en zona y recomendaciones del sistema.
+- Se ajustaron los permisos de navegación por rol para que ciudadanos vean solo las vistas relevantes para su experiencia y operadores/administradores mantengan acceso a operaciones y monitoreo.
 - Se corrigió el filtrado de reportes por rol para ciudadanos, operadores y administradores.
+- Se corrigió fuga de datos: el backend ahora filtra las recolecciones por zona para ciudadanos en `/api/bootstrap` y `/api/collections`, y valida que un ciudadano solo pueda confirmar recolecciones de su zona asignada.
 - Se mejoró la experiencia de envío y resolución de incidencias con validaciones y acciones más claras.
 - Se incorporaron pruebas de regresión y se verificó el build del frontend sin errores.
 
