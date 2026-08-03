@@ -1058,7 +1058,7 @@ function Routes({ data, monitor, session, onCreateCollection }: { data: Bootstra
           </div>
         </section>
       </div>
-      {session?.role === "conductor" && (
+      {(session?.role === "conductor" || session?.role === "operador") && (
         <section className="panel" style={{ marginTop: 16 }}>
           <h2>Registrar recoleccion</h2>
           <form className="form-grid" onSubmit={submitCollection}>

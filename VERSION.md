@@ -1,4 +1,15 @@
-# Sistema de Recolección de Residuos Sólidos - Versión 5.5.0
+# Sistema de Recolección de Residuos Sólidos - Versión 5.5.1
+
+## Versión 5.5.1 - Auditoría del dashboard Operador Municipal
+
+### Cambios destacados
+- Se validó y corrigió el acceso del rol **Operador Municipal** a las vistas `dashboard`, `reports`, `routes` y `analytics`.
+- Se confirmó que el operador NO tiene acceso a Administración, usuarios, zonas, configuración, waste ni schedules.
+- Se amplió el permiso de `POST /api/collections` para incluir el rol `operador`, permitiendo registrar recolecciones desde la vista de rutas.
+- Se ajustó la vista de `Routes` para mostrar el formulario de registro de recolección tanto para `conductor` como para `operador`.
+- Se verificó la compilación (`tsc --noEmit`), el build del frontend (`npm run build`) y el build del servicio geo (`npm run build` en backend-typescript).
+- Se verificaron 21 tests de frontend (todos pasan) y 21 tests de backend (todos pasan).
+- Se documentaron los endpoints del operador y sus permisos en el CHANGELOG.
 
 ## Versión 5.5.0 - Revisión y auditoría completa de dashboards por rol
 

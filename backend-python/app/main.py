@@ -1556,9 +1556,9 @@ def get_collections(current_user: dict[str, Any] = Depends(require_current_user)
     return collections
 
 
-@app.post("/api/collections", dependencies=[Depends(require_role({"conductor"}))])
+@app.post("/api/collections", dependencies=[Depends(require_role({"conductor", "operador"}))])
 def register_collection(payload: CollectionCreate, current_user: dict[str, Any] = Depends(require_current_user)) -> dict[str, Any]:
-    # Permitimos que un conductor registre la recolección realizada
+    # Permitimos que un conductor u operador registre la recolección realizada
     created = create_collection_record(payload, created_by=current_user)
     return created
 

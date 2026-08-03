@@ -2,7 +2,15 @@
 
 ## 2026-08-03
 
-### Version 5.5.0 - Auditoría completa de dashboards por rol y seguridad
+### Version 5.5.1 - Auditoría del dashboard Operador Municipal
+
+- **Operador Municipal - Dashboard**: se validó y corrigió el acceso a las vistas `dashboard`, `reports`, `routes` y `analytics` según los permisos del rol `operador`. Se confirmó que no tiene acceso a `admin`, `schedules`, `waste` ni `users`.
+- **Backend - Registro de recolecciones**: se amplió el permiso de `POST /api/collections` para incluir el rol `operador` además de `conductor`, permitiendo que los operadores municipales registren recolecciones desde la vista de rutas.
+- **Frontend - Formulario de recolección**: se ajustó la vista de `Routes` para mostrar el formulario de registro de recolección tanto para `conductor` como para `operador`.
+- **Tests - Operations.test.tsx**: se corrigió la importación de `Operations` desde `./main` (ya existente) y se verificó que todos los 21 tests pasan correctamente.
+- **Compilación**: se verificó `tsc --noEmit` (sin errores), `npm run build` en frontend (exitoso) y `npm run build` en backend-typescript (exitoso).
+- **API**: se verificó que todos los endpoints del operador funcionan correctamente: `/api/bootstrap`, `/api/operations/monitor`, `/api/operations/update`, `/api/reports`, `/api/reports/{id}/resolve`, `/api/collections`, `/api/analytics/summary`, `/api/routes`, `/geo/alerts`, `/geo/eta`.
+- **Permisos backend**: se confirmó que `GET /api/users`, `POST/PUT/DELETE /api/zones`, `POST/PUT/DELETE /api/schedules`, `POST/PUT/DELETE /api/maintenance`, y `GET /api/maintenance` están restringidos solo a `admin`.
 
 - Se adaptó el dashboard ciudadano con métricas personalizadas (reportes pendientes, recolecciones pendientes, reportes resueltos, recolecciones en zona), se agregó la sección "Mis recolecciones" y se optimizó el rendimiento evitando cálculos innecesarios de tablero de despacho y alertas para ciudadanos.
 - Se ajustaron los permisos de navegación por rol para que ciudadanos accedan solo a las vistas relevantes para su contexto y operadores/administradores mantengan acceso a monitoreo y operaciones.
