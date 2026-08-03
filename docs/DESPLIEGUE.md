@@ -185,11 +185,11 @@ GET https://sir-cusco-geo.onrender.com/health
 
 1. Entra a https://vercel.com/new → importa el repositorio.
 2. Rama: `main` (o `version-3`).
-3. Vercel usará `.vercelignore` para excluir el backend. Configura desde el dashboard (no uses `vercel.json`, fue eliminado del repo para evitar conflictos):
+3. Vercel usará `.vercelignore` para excluir el backend y `vercel.json` para la configuración de build:
    - **Framework Preset**: `Vite`
    - **Root Directory**: `frontend`
    - **Build Command**: `npm run build`
-   - **Output Directory**: `frontend/dist`
+   - **Output Directory**: `dist`
 4. Agrega las variables de entorno **antes de desplegar**:
    ```
    VITE_API_URL = https://sir-cusco-api.onrender.com/api
@@ -427,11 +427,11 @@ Repetir para `sir-cusco-geo`:
 **Frontend (Vercel):**
 1. Ir a https://vercel.com/new → importar el mismo repositorio.
 2. Rama: `main`.
-3. Configurar desde el dashboard:
+3. Configurar desde el `vercel.json` del repositorio:
    - **Framework Preset**: `Vite`
    - **Root Directory**: `frontend`
    - **Build Command**: `npm run build`
-   - **Output Directory**: `frontend/dist`
+   - **Output Directory**: `dist`
 4. Agregar variables de entorno **antes de desplegar**:
    ```
    VITE_API_URL = https://sir-cusco-api.onrender.com/api
@@ -511,12 +511,11 @@ Este error ocurre cuando el build falla en Render. Causas y soluciones:
 ### Error: Vercel detecta el backend Python y falla el build
 
 - **Causa:** Vercel intenta instalar dependencias de Python en la raíz del repo.
-- **Solución:** Configura el proyecto desde el dashboard de Vercel:
-  - **Framework Preset**: `Vite`
-  - **Root Directory**: `frontend`
-  - **Build Command**: `npm run build`
-  - **Output Directory**: `frontend/dist`
-- Nota: `vercel.json` fue eliminado del repositorio. La configuración se maneja desde el dashboard.
+- **Solución:** El archivo `vercel.json` en la raíz del repositorio configura automáticamente el build en Vercel:
+   - **Framework Preset**: `Vite`
+   - **Root Directory**: `frontend`
+   - **Build Command**: `npm run build`
+   - **Output Directory**: `dist`
 
 ### Error: build falla con TypeScript (`Property 'performance' does not exist on type 'Bootstrap'`)
 
