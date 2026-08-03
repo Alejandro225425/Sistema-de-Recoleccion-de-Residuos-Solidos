@@ -425,7 +425,7 @@ function Content(props: { data: Bootstrap; monitor: Monitor; session: Session; v
   if (view === "dashboard") return <Dashboard data={safeData} monitor={monitor} session={session} onConfirmCollection={onConfirmCollection} />;
   if (view === "admin") return (
     <ErrorBoundary fallback={<div className="panel" style={{ margin: 32 }}><h2>Error en Administración</h2><p className="hint error">El panel de administración encontró un error al cargar. Reintenta desde el menú lateral.</p><button type="button" onClick={() => window.location.reload()}>Recargar página</button></div>}>
-      <Admin data={safeData} session={session} onResolveReport={onResolveReport} onOperationUpdate={onOperationUpdate} />
+      <Admin data={safeData} session={session} onOperationUpdate={onOperationUpdate} />
     </ErrorBoundary>
   );
   if (view === "schedules") return <Schedules schedules={Array.isArray(data?.schedules) ? data.schedules : []} />;

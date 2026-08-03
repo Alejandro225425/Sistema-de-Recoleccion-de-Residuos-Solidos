@@ -2,7 +2,20 @@
 
 ## 2026-08-03
 
-### Version 5.5.1 - Auditoría del dashboard Operador Municipal
+### Version 5.5.2 - Revisión y mejoras del Dashboard de Administrador
+
+- **Seguridad backend - Bootstrap**: se corrigió el endpoint `/api/bootstrap` para que filtre datos administrativos sensibles (`users`, `maintenance`, `notifications`) para usuarios no-admin. Solo el rol `admin` puede ver la gestión completa de usuarios, camiones, mantenimiento y notificaciones. Los roles `operador`, `conductor` y `ciudadano` reciben datos limitados según su contexto.
+- **Frontend Admin - CRUD de usuarios**: se agregó la funcionalidad de eliminar usuarios desde el panel de administración, con botón de eliminación y estado de carga durante la operación.
+- **Frontend Admin - CRUD de camiones**: se agregaron funciones de editar y eliminar camiones desde el panel de administración, con formulario de edición inline y botones de acción.
+- **Frontend Admin - CRUD de mantenimiento**: se agregaron funciones de editar y eliminar registros de mantenimiento desde el panel de administración, con formulario de edición inline.
+- **Frontend Admin - Estados de carga**: todas las operaciones de creación (usuario, zona, horario, camión, mantenimiento) ahora muestran estados de carga (`creating...`) en sus botones de envío para evitar envíos duplicados.
+- **Frontend Admin - Auto-limpieza de feedback**: los mensajes de retroalimentación (éxito/error) se limpian automáticamente después de 4 segundos para mantener la interfaz limpia.
+- **Frontend Admin - Botón de peligro**: se agregó el estilo CSS `.danger` para botones de eliminación con color rojo, diferenciándolos visualmente de las acciones secundarias.
+- **Frontend Admin - Optimización de props**: se eliminó el prop `onResolveReport` no utilizado del componente `Admin`, simplificando la interfaz del componente.
+- **UI/UX Admin**: se mejoró la experiencia del panel de administración con botones de acción más claros, estados de carga y mensajes de feedback más informativos.
+- **Compilación**: se verificó `tsc --noEmit` (sin errores) y `npm run build` en frontend (exitoso).
+- **Tests**: se actualizaron los tests de `Admin.test.tsx` para reflejar la eliminación del prop `onResolveReport`. Todos los 21 tests de frontend y 21 tests de backend pasan correctamente.
+- **API**: se verificó que todos los endpoints protegidos del admin funcionan correctamente: `GET/POST/PUT/DELETE /api/users`, `POST/PUT/DELETE /api/zones`, `POST/PUT/DELETE /api/schedules`, `POST/PUT/DELETE /api/trucks`, `POST/PUT/DELETE /api/maintenance`, `POST /api/operations/update`, `GET /api/bootstrap`, `GET /api/operations/monitor`.
 
 - **Operador Municipal - Dashboard**: se validó y corrigió el acceso a las vistas `dashboard`, `reports`, `routes` y `analytics` según los permisos del rol `operador`. Se confirmó que no tiene acceso a `admin`, `schedules`, `waste` ni `users`.
 - **Backend - Registro de recolecciones**: se amplió el permiso de `POST /api/collections` para incluir el rol `operador` además de `conductor`, permitiendo que los operadores municipales registren recolecciones desde la vista de rutas.

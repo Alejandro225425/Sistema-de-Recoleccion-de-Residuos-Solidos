@@ -1,4 +1,19 @@
-# Sistema de Recolección de Residuos Sólidos - Versión 5.5.1
+# Sistema de Recolección de Residuos Sólidos - Versión 5.5.2
+
+## Versión 5.5.2 - Revisión y mejoras del Dashboard de Administrador
+
+### Cambios destacados
+- Se corrigió el endpoint `/api/bootstrap` para filtrar datos administrativos sensibles (`users`, `maintenance`, `notifications`) para usuarios no-admin. Solo el rol `admin` puede ver la gestión completa de usuarios, camiones, mantenimiento y notificaciones.
+- Se agregó la funcionalidad de eliminar usuarios desde el panel de administración.
+- Se agregaron funciones de editar y eliminar camiones desde el panel de administración.
+- Se agregaron funciones de editar y eliminar registros de mantenimiento desde el panel de administración.
+- Se agregaron estados de carga para todas las operaciones de creación en el panel de administración.
+- Se implementó auto-limpieza de mensajes de feedback después de 4 segundos.
+- Se agregó el estilo CSS `.danger` para botones de eliminación.
+- Se eliminó el prop `onResolveReport` no utilizado del componente `Admin`.
+- Se actualizaron los tests de `Admin.test.tsx` para reflejar los cambios.
+- Se verificó la compilación (`tsc --noEmit`), el build del frontend (`npm run build`) y todos los tests pasan (21 frontend + 21 backend).
+- Se verificaron todos los endpoints protegidos del admin y sus permisos.
 
 ## Versión 5.5.1 - Auditoría del dashboard Operador Municipal
 

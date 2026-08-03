@@ -1136,11 +1136,12 @@ def health() -> dict[str, str]:
 @app.get("/api/bootstrap")
 def get_bootstrap(current_user: dict[str, Any] | None = Depends(get_current_user_optional)) -> dict[str, Any]:
     data = bootstrap()
-    if current_user is None:
+    role = normalize_role(str(current_user.get("role", "ciudadano"))) if current_user else "ciudadano"
+    if role != "admin":
         data.pop("users", None)
         data.pop("maintenance", None)
         data.pop("notifications", None)
-    elif normalize_role(str(current_user.get("role", "ciudadano"))) == "ciudadano":
+    if role == "ciudadano" and current_user is not None:
         citizen_zone = str(current_user.get("zone", "")).strip().lower()
         filtered_collections = [
             col for col in data.get("collections", [])

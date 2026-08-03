@@ -166,6 +166,11 @@ button.btn-secondary {
 }
 button.btn-secondary:hover { background: var(--eco-secondary); }
 
+button.danger {
+  background: var(--error, #c94735); color: white; border: none;
+}
+button.danger:hover { background: #a93a2a; }
+
 button.btn-gold {
   background: var(--eco-gold); color: white; border: none;
 }
