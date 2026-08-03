@@ -170,7 +170,7 @@ export function App() {
   const [monitor, setMonitor] = useState<Monitor>({});
   const effectiveData = useMemo(() => {
     const safeData = data ?? emptyBootstrap;
-    const safeMonitor = monitor ?? {};
+    const safeMonitor: Monitor = Object.fromEntries(Object.entries(monitor ?? {}).filter(([, v]) => v !== null)) as Monitor;
     const mergedTrucks = (safeMonitor.trucks && Array.isArray(safeMonitor.trucks) && safeMonitor.trucks.length > 0)
       ? safeMonitor.trucks.map(mt => {
           const base = (Array.isArray(safeData.trucks) ? safeData.trucks : []).find(t => t.code === mt.code || t.id === mt.id);

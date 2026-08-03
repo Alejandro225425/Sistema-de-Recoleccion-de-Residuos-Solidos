@@ -24,17 +24,20 @@ const initialUserFormValues = {
 };
 
 export default function Admin({ data, session, onResolveReport, onOperationUpdate }: { data: Bootstrap; session: Session; onResolveReport: (id: number) => Promise<void>; onOperationUpdate: (payload: OperationUpdatePayload) => Promise<void>; }) {
-  const safeData = useMemo(() => ({
-    zones: compactArray<Zone>(data?.zones),
-    schedules: compactArray<Schedule>(data?.schedules),
-    trucks: compactArray<Truck>(data?.trucks),
-    routes: compactArray<Bootstrap["routes"][number]>(data?.routes),
-    reports: compactArray<Bootstrap["reports"][number]>(data?.reports),
-    collections: compactArray<Bootstrap["collections"][number]>(data?.collections),
-    users: compactArray<Session>(data?.users),
-    containers: compactArray<NonNullable<Bootstrap["containers"]>[number]>(data?.containers),
-    maintenance: compactArray<MaintenanceRecord>(data?.maintenance),
-  }), [data]);
+  const safeData = useMemo(() => {
+    const base = data ?? { zones: [], schedules: [], trucks: [], routes: [], reports: [], collections: [], analytics: { zones: 0, active_trucks: 0, open_reports: 0, confirmed_collections: 0, total_kg: 0, compliance: 0 } };
+    return {
+      zones: compactArray<Zone>(base.zones),
+      schedules: compactArray<Schedule>(base.schedules),
+      trucks: compactArray<Truck>(base.trucks),
+      routes: compactArray<Bootstrap["routes"][number]>(base.routes),
+      reports: compactArray<Bootstrap["reports"][number]>(base.reports),
+      collections: compactArray<Bootstrap["collections"][number]>(base.collections),
+      users: compactArray<Session>(base.users),
+      containers: compactArray<NonNullable<Bootstrap["containers"]>[number]>(base.containers),
+      maintenance: compactArray<MaintenanceRecord>(base.maintenance),
+    };
+  }, [data]);
 
   const [users, setUsers] = useState<Session[]>(safeData.users);
   const [userRoleDrafts, setUserRoleDrafts] = useState<Record<number, Role>>({});
