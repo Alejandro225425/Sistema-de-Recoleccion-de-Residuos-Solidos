@@ -2,7 +2,33 @@
 
 ## 2026-08-03
 
-### Version 5.5.2 - Revisión y mejoras del Dashboard de Administrador
+### Version 5.5.3 - Corrección de persistencia de datos en producción
+
+- **Causa raíz**: las cuentas y datos creados no se guardaban permanentemente porque el backend en producción (Render) no tenía configurada la base de datos PostgreSQL y caía al modo memoria (in-memory), perdiendo todos los datos en cada reinicio.
+- **Infraestructura - render.yaml**: se agregó un recurso de base de datos PostgreSQL 16 (`sir-cusco-db`) y se cambió `DATABASE_URL` de `sync: false` (manual/opcional) a `fromDatabase`, de modo que se inyecta automáticamente al backend. Antes, `DATABASE_URL` era opcional y no provisionada, por lo que el backend siempre arrancaba en modo memoria.
+- **Backend - init_db() al arranque**: se agregó la función `init_db()` que ejecuta `database/schema.sql` y `database/seed.sql` contra PostgreSQL al iniciar la aplicación (evento `lifespan`). El backend ahora crea el esquema y carga los datos semilla automáticamente en producción sin necesidad de montar scripts manualmente. El proceso es idempotente (`CREATE TABLE IF NOT EXISTS` / `ON CONFLICT DO UPDATE`).
+- **Backend - Dockerfile**: se agregó `COPY database/ ./database/` para que `init_db()` encuentre `schema.sql` y `seed.sql` en despliegues basados en contenedor (Railway, etc.).
+- **Backend - execute_one()**: corregido bug crítico donde `cur.fetchone()` se llamaba incondicadamente en consultas UPDATE/DELETE (sin `RETURNING`), retornando `None` y lanzando `HTTPException(404)`. Esto provocaba que las operaciones de edición y eliminación cayeran silencitosamente al modo memoria. Ahora solo hace `fetchone()` cuando `cur.description is not None` (consultas con resultados), y retorna `{}` para UPDATE/DELETE.
+- **Backend - /api/health**: el endpoint ahora reporta `"connected": true/false` con verificación real de conectividad. `"mode"` pasa a ser `"production"` solo cuando la base de datos está realmente conectada (no solo cuando `DATABASE_URL` está presente), evitando falsos positivos.
+- **Backend - logging**: se agregó registro (`logging`) que emite `WARNING` cuando el backend cae al modo memoria por errores de base de datos, incluyendo en `bootstrap()`, `create_user_record()` y `init_db()`. Esto hace visibles los fallos de conexión en los logs de producción.
+- **Backend - seed.sql**: se corrigió el hash de contraseña del usuario `admin@ecocusco.pe`. El hash estático en `seed.sql` no coincidía con `admin123`, impidiendo el login en modo base de datos real. Se reemplazó por un hash bcrypt válido.
+- **Backend - seed.sql**: se agregaron las cuentas de prueba faltantes (`ciudadano`, `operador`, `conductor`, `admin2`) que sólo existían en el `MemoryStore` de modo demo. Ahora existen en la base de datos de producción con hashes bcrypt válidos para `Test12345!`.
+- **Backend - versión**: bump a `5.5.3` en `FastAPI`, endpoint root, `/api/health` y test de versión.
+
+#### Verificación
+- Tests backend sin DATABASE_URL (modo memoria): **21 passed, 1 skipped** (módulo de persistencia omitido).
+- Tests backend con DATABASE_URL (modo PostgreSQL): **26 passed** (21 existentes + 5 nuevos de persistencia).
+- Verificación manual contra PostgreSQL 17 local: `init_db()` crea las 11 tablas desde cero en una base vacía, login con todas las cuentas de demo funciona, y operaciones CRUD (crear, editar, eliminar, consultar) persisten correctamente. La cuenta creada sobrevive a un reinicio del backend.
+
+#### Archivos modificados
+- `render.yaml` — provisionamiento automático de PostgreSQL 16 + `DATABASE_URL` via `fromDatabase`
+- `Dockerfile` — `COPY database/ ./database/`
+- `backend-python/app/main.py` — `init_db()`, `lifespan`, `execute_one()` fix, `/api/health` con `connected`, logging, versión 5.5.3
+- `backend-python/tests/test_database_persistence.py` — tests de integración de persistencia (nuevo)
+- `backend-python/tests/test_operational_logic.py` — assert de versión 5.5.3 y campo `connected`
+- `database/seed.sql` — cuentas de prueba completas + hash de admin corregido
+- `.env`, `.env.example` — comentarios actualizados
+- `AGENTS.md`, `DEPLOYMENT.md`, `docs/DESPLIEGUE.md`, `README.md`, `VERSION.md` — documentación actualizada
 
 - **Seguridad backend - Bootstrap**: se corrigió el endpoint `/api/bootstrap` para que filtre datos administrativos sensibles (`users`, `maintenance`, `notifications`) para usuarios no-admin. Solo el rol `admin` puede ver la gestión completa de usuarios, camiones, mantenimiento y notificaciones. Los roles `operador`, `conductor` y `ciudadano` reciben datos limitados según su contexto.
 - **Frontend Admin - CRUD de usuarios**: se agregó la funcionalidad de eliminar usuarios desde el panel de administración, con botón de eliminación y estado de carga durante la operación.

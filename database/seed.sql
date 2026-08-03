@@ -50,7 +50,11 @@ insert into containers (id, zone_id, name, fill_level, status, updated_at) value
 on conflict (id) do update set zone_id = excluded.zone_id, name = excluded.name, fill_level = excluded.fill_level, status = excluded.status, updated_at = excluded.updated_at;
 
 insert into users (id, name, email, role, zone, password_hash) values
-  (1, 'Administrador EcoCusco', 'admin@ecocusco.pe', 'admin', 'Centro Historico', '$2b$12$8bI9mP5xQK4zbln0L7hmuO4kx2Q2dM2s1nS0H3x9qYdY/7eUVp7oG')
+  (1, 'Administrador EcoCusco', 'admin@ecocusco.pe', 'admin', 'Centro Historico', '$2b$12$0ICgCTA03BhDTZM/2xRX5O/fTV.mWlSiLvAUvuruMJ/a/GsrXK5Le'),
+  (2, 'Ciudadano Demo', 'ciudadano@ecocusco.pe', 'ciudadano', 'Centro Historico', '$2b$12$HZd0MtBudNu/yFVGtQGIsOQkI1D1l0h44H094Eimw.HJ1XIvk17y.'),
+  (3, 'Operador Municipal', 'operador@ecocusco.pe', 'operador', 'Wanchaq', '$2b$12$7DVO05fx8Drz3tydCaGVXOOJ5QfRu.CylHNQ9O5HeExyJ3hTLUlfS'),
+  (4, 'Conductor Ruta 5', 'conductor@ecocusco.pe', 'conductor', 'Santiago', '$2b$12$ywVROecAs/1X16ZXrMe5duedRmUnzlB1y94ezWhHx/Jzq1EADFJ8m'),
+  (5, 'Admin Regional', 'admin2@ecocusco.pe', 'admin', 'San Sebastian', '$2b$12$2Tcv2pgCesoYmUZoR.LE8uQMLVeyJkNya4Wm8huxI8VGMrFCXnu8a')
 on conflict (id) do update set name = excluded.name, email = excluded.email, role = excluded.role, zone = excluded.zone, password_hash = excluded.password_hash;
 
 insert into notifications (id, user_id, title, message, type, is_read, created_at) values

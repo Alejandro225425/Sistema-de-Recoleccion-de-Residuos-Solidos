@@ -30,14 +30,15 @@ git push origin version-3
 1. Entra a https://dashboard.render.com/.
 2. Haz clic en **New** → **Blueprint**.
 3. Conecta el repositorio `Alejandro225425/Sistema-de-Recoleccion-de-Residuos-Solidos`.
-4. Rama: `main` (o `version-3`).
-5. Render detectará `render.yaml` y creará dos servicios:
-   - `sir-cusco-api` (Python 3.11 / FastAPI)
+4. Rama: `main` (o `version-5.5`).
+5. Render detectará `render.yaml` y creará tres recursos:
+   - Base de datos **PostgreSQL 16** (`sir-cusco-db`) — provisionada automáticamente.
+   - `sir-cusco-api` (Python 3.11 / FastAPI) — `DATABASE_URL` se inyecta desde la base de datos.
    - `sir-cusco-geo` (Node.js 20 / TypeScript)
 6. En la sección de variables de entorno, configura:
    - `JWT_SECRET` → una cadena larga y aleatoria (ej: `python -c "import secrets; print(secrets.token_hex(32))"`)
-   - `DATABASE_URL` → opcional, pega la URL de tu base de datos PostgreSQL si la creaste en Render.
-7. Espera a que ambos servicios queden en estado `Live`.
+   - `DATABASE_URL` se conecta automáticamente desde `sir-cusco-db` (no se requiere configuración manual).
+7. Espera a que todos los servicios queden en estado `Live`.
 8. Copia las URLs públicas:
    - `https://sir-cusco-api.onrender.com`
    - `https://sir-cusco-geo.onrender.com`
@@ -48,6 +49,8 @@ Verifica:
 https://sir-cusco-api.onrender.com/api/health
 https://sir-cusco-geo.onrender.com/health
 ```
+
+El endpoint `/api/health` debe devolver `"connected": true`, `"database": "postgresql"` y `"mode": "production"`.
 
 ### Opción B: Web Services manuales
 
@@ -66,8 +69,9 @@ Si prefieres crear los servicios manualmente:
    uvicorn app.main:app --app-dir backend-python --host 0.0.0.0 --port $PORT
    ```
 7. Environment → agrega:
-   - `JWT_SECRET` (sync: false, valor único)
-   - `CORS_ORIGIN_REGEX`: `https://.*(\.vercel\.app|\.netlify\.app)`
+    - `JWT_SECRET` (sync: false, valor único)
+    - `DATABASE_URL` → pega la Internal Database URL de tu base de datos PostgreSQL en Render.
+    - `CORS_ORIGIN_REGEX`: `https://.*(\.vercel\.app|\.netlify\.app)`
    - `CORS_ORIGINS`: `http://localhost:5173,http://127.0.0.1:5173`
 8. Repite para `sir-cusco-geo` con Runtime **Node.js 20**, Build Command `cd backend-typescript && npm install && npm run build`, Start Command `cd backend-typescript && npm start`.
 
@@ -100,7 +104,8 @@ Si prefieres crear los servicios manualmente:
 ## Notas
 
 - Render en plan gratuito puede dormir los servicios tras 15 minutos de inactividad; la primera carga puede tardar.
-- El backend funciona en modo demo/memoria si no configuras PostgreSQL.
+- El backend funciona en modo demo/memoria si no configuras PostgreSQL (sin `DATABASE_URL`).
+- En producción, `render.yaml` provisiona PostgreSQL 16 automáticamente y el backend ejecuta `init_db()` al arranque para crear el esquema y cargar los datos semilla.
 - Si más adelante agregas un dominio propio, actualiza `CORS_ORIGINS` en Render con la URL final del frontend.
 - El `render.yaml` incluye una regex de CORS que permite tanto Vercel (`*.vercel.app`) como Netlify (`*.netlify.app`).
 - Para más detalles sobre el despliegue en Netlify, consulta `NETLIFY-DEPLOYMENT.md`.
