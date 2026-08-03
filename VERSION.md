@@ -177,15 +177,15 @@ Esta es la **versión 4.5.1** del Sistema Inteligente de Recolección de Residuo
 - Desplegar en producción
 
 ## Estado actual
- - Versión 4.5.1: corrección definitiva del Dashboard de Administración — ErrorBoundary envuelve el contenido Admin, fallbacks CSS en todas las clases admin (`var(--bg, #f0f5f2)`), `color-scheme: light dark`, y mejor contraste en modo oscuro para `.admin-list-item`. Tests frontend: 16 passed.
- - Endpoint operativo `/api/health` validado y funcionando en modo memoria y con persistencia PostgreSQL cuando `DATABASE_URL` está configurada.
- - Backend Python verificado con `16 passed` en la suite de pruebas.
- - Frontend React validado con pruebas e2e reales contra FastAPI y microservicio TypeScript compilado con éxito.
- - Configuración de despliegue preparada para Render + Vercel (recomendado) o Render + Netlify.
+- **Versión 4.5.1**: corrección definitiva del Dashboard de Administración. ErrorBoundary envuelve el contenido Admin, fallbacks CSS en todas las clases admin (`var(--bg, #f0f5f2)`), `color-scheme: light dark`, mejor contraste en modo oscuro para `.admin-list-item`, y null checks defensivas en `getOperationalSignal`, `Dashboard.effectiveData`, `Routes`, `Schedules` y `Analytics` para prevenir errores de runtime como "Cannot read properties of null (reading 'value')". Tests frontend: 16 passed.
+- Endpoint operativo `/api/health` validado y funcionando en modo memoria y con persistencia PostgreSQL cuando `DATABASE_URL` está configurada.
+- Backend Python verificado con `20 passed` en la suite de pruebas.
+- Frontend React validado con pruebas e2e reales contra FastAPI y microservicio TypeScript compilado con éxito.
+- Configuración de despliegue preparada para Render + Vercel (recomendado) o Render + Netlify.
 
 | Versión | Rama | Estado |
 |---------|------|--------|
-| **4.5.1** | `main`, `version-4.5` | Corrección definitiva: ErrorBoundary, fallbacks CSS, color-scheme |
+| **4.5.1** | `main`, `version-4.5` | ErrorBoundary, fallbacks CSS, color-scheme, null-safety defensiva |
 | **4.5.0** | `main`, `version-4.5` | Corrección visual del panel de administración y mejoras de UX |
 | **3.0.0** | `main`, `version-3` | Proyecto organizado y documentación consolidada |
 | 2.0.0 | `main`, `v2.0.0` | Configuración de despliegue lista para producción |
