@@ -93,4 +93,30 @@ describe('Admin dashboard', () => {
 
     expect(screen.getByTestId('admin-shell')).toBeInTheDocument();
   });
+  it('ignora elementos null dentro de las listas administrativas', () => {
+    const unsafeData = {
+      ...baseData,
+      zones: [null, baseData.zones[0]],
+      schedules: [null],
+      trucks: [null],
+      routes: [null],
+      users: [null],
+      containers: [null],
+      maintenance: [null],
+    } as unknown as Bootstrap;
+
+    render(
+      <Admin
+        data={unsafeData}
+        session={adminSession}
+        onResolveReport={noop}
+        onOperationUpdate={noop}
+      />
+    );
+
+    expect(screen.getByTestId('admin-shell')).toBeInTheDocument();
+    expect(screen.getAllByText('Centro Historico').length).toBeGreaterThan(0);
+  });
 });
+
+

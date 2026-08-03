@@ -3,6 +3,10 @@ import { Bootstrap, Session, Role, Zone, Schedule, Truck, OperationUpdatePayload
 import { request } from "../api";
 import Item from "./Item";
 
+function compactArray<T>(value: unknown): T[] {
+  return Array.isArray(value) ? value.filter((item): item is T => Boolean(item)) : [];
+}
+
 type MaintenanceRecord = {
   id: number;
   truck_id: number;
@@ -21,15 +25,15 @@ const initialUserFormValues = {
 
 export default function Admin({ data, session, onResolveReport, onOperationUpdate }: { data: Bootstrap; session: Session; onResolveReport: (id: number) => Promise<void>; onOperationUpdate: (payload: OperationUpdatePayload) => Promise<void>; }) {
   const safeData = useMemo(() => ({
-    zones: Array.isArray(data?.zones) ? data.zones : [],
-    schedules: Array.isArray(data?.schedules) ? data.schedules : [],
-    trucks: Array.isArray(data?.trucks) ? data.trucks : [],
-    routes: Array.isArray(data?.routes) ? data.routes : [],
-    reports: Array.isArray(data?.reports) ? data.reports : [],
-    collections: Array.isArray(data?.collections) ? data.collections : [],
-    users: Array.isArray(data?.users) ? data.users : [],
-    containers: Array.isArray(data?.containers) ? data.containers : [],
-    maintenance: Array.isArray(data?.maintenance) ? data.maintenance : [],
+    zones: compactArray<Zone>(data?.zones),
+    schedules: compactArray<Schedule>(data?.schedules),
+    trucks: compactArray<Truck>(data?.trucks),
+    routes: compactArray<Bootstrap["routes"][number]>(data?.routes),
+    reports: compactArray<Bootstrap["reports"][number]>(data?.reports),
+    collections: compactArray<Bootstrap["collections"][number]>(data?.collections),
+    users: compactArray<Session>(data?.users),
+    containers: compactArray<NonNullable<Bootstrap["containers"]>[number]>(data?.containers),
+    maintenance: compactArray<MaintenanceRecord>(data?.maintenance),
   }), [data]);
 
   const [users, setUsers] = useState<Session[]>(safeData.users);
@@ -196,7 +200,7 @@ export default function Admin({ data, session, onResolveReport, onOperationUpdat
         body: JSON.stringify(newSchedule)
       });
       setSchedules(prev => [...prev, created]);
-      setNewSchedule({ zone_id: data.zones?.[0]?.id ?? 1, day: 'Lunes', time: '08:00', waste: 'Orgánicos' });
+      setNewSchedule({ zone_id: safeData.zones[0]?.id ?? 1, day: 'Lunes', time: '08:00', waste: 'Orgánicos' });
       setFeedback(`Horario creado para ${created.zone}`);
     } catch (error) {
       setFeedback(error instanceof Error ? error.message : 'No se pudo crear el horario');
@@ -243,7 +247,7 @@ export default function Admin({ data, session, onResolveReport, onOperationUpdat
         body: JSON.stringify(newTruck)
       });
       setTrucks(prev => [...prev, created]);
-      setNewTruck({ code: '', driver: '', status: 'En ruta', zone_id: data.zones?.[0]?.id ?? 1, latitude: 0, longitude: 0 });
+      setNewTruck({ code: '', driver: '', status: 'En ruta', zone_id: safeData.zones[0]?.id ?? 1, latitude: 0, longitude: 0 });
       setFeedback(`Camión creado: ${created.code}`);
     } catch (error) {
       setFeedback(error instanceof Error ? error.message : 'No se pudo crear el camión');
@@ -259,7 +263,7 @@ export default function Admin({ data, session, onResolveReport, onOperationUpdat
         body: JSON.stringify(newMaintenance)
       });
       setMaintenance(prev => [...prev, created]);
-      setNewMaintenance({ truck_id: data.trucks?.[0]?.id ?? 0, description: '', status: 'Pendiente' });
+      setNewMaintenance({ truck_id: safeData.trucks[0]?.id ?? 0, description: '', status: 'Pendiente' });
       setFeedback(`Mantenimiento creado para camión ${created.truck_id}`);
     } catch (error) {
       setFeedback(error instanceof Error ? error.message : 'No se pudo crear el mantenimiento');
@@ -306,7 +310,7 @@ export default function Admin({ data, session, onResolveReport, onOperationUpdat
             <option value="conductor">Conductor</option>
           </select></label>
           <label htmlFor="admin-user-zone">Zona<input id="admin-user-zone" value={formValues.zone} onChange={event => {
-              const value = event.target.value;
+              const value = event.currentTarget.value;
               setFormValues(prev => ({ ...prev, zone: value }));
             }} /></label>
           <button type="submit">Crear usuario</button>
@@ -323,7 +327,7 @@ export default function Admin({ data, session, onResolveReport, onOperationUpdat
               </div>
               <div className="admin-list-actions">
                 <select value={userRoleDrafts[user.id ?? 0] ?? user.role} onChange={event => {
-                  const value = event.target.value as Role;
+                  const value = event.currentTarget.value as Role;
                   setUserRoleDrafts(prev => ({ ...prev, [user.id ?? 0]: value }));
                 }} aria-label={`Rol de ${user.name}`}>
                   <option value="ciudadano">Ciudadano</option>
@@ -344,7 +348,7 @@ export default function Admin({ data, session, onResolveReport, onOperationUpdat
         {editingZoneId === null ? (
           <form className="form-grid" onSubmit={createZone}>
             <label htmlFor="new-zone-name">Nombre de la zona<input id="new-zone-name" required placeholder="Nombre de zona" value={newZoneName} onChange={event => {
-              const value = event.target.value;
+              const value = event.currentTarget.value;
               setNewZoneName(value);
             }} /></label>
             <button type="submit">Crear zona</button>
@@ -352,7 +356,7 @@ export default function Admin({ data, session, onResolveReport, onOperationUpdat
         ) : (
           <form className="form-grid" onSubmit={saveZoneEdit}>
             <label htmlFor="edit-zone-name">Nombre de la zona<input id="edit-zone-name" required value={editingZoneName} onChange={event => {
-              const value = event.target.value;
+              const value = event.currentTarget.value;
               setEditingZoneName(value);
             }} /></label>
             <button type="submit">Guardar cambios</button>
@@ -362,7 +366,7 @@ export default function Admin({ data, session, onResolveReport, onOperationUpdat
         <div className="search-box">
           <span className="search-icon">🔍</span>
           <input type="text" placeholder="Filtrar zonas" value={zoneSearch} onChange={event => {
-              const value = event.target.value;
+              const value = event.currentTarget.value;
               setZoneSearch(value);
             }} aria-label="Filtrar zonas" />
         </div>
@@ -390,19 +394,19 @@ export default function Admin({ data, session, onResolveReport, onOperationUpdat
         {editingScheduleId === null ? (
           <form className="form-grid" onSubmit={createSchedule}>
             <label htmlFor="schedule-zone">Zona<select id="schedule-zone" value={newSchedule.zone_id} onChange={event => {
-              const value = Number(event.target.value);
+              const value = Number(event.currentTarget.value);
               setNewSchedule(prev => ({ ...prev, zone_id: value }));
-            }}>{data.zones?.map((zone, index) => <option key={`zone-${zone.id}-${index}`} value={zone.id}>{zone.name}</option>)}</select></label>
+            }}>{safeData.zones.map((zone, index) => <option key={`zone-${zone.id}-${index}`} value={zone.id}>{zone.name}</option>)}</select></label>
             <label htmlFor="schedule-day">Día<select id="schedule-day" value={newSchedule.day} onChange={event => {
-              const value = event.target.value;
+              const value = event.currentTarget.value;
               setNewSchedule(prev => ({ ...prev, day: value }));
             }}><option>Lunes</option><option>Martes</option><option>Miércoles</option><option>Jueves</option><option>Viernes</option></select></label>
             <label htmlFor="schedule-time">Hora<input id="schedule-time" type="time" value={newSchedule.time} onChange={event => {
-              const value = event.target.value;
+              const value = event.currentTarget.value;
               setNewSchedule(prev => ({ ...prev, time: value }));
             }} /></label>
             <label htmlFor="schedule-waste">Tipo de residuo<input id="schedule-waste" value={newSchedule.waste} onChange={event => {
-              const value = event.target.value;
+              const value = event.currentTarget.value;
               setNewSchedule(prev => ({ ...prev, waste: value }));
             }} /></label>
             <button type="submit">Crear horario</button>
@@ -410,19 +414,19 @@ export default function Admin({ data, session, onResolveReport, onOperationUpdat
         ) : (
           <form className="form-grid" onSubmit={saveScheduleEdit}>
             <label htmlFor="edit-schedule-zone">Zona<select id="edit-schedule-zone" value={editingSchedule.zone_id} onChange={event => {
-              const value = Number(event.target.value);
+              const value = Number(event.currentTarget.value);
               setEditingSchedule(prev => ({ ...prev, zone_id: value }));
-            }}>{data.zones?.map((zone, index) => <option key={`zone-${zone.id}-${index}`} value={zone.id}>{zone.name}</option>)}</select></label>
+            }}>{safeData.zones.map((zone, index) => <option key={`zone-${zone.id}-${index}`} value={zone.id}>{zone.name}</option>)}</select></label>
             <label htmlFor="edit-schedule-day">Día<select id="edit-schedule-day" value={editingSchedule.day} onChange={event => {
-              const value = event.target.value;
+              const value = event.currentTarget.value;
               setEditingSchedule(prev => ({ ...prev, day: value }));
             }}><option>Lunes</option><option>Martes</option><option>Miércoles</option><option>Jueves</option><option>Viernes</option></select></label>
             <label htmlFor="edit-schedule-time">Hora<input id="edit-schedule-time" type="time" value={editingSchedule.time} onChange={event => {
-              const value = event.target.value;
+              const value = event.currentTarget.value;
               setEditingSchedule(prev => ({ ...prev, time: value }));
             }} /></label>
             <label htmlFor="edit-schedule-waste">Tipo de residuo<input id="edit-schedule-waste" value={editingSchedule.waste} onChange={event => {
-              const value = event.target.value;
+              const value = event.currentTarget.value;
               setEditingSchedule(prev => ({ ...prev, waste: value }));
             }} /></label>
             <button type="submit">Guardar cambios</button>
@@ -461,21 +465,21 @@ export default function Admin({ data, session, onResolveReport, onOperationUpdat
         </div>
         <form className="form-grid" onSubmit={createTruck}>
           <label htmlFor="truck-code">Código<input id="truck-code" required value={newTruck.code} onChange={event => {
-              const value = event.target.value;
+              const value = event.currentTarget.value;
               setNewTruck(prev => ({ ...prev, code: value }));
             }} /></label>
           <label htmlFor="truck-driver">Conductor<input id="truck-driver" required value={newTruck.driver} onChange={event => {
-              const value = event.target.value;
+              const value = event.currentTarget.value;
               setNewTruck(prev => ({ ...prev, driver: value }));
             }} /></label>
           <label htmlFor="truck-status">Estado<select id="truck-status" value={newTruck.status} onChange={event => {
-              const value = event.target.value;
+              const value = event.currentTarget.value;
               setNewTruck(prev => ({ ...prev, status: value }));
             }}><option>En ruta</option><option>Mantenimiento</option><option>Disponible</option></select></label>
           <label htmlFor="truck-zone">Zona<select id="truck-zone" value={newTruck.zone_id} onChange={event => {
-              const value = Number(event.target.value);
+              const value = Number(event.currentTarget.value);
               setNewTruck(prev => ({ ...prev, zone_id: value }));
-            }}>{data.zones?.map((zone, index) => <option key={`zone-${zone.id}-${index}`} value={zone.id}>{zone.name}</option>)}</select></label>
+            }}>{safeData.zones.map((zone, index) => <option key={`zone-${zone.id}-${index}`} value={zone.id}>{zone.name}</option>)}</select></label>
           <button type="submit">Crear camión</button>
         </form>
         <ul className="list" aria-label="Lista de camiones">
@@ -495,17 +499,17 @@ export default function Admin({ data, session, onResolveReport, onOperationUpdat
         </div>
         <form className="form-grid" onSubmit={createMaintenance}>
           <label htmlFor="maintenance-truck">Camión<select id="maintenance-truck" value={newMaintenance.truck_id} onChange={event => {
-              const value = Number(event.target.value);
+              const value = Number(event.currentTarget.value);
               setNewMaintenance(prev => ({ ...prev, truck_id: value }));
             }}>
-            {data.trucks?.map((truck, index) => <option key={`truck-${truck.id}-${index}`} value={truck.id}>{truck.code}</option>)}
+            {safeData.trucks.map((truck, index) => <option key={`truck-${truck.id}-${index}`} value={truck.id}>{truck.code}</option>)}
           </select></label>
           <label htmlFor="maintenance-description">Descripción<textarea id="maintenance-description" required value={newMaintenance.description} onChange={event => {
-              const value = event.target.value;
+              const value = event.currentTarget.value;
               setNewMaintenance(prev => ({ ...prev, description: value }));
             }} /></label>
           <label htmlFor="maintenance-status">Estado<select id="maintenance-status" value={newMaintenance.status} onChange={event => {
-              const value = event.target.value;
+              const value = event.currentTarget.value;
               setNewMaintenance(prev => ({ ...prev, status: value }));
             }}><option>Pendiente</option><option>Completado</option></select></label>
           <button type="submit">Crear mantenimiento</button>
@@ -527,8 +531,8 @@ export default function Admin({ data, session, onResolveReport, onOperationUpdat
           </select></label>
           <label htmlFor="event-target">Objetivo<select id="event-target" value={eventTargetId} onChange={event => setEventTargetId(Number(event.currentTarget.value))}>
             {eventType === "route_update"
-              ? data.routes?.map((route, index) => <option key={`route-${route.id}-${index}`} value={route.id}>{`Ruta ${route.truck} - ${route.zone}`}</option>)
-              : data.containers?.map((container, index) => <option key={`container-${container.id}-${index}`} value={container.id}>{`${container.name} (${container.fill_level}%)`}</option>)}
+              ? safeData.routes.map((route, index) => <option key={`route-${route.id}-${index}`} value={route.id}>{`Ruta ${route.truck} - ${route.zone}`}</option>)
+              : safeData.containers.map((container, index) => <option key={`container-${container.id}-${index}`} value={container.id}>{`${container.name} (${container.fill_level}%)`}</option>)}
           </select></label>
           {eventType === "route_update" ? (
             <>
@@ -548,3 +552,5 @@ export default function Admin({ data, session, onResolveReport, onOperationUpdat
     </div>
   );
 }
+
+
