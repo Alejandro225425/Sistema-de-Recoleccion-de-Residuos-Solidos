@@ -192,6 +192,11 @@ export function App() {
       containers: safeMonitor.containers ?? safeData.containers ?? [],
       maintenance: safeMonitor.maintenance ?? safeData.maintenance ?? [],
       notifications: safeMonitor.notifications ?? safeData.notifications ?? [],
+      prioritized_zones: safeMonitor.prioritized_zones ?? safeData.prioritized_zones ?? [],
+      optimized_routes: safeMonitor.optimized_routes ?? safeData.optimized_routes ?? [],
+      truck_assignments: safeMonitor.truck_assignments ?? safeData.truck_assignments ?? [],
+      intervention_plan: safeMonitor.intervention_plan ?? safeData.intervention_plan ?? [],
+      performance: safeMonitor.performance ?? safeData.performance ?? { total_routes: 0, delayed_routes: 0, low_progress_routes: 0, average_progress: 0, open_reports: 0, average_container_fill: 0, compliance_estimate: 0 },
     } as Bootstrap;
   }, [data, monitor]);
   const [session, setSession] = useState<Session | null>(() => JSON.parse(localStorage.getItem("sir-session") || "null"));
@@ -392,7 +397,11 @@ function Content(props: { data: Bootstrap; monitor: Monitor; session: Session; v
   const { data, monitor, session, view, onOperationUpdate, onResolveReport, onCreateCollection, onConfirmCollection } = props;
   const safeData = data ?? emptyBootstrap;
   if (view === "dashboard") return <Dashboard data={safeData} monitor={monitor} session={session} />;
-  if (view === "admin") return <Admin data={safeData} session={session} onResolveReport={onResolveReport} onOperationUpdate={onOperationUpdate} />;
+  if (view === "admin") return (
+    <ErrorBoundary fallback={<div className="panel" style={{ margin: 32 }}><h2>Error en Administración</h2><p className="hint error">El panel de administración encontró un error al cargar. Reintenta desde el menú lateral.</p><button type="button" onClick={() => window.location.reload()}>Recargar página</button></div>}>
+      <Admin data={safeData} session={session} onResolveReport={onResolveReport} onOperationUpdate={onOperationUpdate} />
+    </ErrorBoundary>
+  );
   if (view === "schedules") return <Schedules schedules={Array.isArray(data?.schedules) ? data.schedules : []} />;
   if (view === "reports") return <Reports {...props} data={safeData} />;
   if (view === "waste") return <Waste />;
