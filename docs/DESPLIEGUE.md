@@ -187,6 +187,8 @@ GET https://sir-cusco-geo.onrender.com/health
 2. Rama: `main` (o `version-3`).
 3. Vercel usará `.vercelignore` para excluir el backend y `vercel.json` para la configuración de build:
    - **Framework Preset**: `Vite`
+   - **Root Directory**: `.` (raíz del repo)
+   - **Install Command**: `cd frontend && PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 npm install`
    - **Build Command**: `cd frontend && npm run build`
    - **Output Directory**: `frontend/dist`
 4. Agrega las variables de entorno **antes de desplegar**:
@@ -529,6 +531,11 @@ Este error ocurre cuando el build falla en Render. Causas y soluciones:
 
 - **Causa:** Las variables de entorno deben estar configuradas **antes** del primer deploy.
 - **Solución:** Ve a Project Settings → Environment Variables. Agrega `VITE_API_URL` y `VITE_GEO_URL`, luego haz clic en **Deploy** nuevamente.
+
+### Error: `npm install` falla en Vercel con Playwright browser download
+
+- **Causa:** `playwright` está en `devDependencies` y su postinstall intenta descargar navegadores, lo que suele fallar en el entorno de build de Vercel.
+- **Solución aplicada:** `vercel.json` usa `PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1` en `installCommand` para saltar esa descarga. Si persiste, revisá que el **Root Directory** sea `.` (raíz) y no `frontend`, porque en ese caso `cd frontend` intenta entrar a `frontend/frontend`.
 
 ### Logs para diagnosticar
 

@@ -1,4 +1,19 @@
-# Sistema de Recolección de Residuos Sólidos - Versión 4.5.1
+# Sistema de Recolección de Residuos Sólidos - Versión 4.5.2
+
+## Versión 4.5.2 - Fix de despliegue en Vercel
+
+### Problema resuelto: `npm install` falla en Vercel con Playwright
+
+- **Problema**: Vercel fallaba en el paso `npm install` con `Command "cd frontend && npm install" exited with 1`.
+- **Causa**: `playwright` en `devDependencies` intenta descargar navegadores durante postinstall, lo que falla en el entorno de build de Vercel.
+- **Solución**: `vercel.json` usa `PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1` en `installCommand` para saltar esa descarga.
+
+#### Archivos modificados
+- `vercel.json` — `installCommand` con variable de entorno
+- `docs/DESPLIEGUE.md` — troubleshooting actualizado
+- `README.md` — fix documentado
+
+---
 
 ## Versión 4.5.1 - Corrección definitiva del Dashboard de Administración
 

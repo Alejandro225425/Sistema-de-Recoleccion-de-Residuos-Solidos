@@ -2,6 +2,21 @@
 
 ## 2026-08-02
 
+### Version 4.5.2 - Fix de despliegue en Vercel: `npm install` falla por Playwright
+
+#### Problema
+- Vercel fallaba en el paso `npm install` con el mensaje: `Command "cd frontend && npm install" exited with 1`.
+- Causa: `playwright` está en `devDependencies` y su postinstall intenta descargar navegadores, lo que suele fallar en el entorno de build de Vercel.
+
+#### Solución aplicada
+- Se actualizó `vercel.json` para usar `PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1` en `installCommand`, evitando la descarga de binarios durante la instalación en Vercel.
+- Se documentó el fix en `docs/DESPLIEGUE.md` y `README.md`.
+
+#### Archivos modificados
+- `vercel.json` — `installCommand` con variable de entorno para saltar download de Playwright
+- `docs/DESPLIEGUE.md` — documentado troubleshooting y comando de build actualizado
+- `README.md` — mencionado fix de despliegue en Vercel
+
 ### Version 4.5.1 - Corrección definitiva: Dashboard de Administración muestra pantalla en blanco/negro
 
 #### Correcciones aplicadas
