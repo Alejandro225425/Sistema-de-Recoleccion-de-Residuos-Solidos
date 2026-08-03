@@ -78,9 +78,8 @@ Si prefieres crear los servicios manualmente:
 3. Rama: `main` (o `version-3`).
 4. Vercel usará `.vercelignore` para excluir el backend y `vercel.json` para la configuración de build:
    - **Framework Preset**: `Vite`
-   - **Root Directory**: `frontend`
-   - **Build Command**: `npm run build`
-   - **Output Directory**: `dist`
+   - **Build Command**: `cd frontend && npm run build`
+   - **Output Directory**: `frontend/dist`
 5. Agrega las variables de entorno **antes de desplegar**:
    ```text
    VITE_API_URL=https://sir-cusco-api.onrender.com/api

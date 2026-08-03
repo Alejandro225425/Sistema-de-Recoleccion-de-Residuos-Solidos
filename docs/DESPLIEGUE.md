@@ -187,9 +187,8 @@ GET https://sir-cusco-geo.onrender.com/health
 2. Rama: `main` (o `version-3`).
 3. Vercel usará `.vercelignore` para excluir el backend y `vercel.json` para la configuración de build:
    - **Framework Preset**: `Vite`
-   - **Root Directory**: `frontend`
-   - **Build Command**: `npm run build`
-   - **Output Directory**: `dist`
+   - **Build Command**: `cd frontend && npm run build`
+   - **Output Directory**: `frontend/dist`
 4. Agrega las variables de entorno **antes de desplegar**:
    ```
    VITE_API_URL = https://sir-cusco-api.onrender.com/api
@@ -429,9 +428,8 @@ Repetir para `sir-cusco-geo`:
 2. Rama: `main`.
 3. Configurar desde el `vercel.json` del repositorio:
    - **Framework Preset**: `Vite`
-   - **Root Directory**: `frontend`
-   - **Build Command**: `npm run build`
-   - **Output Directory**: `dist`
+   - **Build Command**: `cd frontend && npm run build`
+   - **Output Directory**: `frontend/dist`
 4. Agregar variables de entorno **antes de desplegar**:
    ```
    VITE_API_URL = https://sir-cusco-api.onrender.com/api
@@ -513,9 +511,8 @@ Este error ocurre cuando el build falla en Render. Causas y soluciones:
 - **Causa:** Vercel intenta instalar dependencias de Python en la raíz del repo.
 - **Solución:** El archivo `vercel.json` en la raíz del repositorio configura automáticamente el build en Vercel:
    - **Framework Preset**: `Vite`
-   - **Root Directory**: `frontend`
-   - **Build Command**: `npm run build`
-   - **Output Directory**: `dist`
+   - **Build Command**: `cd frontend && npm run build`
+   - **Output Directory**: `frontend/dist`
 
 ### Error: build falla con TypeScript (`Property 'performance' does not exist on type 'Bootstrap'`)
 
