@@ -230,11 +230,20 @@ class MemoryStore:
 
 
 def cors_origins() -> list[str]:
-    return [
+    configured = [
         origin.strip()
         for origin in os.getenv("CORS_ORIGINS", "http://localhost:5173,http://127.0.0.1:5173").split(",")
         if origin.strip()
     ]
+    defaults = ["http://localhost:5173", "http://127.0.0.1:5173"]
+    return list(dict.fromkeys(configured + defaults))
+
+
+def cors_origin_regex() -> Optional[str]:
+    configured = os.getenv("CORS_ORIGIN_REGEX", "").strip()
+    if configured:
+        return configured
+    return r"https://.*\.vercel\.app|https://.*\.vercel\.sh|http://localhost:5173|http://127\.0\.0\.1:5173"
 
 
 app = FastAPI(title="SIR Cusco API", version="4.5.1")
@@ -242,7 +251,7 @@ app = FastAPI(title="SIR Cusco API", version="4.5.1")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=cors_origins(),
-    allow_origin_regex=os.getenv("CORS_ORIGIN_REGEX"),
+    allow_origin_regex=cors_origin_regex(),
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
