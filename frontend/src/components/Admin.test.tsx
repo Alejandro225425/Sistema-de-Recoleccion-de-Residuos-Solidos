@@ -31,7 +31,6 @@ describe('Admin dashboard', () => {
       <Admin
         data={baseData}
         session={adminSession}
-        onResolveReport={noop}
         onOperationUpdate={noop}
       />
     );
@@ -44,7 +43,6 @@ describe('Admin dashboard', () => {
       <Admin
         data={baseData}
         session={adminSession}
-        onResolveReport={noop}
         onOperationUpdate={noop}
       />
     );
@@ -60,7 +58,6 @@ describe('Admin dashboard', () => {
       <Admin
         data={baseData}
         session={adminSession}
-        onResolveReport={noop}
         onOperationUpdate={noop}
       />
     );
@@ -86,7 +83,6 @@ describe('Admin dashboard', () => {
       <Admin
         data={unsafeData}
         session={adminSession}
-        onResolveReport={noop}
         onOperationUpdate={noop}
       />
     );
@@ -109,7 +105,6 @@ describe('Admin dashboard', () => {
       <Admin
         data={unsafeData}
         session={adminSession}
-        onResolveReport={noop}
         onOperationUpdate={noop}
       />
     );
@@ -125,11 +120,10 @@ describe('Admin dashboard', () => {
       containers: [],
     } as unknown as Bootstrap;
 
-    render(
+render(
       <Admin
-        data={emptyData}
+        data={baseData}
         session={adminSession}
-        onResolveReport={noop}
         onOperationUpdate={noop}
       />
     );

@@ -23,7 +23,7 @@ const initialUserFormValues = {
   zone: "Centro Historico",
 };
 
-export default function Admin({ data, session, onResolveReport, onOperationUpdate }: { data: Bootstrap; session: Session; onResolveReport: (id: number) => Promise<void>; onOperationUpdate: (payload: OperationUpdatePayload) => Promise<void>; }) {
+export default function Admin({ data, session, onOperationUpdate }: { data: Bootstrap; session: Session; onOperationUpdate: (payload: OperationUpdatePayload) => Promise<void>; }) {
   const safeData = useMemo(() => {
     const base = data ?? { zones: [], schedules: [], trucks: [], routes: [], reports: [], collections: [], analytics: { zones: 0, active_trucks: 0, open_reports: 0, confirmed_collections: 0, total_kg: 0, compliance: 0 } };
     return {
@@ -42,8 +42,17 @@ export default function Admin({ data, session, onResolveReport, onOperationUpdat
   const [users, setUsers] = useState<Session[]>(safeData.users);
   const [userRoleDrafts, setUserRoleDrafts] = useState<Record<number, Role>>({});
   const [savingUserIds, setSavingUserIds] = useState<number[]>([]);
+  const [deletingUserIds, setDeletingUserIds] = useState<number[]>([]);
+  const [creating, setCreating] = useState(false);
   const [feedback, setFeedback] = useState("");
   const [formValues, setFormValues] = useState(initialUserFormValues);
+
+  useEffect(() => {
+    if (feedback) {
+      const timer = setTimeout(() => setFeedback(""), 4000);
+      return () => clearTimeout(timer);
+    }
+  }, [feedback]);
 
   const [zones, setZones] = useState<Zone[]>(safeData.zones);
   const [zoneSearch, setZoneSearch] = useState("");
@@ -67,10 +76,18 @@ export default function Admin({ data, session, onResolveReport, onOperationUpdat
   const [truckDriverSearch, setTruckDriverSearch] = useState("");
   const [truckStatusFilter, setTruckStatusFilter] = useState("Todos");
   const [newTruck, setNewTruck] = useState({ code: "", driver: "", status: "En ruta", zone_id: safeData.zones[0]?.id ?? 1, latitude: 0, longitude: 0 });
+  const [editingTruckId, setEditingTruckId] = useState<number | null>(null);
+  const [editingTruck, setEditingTruck] = useState({ code: "", driver: "", status: "En ruta", zone_id: safeData.zones[0]?.id ?? 1, latitude: 0, longitude: 0 });
+  const [savingTruckIds, setSavingTruckIds] = useState<number[]>([]);
+  const [deletingTruckIds, setDeletingTruckIds] = useState<number[]>([]);
 
   const [maintenance, setMaintenance] = useState<MaintenanceRecord[]>(safeData.maintenance);
   const [maintenanceStatusFilter, setMaintenanceStatusFilter] = useState("Todos");
   const [newMaintenance, setNewMaintenance] = useState({ truck_id: safeData.trucks[0]?.id ?? 0, description: "", status: "Pendiente" });
+  const [editingMaintenanceId, setEditingMaintenanceId] = useState<number | null>(null);
+  const [editingMaintenance, setEditingMaintenance] = useState({ truck_id: safeData.trucks[0]?.id ?? 0, description: "", status: "Pendiente" });
+  const [savingMaintenanceIds, setSavingMaintenanceIds] = useState<number[]>([]);
+  const [deletingMaintenanceIds, setDeletingMaintenanceIds] = useState<number[]>([]);
 
   useEffect(() => {
     setUsers(safeData.users);
@@ -81,6 +98,10 @@ export default function Admin({ data, session, onResolveReport, onOperationUpdat
     setNewTruck(prev => ({ ...prev, zone_id: safeData.zones[0]?.id ?? prev.zone_id }));
     setNewMaintenance(prev => ({ ...prev, truck_id: safeData.trucks[0]?.id ?? prev.truck_id }));
     setNewSchedule(prev => ({ ...prev, zone_id: safeData.zones[0]?.id ?? prev.zone_id }));
+    setEditingTruckId(null);
+    setEditingTruck({ code: '', driver: '', status: 'En ruta', zone_id: safeData.zones[0]?.id ?? 1, latitude: 0, longitude: 0 });
+    setEditingMaintenanceId(null);
+    setEditingMaintenance({ truck_id: safeData.trucks[0]?.id ?? 0, description: '', status: 'Pendiente' });
   }, [safeData]);
 
   useEffect(() => {
@@ -136,8 +157,24 @@ export default function Admin({ data, session, onResolveReport, onOperationUpdat
     }
   }
 
+  async function deleteUser(user: Session) {
+    if (!user.id) return;
+    setDeletingUserIds(prev => prev.includes(user.id!) ? prev : [...prev, user.id!]);
+    try {
+      await request(`/users/${user.id}`, { method: 'DELETE' });
+      setUsers(prev => prev.filter(item => item.id !== user.id));
+      setFeedback(`Usuario ${user.name} eliminado`);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'No se pudo eliminar el usuario';
+      setFeedback(message);
+    } finally {
+      setDeletingUserIds(prev => prev.filter(id => id !== user.id));
+    }
+  }
+
   async function createUser(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    setCreating(true);
     try {
       const created = await request<Session>('/users', {
         method: 'POST',
@@ -157,12 +194,15 @@ export default function Admin({ data, session, onResolveReport, onOperationUpdat
     } catch (error) {
       const message = error instanceof Error ? error.message : 'No se pudo crear el usuario';
       setFeedback(message);
+    } finally {
+      setCreating(false);
     }
   }
 
   async function createZone(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!newZoneName.trim()) return;
+    setCreating(true);
     try {
       const created = await request<Zone>('/zones', {
         method: 'POST',
@@ -173,6 +213,8 @@ export default function Admin({ data, session, onResolveReport, onOperationUpdat
       setFeedback(`Zona creada: ${created.name}`);
     } catch (error) {
       setFeedback(error instanceof Error ? error.message : 'No se pudo crear la zona');
+    } finally {
+      setCreating(false);
     }
   }
 
@@ -210,6 +252,7 @@ export default function Admin({ data, session, onResolveReport, onOperationUpdat
 
   async function createSchedule(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    setCreating(true);
     try {
       const created = await request<Schedule>('/schedules', {
         method: 'POST',
@@ -220,6 +263,8 @@ export default function Admin({ data, session, onResolveReport, onOperationUpdat
       setFeedback(`Horario creado para ${created.zone}`);
     } catch (error) {
       setFeedback(error instanceof Error ? error.message : 'No se pudo crear el horario');
+    } finally {
+      setCreating(false);
     }
   }
 
@@ -257,6 +302,7 @@ export default function Admin({ data, session, onResolveReport, onOperationUpdat
 
   async function createTruck(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    setCreating(true);
     try {
       const created = await request<Truck>('/trucks', {
         method: 'POST',
@@ -267,12 +313,54 @@ export default function Admin({ data, session, onResolveReport, onOperationUpdat
       setFeedback(`Camión creado: ${created.code}`);
     } catch (error) {
       setFeedback(error instanceof Error ? error.message : 'No se pudo crear el camión');
+    } finally {
+      setCreating(false);
+    }
+  }
+
+  function startEditTruck(truck: Truck) {
+    setEditingTruckId(truck.id);
+    setEditingTruck({ code: truck.code, driver: truck.driver, status: truck.status, zone_id: truck.zone_id ?? safeData.zones[0]?.id ?? 1, latitude: truck.latitude, longitude: truck.longitude });
+  }
+
+  async function saveTruckEdit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (editingTruckId === null) return;
+    setSavingTruckIds(prev => prev.includes(editingTruckId) ? prev : [...prev, editingTruckId]);
+    try {
+      const updated = await request<Truck>(`/trucks/${editingTruckId}`, {
+        method: 'PATCH',
+        body: JSON.stringify(editingTruck)
+      });
+      setTrucks(prev => prev.map(t => t.id === editingTruckId ? { ...t, ...updated } : t));
+      setEditingTruckId(null);
+      setEditingTruck({ code: '', driver: '', status: 'En ruta', zone_id: safeData.zones[0]?.id ?? 1, latitude: 0, longitude: 0 });
+      setFeedback(`Camión actualizado: ${updated.code}`);
+    } catch (error) {
+      setFeedback(error instanceof Error ? error.message : 'No se pudo editar el camión');
+    } finally {
+      setSavingTruckIds(prev => prev.filter(id => id !== editingTruckId));
+    }
+  }
+
+  async function deleteTruck(truck: Truck) {
+    if (!truck.id) return;
+    setDeletingTruckIds(prev => prev.includes(truck.id!) ? prev : [...prev, truck.id!]);
+    try {
+      await request(`/trucks/${truck.id}`, { method: 'DELETE' });
+      setTrucks(prev => prev.filter(t => t.id !== truck.id));
+      setFeedback(`Camión ${truck.code} eliminado`);
+    } catch (error) {
+      setFeedback(error instanceof Error ? error.message : 'No se pudo eliminar el camión');
+    } finally {
+      setDeletingTruckIds(prev => prev.filter(id => id !== truck.id));
     }
   }
 
   async function createMaintenance(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!newMaintenance.description.trim()) return;
+    setCreating(true);
     try {
       const created = await request<MaintenanceRecord>('/maintenance', {
         method: 'POST',
@@ -283,6 +371,47 @@ export default function Admin({ data, session, onResolveReport, onOperationUpdat
       setFeedback(`Mantenimiento creado para camión ${created.truck_id}`);
     } catch (error) {
       setFeedback(error instanceof Error ? error.message : 'No se pudo crear el mantenimiento');
+    } finally {
+      setCreating(false);
+    }
+  }
+
+  function startEditMaintenance(item: MaintenanceRecord) {
+    setEditingMaintenanceId(item.id);
+    setEditingMaintenance({ truck_id: item.truck_id, description: item.description, status: item.status });
+  }
+
+  async function saveMaintenanceEdit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (editingMaintenanceId === null) return;
+    setSavingMaintenanceIds(prev => prev.includes(editingMaintenanceId) ? prev : [...prev, editingMaintenanceId]);
+    try {
+      const updated = await request<MaintenanceRecord>(`/maintenance/${editingMaintenanceId}`, {
+        method: 'PATCH',
+        body: JSON.stringify(editingMaintenance)
+      });
+      setMaintenance(prev => prev.map(item => item.id === editingMaintenanceId ? { ...item, ...updated } : item));
+      setEditingMaintenanceId(null);
+      setEditingMaintenance({ truck_id: safeData.trucks[0]?.id ?? 0, description: '', status: 'Pendiente' });
+      setFeedback(`Mantenimiento #${updated.id} actualizado`);
+    } catch (error) {
+      setFeedback(error instanceof Error ? error.message : 'No se pudo editar el mantenimiento');
+    } finally {
+      setSavingMaintenanceIds(prev => prev.filter(id => id !== editingMaintenanceId));
+    }
+  }
+
+  async function deleteMaintenance(item: MaintenanceRecord) {
+    if (!item.id) return;
+    setDeletingMaintenanceIds(prev => prev.includes(item.id!) ? prev : [...prev, item.id!]);
+    try {
+      await request(`/maintenance/${item.id}`, { method: 'DELETE' });
+      setMaintenance(prev => prev.filter(m => m.id !== item.id));
+      setFeedback(`Mantenimiento #${item.id} eliminado`);
+    } catch (error) {
+      setFeedback(error instanceof Error ? error.message : 'No se pudo eliminar el mantenimiento');
+    } finally {
+      setDeletingMaintenanceIds(prev => prev.filter(id => id !== item.id));
     }
   }
 
@@ -345,31 +474,32 @@ export default function Admin({ data, session, onResolveReport, onOperationUpdat
               const value = event.currentTarget.value;
               setFormValues(prev => ({ ...prev, zone: value }));
             }} /></label>
-          <button type="submit">Crear usuario</button>
+          <button type="submit" disabled={creating}>{creating ? "Creando..." : "Crear usuario"}</button>
         </form>
         {feedback && <p className="hint success" role="status" aria-live="polite">{feedback}</p>}
         <ul className="list" aria-label="Lista de usuarios">
           {users.length === 0 ? (
             <li className="empty-state">No hay usuarios registrados todavía.</li>
           ) : users.map((user, index) => (
-            <li key={`user-${user.id ?? user.email}-${index}`} className="admin-list-item">
-              <div className="admin-list-main">
-                <strong>{user.name ?? "Sin nombre"}</strong>
-                <div className="admin-list-meta">{user.email} · {user.zone ?? "Sin zona"}</div>
-              </div>
-              <div className="admin-list-actions">
-                <select value={userRoleDrafts[user.id ?? 0] ?? user.role} onChange={event => {
-                  const value = event.currentTarget.value as Role;
-                  setUserRoleDrafts(prev => ({ ...prev, [user.id ?? 0]: value }));
-                }} aria-label={`Rol de ${user.name}`}>
-                  <option value="ciudadano">Ciudadano</option>
-                  <option value="operador">Operador</option>
-                  <option value="admin">Administrador</option>
-                  <option value="conductor">Conductor</option>
-                </select>
-                <button type="button" onClick={() => updateUserRole(user)} disabled={!user.id || savingUserIds.includes(user.id)}>{savingUserIds.includes(user.id ?? -1) ? "Guardando..." : "Guardar rol"}</button>
-              </div>
-            </li>
+<li key={`user-${user.id ?? user.email}-${index}`} className="admin-list-item">
+               <div className="admin-list-main">
+                 <strong>{user.name ?? "Sin nombre"}</strong>
+                 <div className="admin-list-meta">{user.email} · {user.zone ?? "Sin zona"}</div>
+               </div>
+               <div className="admin-list-actions">
+                 <select value={userRoleDrafts[user.id ?? 0] ?? user.role} onChange={event => {
+                   const value = event.currentTarget.value as Role;
+                   setUserRoleDrafts(prev => ({ ...prev, [user.id ?? 0]: value }));
+                 }} aria-label={`Rol de ${user.name}`}>
+                   <option value="ciudadano">Ciudadano</option>
+                   <option value="operador">Operador</option>
+                   <option value="admin">Administrador</option>
+                   <option value="conductor">Conductor</option>
+                 </select>
+                 <button type="button" onClick={() => updateUserRole(user)} disabled={!user.id || savingUserIds.includes(user.id)}>{savingUserIds.includes(user.id ?? -1) ? "Guardando..." : "Guardar rol"}</button>
+                 <button type="button" onClick={() => deleteUser(user)} disabled={deletingUserIds.includes(user.id ?? -1)} className="danger">{deletingUserIds.includes(user.id ?? -1) ? "Eliminando..." : "Eliminar"}</button>
+               </div>
+             </li>
           ))}
         </ul>
       </section>
@@ -383,7 +513,7 @@ export default function Admin({ data, session, onResolveReport, onOperationUpdat
               const value = event.currentTarget.value;
               setNewZoneName(value);
             }} /></label>
-            <button type="submit">Crear zona</button>
+            <button type="submit" disabled={creating}>{creating ? "Creando..." : "Crear zona"}</button>
           </form>
         ) : (
           <form className="form-grid" onSubmit={saveZoneEdit}>
@@ -441,7 +571,7 @@ export default function Admin({ data, session, onResolveReport, onOperationUpdat
               const value = event.currentTarget.value;
               setNewSchedule(prev => ({ ...prev, waste: value }));
             }} /></label>
-            <button type="submit">Crear horario</button>
+            <button type="submit" disabled={creating}>{creating ? "Creando..." : "Crear horario"}</button>
           </form>
         ) : (
           <form className="form-grid" onSubmit={saveScheduleEdit}>
@@ -512,13 +642,46 @@ export default function Admin({ data, session, onResolveReport, onOperationUpdat
               const value = Number(event.currentTarget.value);
               setNewTruck(prev => ({ ...prev, zone_id: value }));
             }}>{safeData.zones.map((zone, index) => <option key={`zone-${zone.id}-${index}`} value={zone.id}>{zone.name}</option>)}</select></label>
-          <button type="submit">Crear camión</button>
+          <button type="submit" disabled={creating}>{creating ? "Creando..." : "Crear camión"}</button>
         </form>
-        <ul className="list" aria-label="Lista de camiones">
-          {filteredTrucks.length === 0 ? (
-            <li className="empty-state">No hay camiones que coincidan con el filtro actual.</li>
-          ) : filteredTrucks.map((truck, index) => <li key={`truck-${truck.id}-${index}`}><Item title={`${truck.code} · ${truck.driver ?? 'Sin conductor'}`} detail={`${truck.zone} · ${truck.status}`} color={truck.status === 'Mantenimiento' ? 'yellow' : 'blue'} /></li>)}
-        </ul>
+<ul className="list" aria-label="Lista de camiones">
+           {filteredTrucks.length === 0 ? (
+             <li className="empty-state">No hay camiones que coincidan con el filtro actual.</li>
+           ) : filteredTrucks.map((truck, index) => (
+             <li key={`truck-${truck.id}-${index}`}>
+               {editingTruckId === truck.id ? (
+                 <form className="form-grid" onSubmit={saveTruckEdit}>
+                   <label htmlFor="edit-truck-code">Código<input id="edit-truck-code" required value={editingTruck.code} onChange={event => {
+                     const value = event.currentTarget.value;
+                     setEditingTruck(prev => ({ ...prev, code: value }));
+                   }} /></label>
+                   <label htmlFor="edit-truck-driver">Conductor<input id="edit-truck-driver" required value={editingTruck.driver} onChange={event => {
+                     const value = event.currentTarget.value;
+                     setEditingTruck(prev => ({ ...prev, driver: value }));
+                   }} /></label>
+                   <label htmlFor="edit-truck-status">Estado<select id="edit-truck-status" value={editingTruck.status} onChange={event => {
+                     const value = event.currentTarget.value;
+                     setEditingTruck(prev => ({ ...prev, status: value }));
+                   }}><option>En ruta</option><option>Mantenimiento</option><option>Disponible</option></select></label>
+                   <label htmlFor="edit-truck-zone">Zona<select id="edit-truck-zone" value={editingTruck.zone_id} onChange={event => {
+                     const value = Number(event.currentTarget.value);
+                     setEditingTruck(prev => ({ ...prev, zone_id: value }));
+                   }}>{safeData.zones.map((zone, idx) => <option key={`zone-${zone.id}-${idx}`} value={zone.id}>{zone.name}</option>)}</select></label>
+                   <button type="submit" disabled={savingTruckIds.includes(editingTruckId ?? -1)}>Guardar</button>
+                   <button type="button" onClick={() => { setEditingTruckId(null); setEditingTruck({ code: '', driver: '', status: 'En ruta', zone_id: safeData.zones[0]?.id ?? 1, latitude: 0, longitude: 0 }); }}>Cancelar</button>
+                 </form>
+               ) : (
+                 <Item title={`${truck.code} · ${truck.driver ?? 'Sin conductor'}`} detail={`${truck.zone} · ${truck.status}`} color={truck.status === 'Mantenimiento' ? 'yellow' : 'blue'} />
+               )}
+               {editingTruckId !== truck.id && (
+                 <div className="admin-list-actions">
+                   <button type="button" onClick={() => startEditTruck(truck)}>Editar camión</button>
+                   <button type="button" onClick={() => deleteTruck(truck)} disabled={deletingTruckIds.includes(truck.id ?? -1)} className="danger">{deletingTruckIds.includes(truck.id ?? -1) ? "Eliminando..." : "Eliminar"}</button>
+                 </div>
+               )}
+             </li>
+           ))}
+         </ul>
       </section>
 
       <section className="panel">
@@ -544,13 +707,44 @@ export default function Admin({ data, session, onResolveReport, onOperationUpdat
               const value = event.currentTarget.value;
               setNewMaintenance(prev => ({ ...prev, status: value }));
             }}><option>Pendiente</option><option>Completado</option></select></label>
-          <button type="submit">Crear mantenimiento</button>
+          <button type="submit" disabled={creating}>{creating ? "Creando..." : "Crear mantenimiento"}</button>
         </form>
-        <ul className="list" aria-label="Lista de mantenimiento">
-          {filteredMaintenance.length === 0 ? (
-            <li className="empty-state">No hay registros de mantenimiento para el filtro seleccionado.</li>
-          ) : filteredMaintenance.map(item => <li key={item.id}><Item title={`Mantenimiento #${item.id}`} detail={`${item.description} · ${item.status}`} color={item.status === 'Pendiente' ? 'yellow' : 'blue'} /></li>)}
-        </ul>
+<ul className="list" aria-label="Lista de mantenimiento">
+           {filteredMaintenance.length === 0 ? (
+             <li className="empty-state">No hay registros de mantenimiento para el filtro seleccionado.</li>
+           ) : filteredMaintenance.map(item => (
+             <li key={item.id}>
+               {editingMaintenanceId === item.id ? (
+                 <form className="form-grid" onSubmit={saveMaintenanceEdit}>
+                   <label htmlFor="edit-maintenance-truck">Camión<select id="edit-maintenance-truck" value={editingMaintenance.truck_id} onChange={event => {
+                     const value = Number(event.currentTarget.value);
+                     setEditingMaintenance(prev => ({ ...prev, truck_id: value }));
+                   }}>
+                     {safeData.trucks.map((truck, idx) => <option key={`truck-${truck.id}-${idx}`} value={truck.id}>{truck.code}</option>)}
+                   </select></label>
+                   <label htmlFor="edit-maintenance-description">Descripción<textarea id="edit-maintenance-description" required value={editingMaintenance.description} onChange={event => {
+                     const value = event.currentTarget.value;
+                     setEditingMaintenance(prev => ({ ...prev, description: value }));
+                   }} /></label>
+                   <label htmlFor="edit-maintenance-status">Estado<select id="edit-maintenance-status" value={editingMaintenance.status} onChange={event => {
+                     const value = event.currentTarget.value;
+                     setEditingMaintenance(prev => ({ ...prev, status: value }));
+                   }}><option>Pendiente</option><option>Completado</option></select></label>
+                   <button type="submit" disabled={savingMaintenanceIds.includes(editingMaintenanceId ?? -1)}>Guardar</button>
+                   <button type="button" onClick={() => { setEditingMaintenanceId(null); setEditingMaintenance({ truck_id: safeData.trucks[0]?.id ?? 0, description: '', status: 'Pendiente' }); }}>Cancelar</button>
+                 </form>
+               ) : (
+                 <Item title={`Mantenimiento #${item.id}`} detail={`${item.description} · ${item.status}`} color={item.status === 'Pendiente' ? 'yellow' : 'blue'} />
+               )}
+               {editingMaintenanceId !== item.id && (
+                 <div className="admin-list-actions">
+                   <button type="button" onClick={() => startEditMaintenance(item)}>Editar</button>
+                   <button type="button" onClick={() => deleteMaintenance(item)} disabled={deletingMaintenanceIds.includes(item.id ?? -1)} className="danger">{deletingMaintenanceIds.includes(item.id ?? -1) ? "Eliminando..." : "Eliminar"}</button>
+                 </div>
+               )}
+             </li>
+           ))}
+         </ul>
       </section>
 
       <section className="panel">
