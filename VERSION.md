@@ -1,6 +1,19 @@
-# Sistema de Recolección de Residuos Sólidos - Versión 5.5.4
+# Sistema de Recolección de Residuos Sólidos - Versión 5.5.5
 
-## Versión 5.5.4 - Auditoría integral de dashboards del rol Ciudadano
+## Versión 5.5.5 - Auditoría integral de dashboards del rol Operador Municipal
+
+### Cambios destacados
+- **Auditoría completa de dashboards del operador**: se revisaron y corrigieron todos los dashboards del rol `operador` (`Dashboard`, `Reports`, `Routes`, `Analytics`) verificando lógica del sistema, lógica de negocio, permisos, validaciones, integración con backend, seguridad, UX y rendimiento.
+- **Dashboard Principal**: se verificaron métricas dinámicas (zonas, camiones, alertas, recolecciones), mapa operativo, tablero de despacho, plan de intervención y alertas activas. Se confirmó que no muestra datos de administración.
+- **Reports**: se verificó que el operador puede crear, buscar, filtrar, exportar (CSV/PDF) y resolver reportes. Se agregó advertencia de zona extranjera para operadores que reportan fuera de su zona asignada. Se mejoró la generación dinámica de tipos de reporte.
+- **Routes**: se verificó el mapa operativo, seguimiento GPS, alertas del microservicio geo y el formulario de registro de recolecciones (ahora accesible para `operador` y `conductor`).
+- **Analytics**: se agregaron métricas específicas para operadores (rutas monitoreadas, índice de cumplimiento, rutas con retraso, progreso medio, llenado promedio) y se mejoró la exportación de métricas CSV/PDF.
+- **Backend**: se amplió el permiso de `POST /api/collections` para incluir el rol `operador`, permitiendo registrar recolecciones desde la vista de rutas.
+- **Código limpio**: se eliminó código muerto en el componente `Waste` (lógica de operador inaccesible) y se mejoró la legibilidad del código.
+- **Compilación**: `tsc --noEmit` sin errores, `npm run build` frontend exitoso, `npm run build` geo-service exitoso.
+- **Tests**: 21/21 tests de frontend pasan, 21/21 tests de backend pasan.
+
+### Version 5.5.4 - Auditoría integral de dashboards del rol Ciudadano
 
 ### Cambios destacados
 - **Auditoría completa de dashboards ciudadano**: se revisaron y corrigieron todos los dashboards del rol `ciudadano` (`Dashboard`, `Reports`, `Schedules`, `Waste`, `Analytics`) verificando lógica del sistema, lógica de negocio, permisos, validaciones, integración con backend, seguridad, UX y rendimiento.

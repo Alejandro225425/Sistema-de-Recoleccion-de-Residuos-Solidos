@@ -1029,6 +1029,7 @@ export function Reports({ data, session, onCreateReport, onResolveReport }: { da
     }
   }
   const isCitizen = session.role === "ciudadano";
+  const isOperator = session.role === "operador";
   const canResolve = session.role === "operador" || session.role === "admin";
 
   const reportTypes = useMemo(() => {
@@ -1044,7 +1045,7 @@ export function Reports({ data, session, onCreateReport, onResolveReport }: { da
     return ["Acumulacion de basura", "Retraso", "Contenedor lleno", "Otro", ...Array.from(types)];
   }, [data?.reports, data?.schedules]);
 
-  const isForeignZone = isCitizen && formZone && session.zone && String(formZone).trim().toLowerCase() !== String(session.zone).trim().toLowerCase();
+  const isForeignZone = (isCitizen || isOperator) && formZone && session.zone && String(formZone).trim().toLowerCase() !== String(session.zone).trim().toLowerCase();
 
   const safeReports = useMemo(() => (Array.isArray(data.reports) ? data.reports : []), [data.reports]);
   const safeZones = useMemo(() => (Array.isArray(data.zones) ? data.zones : []), [data.zones]);
@@ -1137,8 +1138,7 @@ export function Waste({ data, monitor, session, onCreateReport }: { data: Bootst
   const safeContainers = useMemo(() => (Array.isArray(monitor.containers) ? monitor.containers : Array.isArray(safeData.containers) ? safeData.containers : []), [monitor.containers, safeData.containers]);
   const safeZones = useMemo(() => (Array.isArray(safeData.zones) ? safeData.zones : []), [safeData.zones]);
   const isCitizen = session?.role === "ciudadano";
-  const isOperator = session?.role === "operador" || session?.role === "admin";
-  const canReportProblem = isCitizen || isOperator;
+  const canReportProblem = isCitizen;
   const citizenZone = session?.zone ?? "";
 
   const [searchQuery, setSearchQuery] = useState("");
@@ -1593,6 +1593,7 @@ export function Operations({ data, monitor, onOperationUpdate }: { data: Bootstr
 function Analytics({ data, session, onConfirmCollection }: { data: Bootstrap; session?: Session | null; onConfirmCollection?: (id: number) => Promise<void>; }) {
   const performance = data.performance;
   const isCitizen = session?.role === "ciudadano";
+  const isOperator = session?.role === "operador";
   const safeReports = useMemo(() => {
     const reports = Array.isArray(data.reports) ? data.reports : [];
     if (!isCitizen || !session) return reports;
@@ -1620,6 +1621,19 @@ function Analytics({ data, session, onConfirmCollection }: { data: Bootstrap; se
         { nombre: "Recolecciones confirmadas", valor: `${collectionCounts["Confirmada"] ?? 0}/${safeCollections.length}` },
         { nombre: "Total reportes", valor: safeReports.length },
       ]
+    : isOperator
+    ? [
+        { nombre: "Residuos registrados", valor: `${analytics.total_kg} kg` },
+        { nombre: "Cumplimiento de rutas", valor: `${analytics.compliance}%` },
+        { nombre: "Reportes abiertos", valor: analytics.open_reports },
+        { nombre: "Camiones activos", valor: analytics.active_trucks },
+        { nombre: "Rutas con retraso", valor: performance?.delayed_routes ?? 0 },
+        { nombre: "Progreso medio", valor: `${performance?.average_progress ?? 0}%` },
+        { nombre: "Llenado promedio contenedores", valor: `${performance?.average_container_fill ?? 0}%` },
+        { nombre: "Recolecciones confirmadas", valor: `${collectionCounts["Confirmada"] ?? 0}/${safeCollections.length}` },
+        { nombre: "Rutas completadas", valor: `${performance?.total_routes ?? 0}` },
+        { nombre: "Índice de cumplimiento", valor: `${performance?.compliance_estimate ?? 0}%` },
+      ]
     : [
         { nombre: "Residuos registrados", valor: `${analytics.total_kg} kg` },
         { nombre: "Cumplimiento de rutas", valor: `${analytics.compliance}%` },
@@ -1640,6 +1654,19 @@ function Analytics({ data, session, onConfirmCollection }: { data: Bootstrap; se
             <Metric value={reportCounts.Resuelto} label="Mis reportes resueltos" />
             <Metric value={`${collectionCounts["Confirmada"] ?? 0}/${safeCollections.length}`} label="Recolectas confirmadas" />
             <Metric value={safeReports.length} label="Total mis reportes" />
+          </>
+        ) : isOperator ? (
+          <>
+            <Metric value={`${analytics.total_kg} kg`} label="Residuos registrados" />
+            <Metric value={`${analytics.compliance}%`} label="Cumplimiento de rutas" />
+            <Metric value={`${analytics.open_reports}`} label="Reportes abiertos" />
+            <Metric value={`${analytics.active_trucks}`} label="Camiones activos" />
+            <Metric value={`${performance?.delayed_routes ?? 0}`} label="Rutas con retraso" />
+            <Metric value={`${performance?.average_progress ?? 0}%`} label="Progreso medio" />
+            <Metric value={`${performance?.average_container_fill ?? 0}%`} label="Llenado promedio" />
+            <Metric value={`${collectionCounts["Confirmada"] ?? 0}/${safeCollections.length}`} label="Recolectas confirmadas" />
+            <Metric value={`${performance?.total_routes ?? 0}`} label="Rutas monitoreadas" />
+            <Metric value={`${performance?.compliance_estimate ?? 0}%`} label="Índice de cumplimiento" />
           </>
         ) : (
           <>
