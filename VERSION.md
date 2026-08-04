@@ -1,33 +1,22 @@
 # Sistema de Recolección de Residuos Sólidos - Versión 5.5.4
 
-## Versión 5.5.4 - Dashboard de Clasificación de Residuos mejorado
+## Versión 5.5.4 - Auditoría integral de dashboards del rol Ciudadano
 
 ### Cambios destacados
-- **Dashboard de Clasificación (Waste)** completamente reemplazado y mejorado:
-  - Contenido hardcodeado reemplazado por datos dinámicos del backend (schedules, containers, zones).
-  - Integración total con el estado de la aplicación (`data`, `monitor`, `session`).
-  - Guía de clasificación por zona con horarios y tipos de residuo.
-  - Filtros por tipo de residuo y zona.
-  - Búsqueda global de zonas y tipos de residuo.
-  - Estadísticas dinámicas: contenedores monitoreados, llenado promedio, tipos de residuo, zonas con clasificación.
-  - Mapa de puntos de clasificación/recolección integrado con OpenStreetMap.
-  - Opción de reportar problemas de clasificación (visible solo para operador y admin).
-  - Adaptación por rol: ciudadano ve solo su zona, operador y admin ven toda la información.
-- **Eliminación completa del modo oscuro**: la interfaz utiliza exclusivamente modo claro.
-  - Se eliminaron el hook `isDarkMode`, el `localStorage` de preferencia de tema y el botón de alternancia.
-  - Se eliminaron los selectores CSS `html[data-theme="dark"]`, `html[data-theme="light"]` y `@media (prefers-color-scheme: dark)`.
-  - Se eliminaron las variables CSS `--bg-dark`, `--panel-dark`, `--accent-dark`.
-  - Se actualizó `color-scheme` a `light` únicamente.
-  - Loading screen y theme-color actualizados a colores del proyecto.
+- **Auditoría completa de dashboards ciudadano**: se revisaron y corrigieron todos los dashboards del rol `ciudadano` (`Dashboard`, `Reports`, `Schedules`, `Waste`, `Analytics`) verificando lógica del sistema, lógica de negocio, permisos, validaciones, integración con backend, seguridad, UX y rendimiento.
+- **Seguridad backend**: se protegieron endpoints que estaban públicos sin autenticación (`/api/operations/monitor`, `/api/alerts`, `/api/analytics/summary`, `/api/maintenance`), se añadió filtrado por zona para ciudadanos en notificaciones y alerts, y se validó que un ciudadano solo pueda reportar en su zona asignada.
+- **Dashboard Principal**: se reemplazó `fallbackSchedule` hardcodeado por datos dinámicos de zonas y camiones del backend; se corrigió variable `dispatchData` inexistente; se mejoró la sección de alertas ciudadanas con recomendaciones dinámicas.
+- **Reports**: se corrigió bug en filtro de estado `En revision` vs `En revisión` normalizando comparación; se mantiene pre-selección de zona del ciudadano y advertencia al reportar fuera de zona.
+- **Waste**: se amplió la funcionalidad para permitir que ciudadanos reporten problemas de clasificación (antes solo operador/admin); se mantienen filtros dinámicos por tipo y zona.
+- **Schedules**: se mantiene banner de próxima recolección para la zona del ciudadano.
+- **Analytics**: se mantienen métricas contextuales por rol (ciudadano vs operativo).
+- **Backend**: se corrigió endpoint `/api/analytics/summary` para filtrar métricas por rol; se protegió `/api/operations/monitor` y `/api/alerts` con autenticación y filtrado por zona.
 
 ### Archivos modificados
-- `frontend/src/main.tsx` — Componente `Waste` reemplazado con dashboard completo; eliminación de modo oscuro de `App`
-- `frontend/src/styles.css` — Estilos para el nuevo dashboard de clasificación; eliminación de estilos de modo oscuro
-- `frontend/index.html` — Loading screen y theme-color actualizados a modo claro
+- `backend-python/app/main.py` — Proteger endpoints, filtrar por zona/rol, validar reportes de ciudadanos
+- `frontend/src/main.tsx` — Corregir bugs dashboards, datos dinámicos, permitir reportes en Waste
+- `frontend/src/styles.css` — Estilos auxiliares
 - `CHANGELOG.md`, `VERSION.md` — Documentación actualizada
-
-### Causa raíz
-Las cuentas y datos creados no se guardaban permanentemente porque el backend en producción (Render) no tenía configurada la base de datos PostgreSQL (`DATABASE_URL` era `sync: false` / opcional en `render.yaml` y no se provisionaba ninguna base de datos), por lo que el backend arrancaba en **modo memoria (in-memory)** y perdía todos los datos en cada reinicio o cambio de proceso.
 
 ### Solución aplicada
 
