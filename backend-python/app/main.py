@@ -185,6 +185,7 @@ class MemoryStore:
             {"id": 1, "code": "C-01", "driver": "Luis Huaman", "status": "En ruta", "zone_id": 1, "zone": "Centro Historico", "latitude": -13.5166, "longitude": -71.9789},
             {"id": 2, "code": "C-02", "driver": "Rosa Ccahuana", "status": "En ruta", "zone_id": 2, "zone": "Wanchaq", "latitude": -13.5256, "longitude": -71.9558},
             {"id": 3, "code": "C-03", "driver": "Mario Quispe", "status": "Mantenimiento", "zone_id": 3, "zone": "San Sebastian", "latitude": -13.5309, "longitude": -71.9386},
+            {"id": 4, "code": "C-04", "driver": "Elena Condori", "status": "En ruta", "zone_id": 5, "zone": "Santiago", "latitude": -13.5350, "longitude": -71.9847},
         ]
         self.routes = [
             {"id": 1, "truck": "C-02", "zone": "Wanchaq", "progress": 62, "eta": "12 min", "delay": "Sin retraso", "latitude": -13.5256, "longitude": -71.9558},
@@ -198,6 +199,7 @@ class MemoryStore:
         self.reports = [
             {"id": 1, "citizen": "Ana Quispe", "zone": "Wanchaq", "type": "Acumulacion de basura", "detail": "Contenedor lleno cerca al mercado.", "status": "En revision"},
             {"id": 2, "citizen": "Jose Huaman", "zone": "Santiago", "type": "Retraso", "detail": "No paso el camion en el horario indicado.", "status": "Pendiente"},
+            {"id": 3, "citizen": "Maria Ccahuana", "zone": "Centro Historico", "type": "Contenedor lleno", "detail": "Contenedor saturado cerca de la Plaza San Francisco.", "status": "Pendiente"},
         ]
         self.collections = [
             {"id": 1, "zone": "Centro Historico", "truck": "C-01", "kg": 420, "status": "Confirmada", "date": "2026-06-10"},
@@ -206,9 +208,11 @@ class MemoryStore:
         ]
         self.maintenance = [
             {"id": 1, "truck_id": 3, "description": "Revisión general de frenos", "status": "Pendiente", "created_at": datetime.now(timezone.utc).isoformat()},
+            {"id": 2, "truck_id": 2, "description": "Inspección de motor y bidón", "status": "Pendiente", "created_at": datetime.now(timezone.utc).isoformat()},
         ]
         self.notifications = [
             {"id": 1, "user_id": 1, "title": "Ruta ajustada", "message": "Se priorizará la zona de Santiago por retrasos", "type": "info", "is_read": False, "created_at": datetime.now(timezone.utc).isoformat()},
+            {"id": 2, "user_id": 1, "title": "Evento operativo", "message": "Contenedor Centro actualizado, llenado 88%, estado Lleno.", "type": "event", "is_read": False, "created_at": datetime.now(timezone.utc).isoformat()},
         ]
         self.users: list[dict[str, Any]] = [
             {
@@ -219,7 +223,43 @@ class MemoryStore:
                 "zone": "Centro Historico",
                 "password_hash": hash_password("admin123"),
                 "created_at": datetime.now(timezone.utc).isoformat(),
-            }
+            },
+            {
+                "id": 2,
+                "name": "Ciudadano Demo",
+                "email": "ciudadano@ecocusco.pe",
+                "role": "ciudadano",
+                "zone": "Centro Historico",
+                "password_hash": hash_password("Test12345!"),
+                "created_at": datetime.now(timezone.utc).isoformat(),
+            },
+            {
+                "id": 3,
+                "name": "Operador Municipal",
+                "email": "operador@ecocusco.pe",
+                "role": "operador",
+                "zone": "Wanchaq",
+                "password_hash": hash_password("Test12345!"),
+                "created_at": datetime.now(timezone.utc).isoformat(),
+            },
+            {
+                "id": 4,
+                "name": "Elena Condori",
+                "email": "conductor@ecocusco.pe",
+                "role": "conductor",
+                "zone": "Santiago",
+                "password_hash": hash_password("Test12345!"),
+                "created_at": datetime.now(timezone.utc).isoformat(),
+            },
+            {
+                "id": 5,
+                "name": "Admin Regional",
+                "email": "admin2@ecocusco.pe",
+                "role": "admin",
+                "zone": "San Sebastian",
+                "password_hash": hash_password("Test12345!"),
+                "created_at": datetime.now(timezone.utc).isoformat(),
+            },
         ]
         self.password_resets: dict[str, dict[str, Any]] = {}
 
@@ -1680,6 +1720,23 @@ def get_collections(current_user: dict[str, Any] = Depends(require_current_user)
 
 @app.post("/api/collections", dependencies=[Depends(require_role({"conductor", "operador"}))])
 def register_collection(payload: CollectionCreate, current_user: dict[str, Any] = Depends(require_current_user)) -> dict[str, Any]:
+    role = normalize_role(str(current_user.get("role", "ciudadano")))
+    # Un conductor solo puede registrar recolecciones para su camión asignado
+    if role == "conductor":
+        trucks = bootstrap().get("trucks", [])
+        assigned_truck = next(
+            (t for t in trucks if int(t.get("id", 0)) == int(payload.truck_id)),
+            None,
+        )
+        if assigned_truck is None:
+            raise HTTPException(status_code=404, detail="Camión no encontrado")
+        truck_driver = str(assigned_truck.get("driver", "")).strip().lower()
+        user_name = str(current_user.get("name", "")).strip().lower()
+        if truck_driver and user_name and truck_driver != user_name:
+            raise HTTPException(
+                status_code=403,
+                detail=f"El camión {assigned_truck.get('code')} está asignado a otro conductor ({assigned_truck.get('driver')}).",
+            )
     # Permitimos que un conductor u operador registre la recolección realizada
     created = create_collection_record(payload, created_by=current_user)
     return created

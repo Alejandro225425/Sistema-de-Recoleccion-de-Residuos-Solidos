@@ -1,6 +1,6 @@
 # AGENTS.md - Convenciones del Proyecto SIR Cusco
 
-> **Versión:** 5.5.3
+> **Versión:** 5.5.8
 > **Rama de producción:** `main` y `version-5.5`
 
 ## Estructura del proyecto
@@ -82,7 +82,7 @@ cd backend-typescript && npm run build
 | Admin | `admin@ecocusco.pe` | `admin123` | Centro Historico |
 | Ciudadano | `ciudadano@ecocusco.pe` | `Test12345!` | Centro Historico |
 | Operador | `operador@ecocusco.pe` | `Test12345!` | Wanchaq |
-| Conductor | `conductor@ecocusco.pe` | `Test12345!` | Santiago |
+| Conductor (Elena Condori, camión C-04) | `conductor@ecocusco.pe` | `Test12345!` | Santiago |
 | Admin | `admin2@ecocusco.pe` | `Test12345!` | San Sebastian |
 
 - El sistema funciona en **modo memoria (demo)** sin `DATABASE_URL`.

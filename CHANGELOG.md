@@ -2,7 +2,26 @@
 
 ## 2026-08-04
 
-### Version 5.5.7 - Auditoría integral de dashboards del rol Administrador y correcciones de seguridad
+### Version 5.5.8 - Auditoría integral de dashboards del rol Conductor y correcciones de seguridad
+
+- **Backend - POST /api/collections**: se agregó validación de propiedad de camión para el rol `conductor`. Un conductor solo puede registrar recolecciones para su camión asignado (donde `driver` coincide con su nombre). Intentar registrar para un camión ajeno retorna `403 Forbidden`. El rol `operador` mantiene acceso sin restricción.
+- **Backend - MemoryStore**: se completó la cobertura de datos en memoria para coincidir con `seed.sql` — se agregó el camión C-04 (Elena Condori, Santiago), la tercera incidencia de reporte, el segundo registro de mantenimiento y la segunda notificación. Se agregaron los usuarios demo (ciudadano, operador, conductor, admin2) con hashes de contraseña correctos.
+- **Backend - seed.sql**: se actualizó el nombre del usuario conductor de "Conductor Ruta 5" a "Elena Condori" para que coincida con el conductor del camión C-04 en la zona Santiago, permitiendo la vinculación conductor‑camión en la interfaz.
+- **Frontend - Dashboard**: se agregó `isConductor` flag y métricas específicas (kg recolectados en zona, incidencias en zona, estado del camión, confirmadas).
+- **Frontend - Dashboard**: se filtró el **tablero de despacho**, las **alertas activas** y el **plan de intervención** para mostrar solo información relevante a la zona y el camión del conductor.
+- **Frontend - Dashboard**: se agregó la sección **"Mi camión"** con estado del camión, zona asignada, ruta asignada (progreso, ETA, retraso) y la última recolección registrada en la zona del conductor.
+- **Frontend - Routes**: el dropdown de camiones muestra **solo el camión asignado** al conductor (filtrado por nombre). La zona se **defaultea** a la zona del conductor. Se agregó validación de formulario: kg no puede ser 0, NaN, ni negativo; los IDs de camión y zona deben ser válidos. Se corrigió typo "Camion" → "Camión" y "recoleccion" → "recolección". Se muestra mensaje de confirmación/error con feedback visual.
+- **Frontend - Routes**: el seguimiento GPS muestra un banner indicando que se visualizan las rutas del camión del conductor, y filtra las rutas mostradas al camión asignado.
+- **Frontend - Analytics**: se filtraron las **colecciones** y **reportes** por la zona del conductor. Se agregaron métricas específicas (kg en zona, recolecciones, incidencias, cumplimiento). Se corrigió typo "Historial de recoleccion" → "Historial de recolecciones".
+- **Tests**: se agregaron 5 tests de backend para validación de permisos de conductor en `/api/collections` y filtrado de analíticas.
+- **Compilación**: `tsc --noEmit` sin errores, `npm run build` exitoso.
+- **Tests**: 26/26 backend (21 originales + 5 nuevos), 21/21 frontend.
+
+### Archivos modificados
+- `backend-python/app/main.py` — Validación de camión en POST /api/collections, MemoryStore completado con C-04 y usuarios demo, nombre del conductor corregido
+- `database/seed.sql` — Nombre del conductor actualizado a "Elena Condori"
+- `frontend/src/main.tsx` — Dashboard isConductor + métricas + filtros + "Mi camión", Routes filtro de camión/zona + validación, Analytics filtrado por zona + métricas conductor + typo corregido
+- `AGENTS.md` — Versión actualizada a 5.5.8, credenciales del conductor actualizadas
 
 - **Seguridad backend - POST /api/reports**: se restringió la creación de reportes al rol `ciudadano` exclusivamente. Los roles `operador` y `admin` ahora reciben `403 Forbidden` al intentar registrar incidencias, alineando la creación de reportes con la función de cada rol (ciudadanos reportan, operadores/admin resuelven).
 - **Frontend Reports**: se ocultó el formulario de creación de reportes para `operador` y `admin`. Ahora muestran un mensaje informativo indicando que solo los ciudadanos pueden registrar incidencias, y que operadores/administradores pueden resolverlas desde la lista de seguimiento.
