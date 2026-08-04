@@ -26,6 +26,7 @@
 - **Tests**: se agregaron 5 tests de backend para validación de permisos de conductor en `/api/collections` y filtrado de analíticas.
 - **Compilación**: `tsc --noEmit` sin errores, `npm run build` exitoso.
 - **Tests**: 26/26 backend (21 originales + 5 nuevos), 21/21 frontend.
+- **Frontend - CSS**: se corrigió error de sintaxis en `frontend/src/styles.css:1034` que causaba fallo de build en Vercel con `lightningcss minify: Unexpected end of input`. El selector atributo `[style*=" grid-template-columns\]` estaba mal formado (faltaba `]` de cierre). Build verificado exitosamente.
 
 ### Archivos modificados
 - `backend-python/app/main.py` — Validación de camión en POST /api/collections, MemoryStore completado con C-04 y usuarios demo, nombre del conductor corregido

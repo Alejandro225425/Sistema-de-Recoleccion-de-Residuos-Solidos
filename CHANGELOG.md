@@ -16,6 +16,7 @@
 - **Tests**: se agregaron 5 tests de backend para validación de permisos de conductor en `/api/collections` y filtrado de analíticas.
 - **Compilación**: `tsc --noEmit` sin errores, `npm run build` exitoso.
 - **Tests**: 26/26 backend (21 originales + 5 nuevos), 21/21 frontend.
+- **Frontend - CSS**: se corrigió error de sintaxis en `frontend/src/styles.css:1034` que causaba `SyntaxError: [lightningcss minify] Unexpected end of input` en el build de Vercel. El atributo selector `[style*=" grid-template-columns\]` tenía el `]` de cierre faltante (estaba escapado como `\]` dentro del valor del atributo en lugar de cerrar el selector). Se corrigió a `[style*=" grid-template-columns"]`.
 
 ### Version 5.5.4 - Correcciones críticas y mejoras en dashboards
 
