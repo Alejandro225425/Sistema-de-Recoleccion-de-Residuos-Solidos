@@ -960,7 +960,17 @@ textarea { min-height: 100px; resize: vertical; font-family: inherit; }
 .modal-close { background: none; border: none; font-size: 1.2rem; cursor: pointer; padding: 4px 8px; }
 .modal-body p { margin: 8px 0; line-height: 1.6; }
 
-/* Mobile improvements - no desktop impact */
+/* Analytics helpers */
+.analytics-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; flex-wrap: wrap; gap: 8px; }
+.analytics-header h2 { margin: 0; }
+.analytics-controls { display: flex; gap: 8px; align-items: center; }
+.analytics-controls label { font-size: 0.85rem; color: var(--muted); font-weight: 500; }
+.analytics-controls select { width: auto; min-width: 80px; padding: 6px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--panel); color: var(--ink); font-size: 0.85rem; }
+.analytics-summary-list { list-style: none; padding: 0; margin: 0; line-height: 1.8; }
+.analytics-waste-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; }
+.analytics-waste-item { padding: 12px; border: 1px solid var(--line); border-radius: 8px; text-align: center; }
+.analytics-waste-item strong { font-size: 1.5rem; color: var(--eco-primary); }
+.analytics-waste-item span { display: block; font-size: 0.82rem; color: var(--muted); margin-top: 4px; }
 @media (max-width: 768px) {
   /* Dashboard metrics - larger touch targets */
   .metrics-grid { gap: 8px; }
@@ -1031,77 +1041,81 @@ textarea { min-height: 100px; resize: vertical; font-family: inherit; }
   .sidebar-overlay { opacity: 0.6; }
 
   /* Analytics charts - better sizing */
-  .panel [style*=" grid-template-columns"] { grid-template-columns: 1fr 1fr !important; }
+  .panel-analytics-grid { grid-template-columns: 1fr 1fr; }
 
- /* Report detail modal */
- .modal-body p { font-size: 0.88rem; }
+  /* Report detail modal */
+  .modal-body p { font-size: 0.88rem; }
 
- /* Toast notifications */
- .toast { max-width: 90vw; font-size: 0.82rem; }
+  /* Toast notifications */
+  .toast { max-width: 90vw; font-size: 0.82rem; }
 
- /* Tags - better spacing */
- .tag { font-size: 0.72rem; padding: 3px 8px; }
+  /* Tags - better spacing */
+  .tag { font-size: 0.72rem; padding: 3px 8px; }
 
- /* Two column layouts - stack */
- .two-col { grid-template-columns: 1fr; gap: 12px; }
+  /* Two column layouts - stack */
+  .two-col { grid-template-columns: 1fr; gap: 12px; }
 
- /* Metric cards in dashboard - touch friendly */
- .metric-card { cursor: pointer; -webkit-tap-highlight-color: transparent; }
- .metric-card:active { opacity: 0.7; }
+  /* Metric cards in dashboard - touch friendly */
+  .metric-card { cursor: pointer; -webkit-tap-highlight-color: transparent; }
+  .metric-card:active { opacity: 0.7; }
 
- /* Admin list items - better touch */
- .admin-list-item { padding: 12px; }
- .admin-list-item .item-row { flex-direction: column; align-items: flex-start; gap: 4px; }
+  /* Admin list items - better touch */
+  .admin-list-item { padding: 12px; }
+  .admin-list-item .item-row { flex-direction: column; align-items: flex-start; gap: 4px; }
 
- /* Status pills */
- .status-pill { font-size: 0.72rem; padding: 6px 8px; }
+  /* Status pills */
+  .status-pill { font-size: 0.72rem; padding: 6px 8px; }
 
- /* Export buttons */
- .export-btn { font-size: 0.78rem; padding: 8px 12px; }
+  /* Export buttons */
+  .export-btn { font-size: 0.78rem; padding: 8px 12px; }
 
- /* Item rows in lists */
- .item > span { font-size: 0.82rem; }
- .item > p { font-size: 0.78rem; }
+  /* Item rows in lists */
+  .item > span { font-size: 0.82rem; }
+  .item > p { font-size: 0.78rem; }
 
- /* Dashboard role badge */
- .dashboard-role-badge { font-size: 0.72rem; padding: 4px 10px; }
+  /* Dashboard role badge */
+  .dashboard-role-badge { font-size: 0.72rem; padding: 4px 10px; }
 
- /* Hint text */
- .hint { font-size: 0.8rem; }
+  /* Hint text */
+  .hint { font-size: 0.8rem; }
 
- /* Empty state */
- .empty-state { font-size: 0.85rem; padding: 20px; }
+  /* Empty state */
+  .empty-state { font-size: 0.85rem; padding: 20px; }
 
- /* Progress bars */
- .progress-bar { height: 8px; border-radius: 4px; }
+  /* Progress bars */
+  .progress-bar { height: 8px; border-radius: 4px; }
 
- /* Tabs/filter buttons */
- .filter-btn.active { font-weight: 700; }
+  /* Tabs/filter buttons */
+  .filter-btn.active { font-weight: 700; }
 
- /* Scrollbar styling for mobile */
- ::-webkit-scrollbar { width: 4px; height: 4px; }
- ::-webkit-scrollbar-track { background: transparent; }
- ::-webkit-scrollbar-thumb { background: var(--line); border-radius: 2px; }
+  /* Scrollbar styling for mobile */
+  ::-webkit-scrollbar { width: 4px; height: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--line); border-radius: 2px; }
+
+  /* Analytics panel - force single column on mobile */
+  .panel-analytics-grid { grid-template-columns: 1fr !important; }
 }
 @media (max-width: 480px) {
- .metrics-grid { gap: 6px; }
- .metric-card { padding: 12px; }
- .metric-value { font-size: 1.1rem; }
- .panel { padding: 10px; }
- .filter-bar { gap: 4px; }
- .filter-btn { padding: 6px 10px; font-size: 0.78rem; }
- .form-grid { gap: 8px; }
- .btn-primary, .export-btn, .danger { padding: 8px 12px; font-size: 0.8rem; min-height: 40px; }
- .sidebar { width: 100vw; }
- .admin-grid { gap: 8px; }
- .waste-dashboard { padding: 8px 4px; }
- .dashboard-sections { gap: 8px; }
- .metrics { padding: 8px 8px 0; }
- .map { height: 180px; }
- .modal { padding: 16px; max-height: 95vh; }
- .modal-header h2 { font-size: 1rem; }
- .modal-close { padding: 8px; font-size: 1rem; }
- .item-actions { flex-direction: column; }
- .item-actions button { width: 100%; }
+  .metrics-grid { gap: 6px; }
+  .metric-card { padding: 12px; }
+  .metric-value { font-size: 1.1rem; }
+  .panel { padding: 10px; }
+  .filter-bar { gap: 4px; }
+  .filter-btn { padding: 6px 10px; font-size: 0.78rem; }
+  .form-grid { gap: 8px; }
+  .btn-primary, .export-btn, .danger { padding: 8px 12px; font-size: 0.8rem; min-height: 40px; }
+  .sidebar { width: 100vw; }
+  .admin-grid { gap: 8px; }
+  .waste-dashboard { padding: 8px 4px; }
+  .dashboard-sections { gap: 8px; }
+  .metrics { padding: 8px 8px 0; }
+  .map { height: 180px; }
+  .modal { padding: 16px; max-height: 95vh; }
+  .modal-header h2 { font-size: 1rem; }
+  .modal-close { padding: 8px; font-size: 1rem; }
+  .item-actions { flex-direction: column; }
+  .item-actions button { width: 100%; }
+  .map-mobile { height: 220px !important; }
 }
 

@@ -2,6 +2,17 @@
 
 ## 2026-08-04
 
+### Version 5.5.9 - Mejoras responsive móvil y correcciones de UI
+
+- **Frontend - styles.css**: corregido selector CSS roto en media query `@media (max-width: 768px)` que impedía el colapso a 1 columna en móviles. Se reemplazó el selector inválido `.panel [style*=" grid-template-columns\]` por la clase `.panel-analytics-grid` con regla explícita `grid-template-columns: 1fr !important` en móvil.
+- **Frontend - main.tsx**: se eliminaron estilos inline del dashboard de Analytics (`gridTemplateColumns: "1fr 1fr"`, `padding`, `marginBottom`, `listStyle`, controles de fecha) y se migraron a clases CSS (`panel-analytics-grid`, `analytics-header`, `analytics-controls`, `analytics-summary-list`, `analytics-waste-grid`, `analytics-waste-item`). Ahora Analytics responde correctamente a media queries.
+- **Frontend - main.tsx**: mejorada accesibilidad del menú off-canvas en móvil. Se añadieron `aria-expanded` y `aria-controls` al botón hamburguesa, `ref` en la sidebar para gestión de foco, `useEffect` para cerrar con tecla `Escape` y `useEffect` para enfocar el primer botón al abrir el menú.
+- **Frontend - styles.css**: mejorada altura del mapa en móvil con clase auxiliar `.map-mobile` (220px en `@media (max-width: 480px)`). Se mantiene el diseño de escritorio intacto.
+- **Verificación**: `tsc --noEmit` sin errores, `npm run build` exitoso, 21/21 tests frontend.
+- **Archivos modificados**: `frontend/src/styles.css`, `frontend/src/main.tsx`.
+
+## 2026-08-04
+
 ### Version 5.5.8 - Auditoría integral de dashboards del rol Conductor y correcciones de seguridad
 
 - **Backend - POST /api/collections**: se agregó validación de propiedad de camión para el rol `conductor`. Un conductor solo puede registrar recolecciones para su camión asignado (donde `driver` coincide con su nombre). Intentar registrar para un camión ajeno retorna `403 Forbidden`. El rol `operador` mantiene acceso sin restricción.
@@ -16,7 +27,6 @@
 - **Tests**: se agregaron 5 tests de backend para validación de permisos de conductor en `/api/collections` y filtrado de analíticas.
 - **Compilación**: `tsc --noEmit` sin errores, `npm run build` exitoso.
 - **Tests**: 26/26 backend (21 originales + 5 nuevos), 21/21 frontend.
-- **Frontend - CSS**: se corrigió error de sintaxis en `frontend/src/styles.css:1034` que causaba `SyntaxError: [lightningcss minify] Unexpected end of input` en el build de Vercel. El atributo selector `[style*=" grid-template-columns\]` tenía el `]` de cierre faltante (estaba escapado como `\]` dentro del valor del atributo en lugar de cerrar el selector). Se corrigió a `[style*=" grid-template-columns"]`.
 
 ### Version 5.5.4 - Correcciones críticas y mejoras en dashboards
 
