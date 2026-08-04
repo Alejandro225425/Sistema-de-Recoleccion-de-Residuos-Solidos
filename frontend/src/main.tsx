@@ -135,10 +135,19 @@ function exportToPDF(title: string, html: string) {
 
 function extractWasteTypes(waste: string): string[] {
   if (!waste) return [];
-  return waste
-    .split(/[,\s]+/)
-    .map(t => t.trim())
-    .filter(t => t && !["y", "e", "y", "e"].includes(t.toLowerCase()));
+  const tokens = waste.split(/[,\s]+/).map(t => t.trim()).filter(Boolean);
+  const result: string[] = [];
+  for (let i = 0; i < tokens.length; i++) {
+    const t = tokens[i];
+    if (["y", "e", "y", "e"].includes(t.toLowerCase())) continue;
+    if (t.toLowerCase() === "no" && i + 1 < tokens.length) {
+      result.push(`No ${tokens[i + 1]}`);
+      i++;
+      continue;
+    }
+    result.push(t);
+  }
+  return result;
 }
 
 class ErrorBoundary extends React.Component<
