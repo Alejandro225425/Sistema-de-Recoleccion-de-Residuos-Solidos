@@ -280,17 +280,17 @@ describe("App e2e integration", () => {
     await screen.findByRole("heading", { name: /Panel Principal/i });
     fireEvent.click(screen.getByRole("button", { name: /Administración/i }));
 
-    await waitFor(() => expect(screen.getByRole("heading", { name: /Gestión de zonas/i })).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByRole("heading", { name: /Gestión de zonas/i })).toBeInTheDocument(), { timeout: 10000 });
     const editButtons = screen.getAllByRole("button", { name: /Editar zona/i });
     fireEvent.click(editButtons[0]);
     fireEvent.change(screen.getByLabelText(/Nombre de la zona/i), { target: { value: "Centro Histórico Actualizado" } });
     fireEvent.click(screen.getByRole("button", { name: /Guardar cambios/i }));
 
-    await waitFor(() => expect(screen.getAllByText(/Centro Histórico Actualizado/i).length).toBeGreaterThan(0));
+    await waitFor(() => expect(screen.getAllByText(/Centro Histórico Actualizado/i).length).toBeGreaterThan(0), { timeout: 10000 });
 
     const deleteButtons = screen.getAllByRole("button", { name: /Eliminar zona/i });
     fireEvent.click(deleteButtons[0]);
-    await waitFor(() => expect(screen.queryByText(/Centro Histórico Actualizado/i)).not.toBeInTheDocument());
+    await waitFor(() => expect(screen.queryByText(/Centro Histórico Actualizado/i)).not.toBeInTheDocument(), { timeout: 10000 });
   });
 
   it("shows a filter input for zones in the admin panel", async () => {

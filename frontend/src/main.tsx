@@ -269,7 +269,11 @@ export function App() {
       }
     };
     document.addEventListener("keydown", handleKeyDown);
-    return () => document.removeEventListener("keydown", handleKeyDown);
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.removeEventListener("keydown", handleKeyDown);
+      document.body.style.overflow = "";
+    };
   }, [sidebarOpen]);
 
   useEffect(() => {
@@ -1613,10 +1617,10 @@ export function Waste({ data, monitor, session, onCreateReport }: { data: Bootst
           </div>
 
           <div className="filter-bar">
-            <select value={filterWaste} onChange={e => setFilterWaste(e.target.value)} aria-label="Filtrar por tipo de residuo" style={{ width: "auto", minWidth: 160 }}>
+            <select value={filterWaste} onChange={e => setFilterWaste(e.target.value)} aria-label="Filtrar por tipo de residuo" className="waste-filter-select">
               {wasteTypes.map(t => <option key={t} value={t}>{t}</option>)}
             </select>
-            <select value={filterZone} onChange={e => setFilterZone(e.target.value)} aria-label="Filtrar por zona" style={{ width: "auto", minWidth: 160 }}>
+            <select value={filterZone} onChange={e => setFilterZone(e.target.value)} aria-label="Filtrar por zona" className="waste-filter-select">
               {zones.map(z => <option key={z} value={z}>{z}</option>)}
             </select>
           </div>
@@ -2232,46 +2236,52 @@ function Analytics({ data, session, onConfirmCollection }: { data: Bootstrap; se
        {Object.keys(wasteBreakdown).length > 0 && (
          <section className="panel" style={{ marginBottom: "24px" }}>
            <h2>Distribución por tipo de residuo</h2>
-           <ResponsiveContainer width="100%" height={300}>
-             <BarChart data={Object.entries(wasteBreakdown).map(([name, value]) => ({ name, value }))}>
-               <CartesianGrid strokeDasharray="3 3" />
-               <XAxis dataKey="name" />
-               <YAxis />
-               <Tooltip />
-               <Bar dataKey="value" fill="#0f8b8d" />
-             </BarChart>
-           </ResponsiveContainer>
+           <div className="analytics-chart">
+             <ResponsiveContainer width="100%" height="100%">
+               <BarChart data={Object.entries(wasteBreakdown).map(([name, value]) => ({ name, value }))}>
+                 <CartesianGrid strokeDasharray="3 3" />
+                 <XAxis dataKey="name" />
+                 <YAxis />
+                 <Tooltip />
+                 <Bar dataKey="value" fill="#0f8b8d" />
+               </BarChart>
+             </ResponsiveContainer>
+           </div>
          </section>
        )}
 
        {filteredCollections.length > 0 && (
          <section className="panel" style={{ marginBottom: "24px" }}>
            <h2>Recolecciones por día</h2>
-           <ResponsiveContainer width="100%" height={300}>
-             <LineChart data={filteredCollections.map(c => ({
-               fecha: c.date,
-               kg: Number(c.kg) || 0,
-             })).sort((a, b) => a.fecha.localeCompare(b.fecha))}>
-               <CartesianGrid strokeDasharray="3 3" />
-               <XAxis dataKey="fecha" />
-               <YAxis />
-               <Tooltip />
-               <Legend />
-               <Line type="monotone" dataKey="kg" stroke="#0f8b8d" name="Kg recolectados" />
-             </LineChart>
-           </ResponsiveContainer>
+           <div className="analytics-chart">
+             <ResponsiveContainer width="100%" height="100%">
+               <LineChart data={filteredCollections.map(c => ({
+                 fecha: c.date,
+                 kg: Number(c.kg) || 0,
+               })).sort((a, b) => a.fecha.localeCompare(b.fecha))}>
+                 <CartesianGrid strokeDasharray="3 3" />
+                 <XAxis dataKey="fecha" />
+                 <YAxis />
+                 <Tooltip />
+                 <Legend />
+                 <Line type="monotone" dataKey="kg" stroke="#0f8b8d" name="Kg recolectados" />
+               </LineChart>
+             </ResponsiveContainer>
+           </div>
          </section>
        )}
 
        {Object.keys(wasteBreakdown).length > 0 && (
          <section className="panel" style={{ marginBottom: "24px" }}>
            <h2>Distribución por zona</h2>
-           <ResponsiveContainer width="100%" height={300}>
-             <PieChart>
-               <Pie data={Object.entries(zoneBreakdown).map(([name, value]) => ({ name, value }))} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={100} label />
-               <Tooltip />
-             </PieChart>
-           </ResponsiveContainer>
+           <div className="analytics-chart">
+             <ResponsiveContainer width="100%" height="100%">
+               <PieChart>
+                 <Pie data={Object.entries(zoneBreakdown).map(([name, value]) => ({ name, value }))} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={100} label />
+                 <Tooltip />
+               </PieChart>
+             </ResponsiveContainer>
+           </div>
          </section>
        )}
      </>

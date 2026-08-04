@@ -1097,25 +1097,24 @@ textarea { min-height: 100px; resize: vertical; font-family: inherit; }
   .panel-analytics-grid { grid-template-columns: 1fr !important; }
 }
 @media (max-width: 480px) {
-  .metrics-grid { gap: 6px; }
-  .metric-card { padding: 12px; }
-  .metric-value { font-size: 1.1rem; }
-  .panel { padding: 10px; }
-  .filter-bar { gap: 4px; }
-  .filter-btn { padding: 6px 10px; font-size: 0.78rem; }
-  .form-grid { gap: 8px; }
-  .btn-primary, .export-btn, .danger { padding: 8px 12px; font-size: 0.8rem; min-height: 40px; }
-  .sidebar { width: 100vw; }
-  .admin-grid { gap: 8px; }
-  .waste-dashboard { padding: 8px 4px; }
-  .dashboard-sections { gap: 8px; }
-  .metrics { padding: 8px 8px 0; }
-  .map { height: 180px; }
-  .modal { padding: 16px; max-height: 95vh; }
-  .modal-header h2 { font-size: 1rem; }
-  .modal-close { padding: 8px; font-size: 1rem; }
-  .item-actions { flex-direction: column; }
-  .item-actions button { width: 100%; }
-  .map-mobile { height: 220px !important; }
+ .metrics-grid { gap: 6px; }
+ .metric-card { padding: 12px; }
+ .metric-value { font-size: 1.1rem; }
+ .panel { padding: 10px; }
+ .filter-bar { gap: 4px; }
+ .filter-btn { padding: 6px 10px; font-size: 0.78rem; }
+ .form-grid { gap: 8px; }
+ .btn-primary, .export-btn, .danger { padding: 8px 12px; font-size: 0.8rem; min-height: 40px; }
+ .sidebar { width: 100vw; }
+ .admin-grid { gap: 8px; }
+ .waste-dashboard { padding: 8px 4px; }
+ .dashboard-sections { gap: 8px; }
+ .metrics { padding: 8px 8px 0; }
+ .map { height: 180px; }
+ .modal { padding: 16px; max-height: 95vh; }
+ .modal-header h2 { font-size: 1rem; }
+ .modal-close { padding: 8px; font-size: 1rem; }
+ .item-actions { flex-direction: column; }
+ .item-actions button { width: 100%; }
 }
 
