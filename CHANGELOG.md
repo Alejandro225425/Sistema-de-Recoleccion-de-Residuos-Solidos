@@ -17,6 +17,25 @@
 - **Compilación**: `tsc --noEmit` sin errores, `npm run build` exitoso.
 - **Tests**: 26/26 backend (21 originales + 5 nuevos), 21/21 frontend.
 
+### Version 5.5.4 - Correcciones críticas y mejoras en dashboards
+
+- **Frontend - Dashboard**: métricas ahora son clicables y navegan a la vista correspondiente (reports, routes, analytics, admin). Se agregó cursor pointer para indicar interactividad.
+- **Frontend - Schedules**: el banner de horarios del ciudadano ahora muestra TODAS las recolecciones programadas para su zona (no solo la primera). Se corrigió el filtro de día para cadenas compuestas (e.g. "Lunes, miercoles y viernes").
+- **Frontend - Waste**: se agregó la sección "Guía de disposición" con instrucciones por tipo de residuo (orgánicos, reciclables, no reciclables) y el contenedor asignado.
+- **Frontend - Routes**: las alertas geo ahora se refrescan automáticamente cada 30 segundos. Se mejoró el manejo de errores del microservicio geo.
+- **Frontend - Admin**: se agregaron diálogos de confirmación (`window.confirm`) para todas las acciones destructivas (eliminar usuario, zona, horario, camión, mantenimiento). Se corrigió el display de `truck_id` en mantenimiento para mostrar el código del camión en lugar del ID numérico.
+- **Frontend - Analytics**: se agregó desglose por tipo de residuo y filtro de rango de fecha (7/30/90 días/todo el año) para el historial de recolecciones.
+- **Compilación**: `tsc --noEmit` sin errores, `npm run build` exitoso.
+- **Tests**: 21/21 frontend, 26/26 backend.
+
+### Archivos modificados
+- `frontend/src/main.tsx` — Dashboard métricas clicables, Schedules banner ciudadano con todas las recolecciones, Waste guía de disposición, Routes refresh geo cada 30s, Analytics desglose por tipo y filtro de fecha
+- `frontend/src/components/Admin.tsx` — Confirmaciones de eliminación, display de código de camión en mantenimiento
+- `frontend/src/styles.css` — Cursor pointer en metric-card
+- `frontend/src/App.test.tsx` — Mock de window.confirm para tests
+- `frontend/src/Reports.test.tsx` — Props view/setView agregadas a Dashboard en test
+- `CHANGELOG.md` — Entrada para versión 5.5.4
+
 ### Archivos modificados
 - `backend-python/app/main.py` — Validación de camión en POST /api/collections, MemoryStore completado con C-04 y usuarios demo, nombre del conductor corregido
 - `database/seed.sql` — Nombre del conductor actualizado a "Elena Condori"

@@ -5,6 +5,14 @@ import { ChildProcess, spawn } from "child_process";
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 
+beforeEach(() => {
+  vi.spyOn(window, "confirm").mockReturnValue(true);
+});
+
+afterEach(() => {
+  vi.restoreAllMocks();
+});
+
 vi.mock("leaflet", () => {
   const mockMap = () => ({
     setView: () => mockMap(),

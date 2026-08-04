@@ -45,6 +45,11 @@ export default function Admin({ data, session, onOperationUpdate, onRefresh }: {
   const [deletingUserIds, setDeletingUserIds] = useState<number[]>([]);
   const [creating, setCreating] = useState(false);
   const [feedback, setFeedback] = useState("");
+  const truckNameById = useMemo(() => {
+    const map: Record<number, string> = {};
+    (safeData.trucks ?? []).forEach(t => { map[t.id] = `${t.code} - ${t.driver}`; });
+    return map;
+  }, [safeData.trucks]);
   const [formValues, setFormValues] = useState(() => ({
     ...initialUserFormValues,
     zone: session?.zone ?? initialUserFormValues.zone,
@@ -164,9 +169,10 @@ export default function Admin({ data, session, onOperationUpdate, onRefresh }: {
     }
   }
 
-  async function deleteUser(user: Session) {
-    if (!user.id) return;
-    setDeletingUserIds(prev => prev.includes(user.id!) ? prev : [...prev, user.id!]);
+async function deleteUser(user: Session) {
+     if (!user.id) return;
+     if (!window.confirm(`¿Estás seguro de eliminar al usuario ${user.name}? Esta acción no se puede deshacer.`)) return;
+     setDeletingUserIds(prev => prev.includes(user.id!) ? prev : [...prev, user.id!]);
     try {
       await request(`/users/${user.id}`, { method: 'DELETE' });
       setUsers(prev => prev.filter(item => item.id !== user.id));
@@ -260,8 +266,10 @@ export default function Admin({ data, session, onOperationUpdate, onRefresh }: {
     }
   }
 
-  async function deleteZone(zoneId: number) {
-    try {
+async function deleteZone(zoneId: number) {
+     const zone = zones.find(z => z.id === zoneId);
+     if (!window.confirm(`¿Estás seguro de eliminar la zona ${zone?.name ?? zoneId}? Esta acción no se puede deshacer.`)) return;
+     try {
       await request(`/zones/${zoneId}`, { method: 'DELETE' });
       setZones(prev => prev.filter(zone => zone.id !== zoneId));
       setFeedback('Zona eliminada');
@@ -313,8 +321,9 @@ export default function Admin({ data, session, onOperationUpdate, onRefresh }: {
     }
   }
 
-  async function deleteSchedule(scheduleId: number) {
-    try {
+async function deleteSchedule(scheduleId: number) {
+     if (!window.confirm('¿Estás seguro de eliminar este horario? Esta acción no se puede deshacer.')) return;
+     try {
       await request(`/schedules/${scheduleId}`, { method: 'DELETE' });
       setSchedules(prev => prev.filter(s => s.id !== scheduleId));
       setFeedback('Horario eliminado');
@@ -369,9 +378,10 @@ export default function Admin({ data, session, onOperationUpdate, onRefresh }: {
     }
   }
 
-  async function deleteTruck(truck: Truck) {
-    if (!truck.id) return;
-    setDeletingTruckIds(prev => prev.includes(truck.id!) ? prev : [...prev, truck.id!]);
+async function deleteTruck(truck: Truck) {
+     if (!truck.id) return;
+     if (!window.confirm(`¿Estás seguro de eliminar el camión ${truck.code} de ${truck.driver}? Esta acción no se puede deshacer.`)) return;
+     setDeletingTruckIds(prev => prev.includes(truck.id!) ? prev : [...prev, truck.id!]);
     try {
       await request(`/trucks/${truck.id}`, { method: 'DELETE' });
       setTrucks(prev => prev.filter(t => t.id !== truck.id));
@@ -395,7 +405,7 @@ export default function Admin({ data, session, onOperationUpdate, onRefresh }: {
       });
       setMaintenance(prev => [...prev, created]);
       setNewMaintenance({ truck_id: safeData.trucks[0]?.id ?? 0, description: '', status: 'Pendiente' });
-      setFeedback(`Mantenimiento creado para camión ${created.truck_id}`);
+      setFeedback(`Mantenimiento creado para camión ${truckNameById[created.truck_id] ?? `#${created.truck_id}`}`);
       await onRefresh?.();
     } catch (error) {
       setFeedback(error instanceof Error ? error.message : 'No se pudo crear el mantenimiento');
@@ -430,9 +440,10 @@ export default function Admin({ data, session, onOperationUpdate, onRefresh }: {
     }
   }
 
-  async function deleteMaintenance(item: MaintenanceRecord) {
-    if (!item.id) return;
-    setDeletingMaintenanceIds(prev => prev.includes(item.id!) ? prev : [...prev, item.id!]);
+async function deleteMaintenance(item: MaintenanceRecord) {
+     if (!item.id) return;
+     if (!window.confirm(`¿Estás seguro de eliminar el mantenimiento #${item.id}? Esta acción no se puede deshacer.`)) return;
+     setDeletingMaintenanceIds(prev => prev.includes(item.id!) ? prev : [...prev, item.id!]);
     try {
       await request(`/maintenance/${item.id}`, { method: 'DELETE' });
       setMaintenance(prev => prev.filter(m => m.id !== item.id));
@@ -771,7 +782,7 @@ export default function Admin({ data, session, onOperationUpdate, onRefresh }: {
                    <button type="button" onClick={() => { setEditingMaintenanceId(null); setEditingMaintenance({ truck_id: safeData.trucks[0]?.id ?? 0, description: '', status: 'Pendiente' }); }}>Cancelar</button>
                  </form>
                ) : (
-                 <Item title={`Mantenimiento #${item.id}`} detail={`${item.description} · ${item.status}`} color={item.status === 'Pendiente' ? 'yellow' : 'blue'} />
+                 <Item title={`Mantenimiento #${item.id}`} detail={`${truckNameById[item.truck_id] ?? `Camión #${item.truck_id}`} · ${item.description} · ${item.status}`} color={item.status === 'Pendiente' ? 'yellow' : 'blue'} />
                )}
                {editingMaintenanceId !== item.id && (
                  <div className="admin-list-actions">
