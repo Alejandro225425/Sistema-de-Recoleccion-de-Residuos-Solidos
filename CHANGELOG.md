@@ -20,8 +20,13 @@
 - Tests backend con DATABASE_URL (modo PostgreSQL): **26 passed** (21 existentes + 5 nuevos de persistencia).
 - Verificación manual contra PostgreSQL 17 local: `init_db()` crea las 11 tablas desde cero en una base vacía, login con todas las cuentas de demo funciona, y operaciones CRUD (crear, editar, eliminar, consultar) persisten correctamente. La cuenta creada sobrevive a un reinicio del backend.
 
+- **Frontend Waste - Dashboard de Clasificación**: reemplazado el contenido hardcodeado por datos del backend. Ahora integra `data`, `monitor` y `session` para mostrar información dinámica. Incluye guía de clasificación por zona, filtros por tipo y zona, búsqueda, estadísticas de residuos, estado de contenedores y mapa de puntos de clasificación. Se agrega la opción de reportar problemas de clasificación desde el dashboard.
+
 #### Archivos modificados
-- `render.yaml` — provisionamiento automático de PostgreSQL 16 + `DATABASE_URL` via `fromDatabase`
+- `frontend/src/main.tsx` — Componente `Waste` reemplazado con dashboard completo integrado al estado de la aplicación
+- `frontend/src/styles.css` — Estilos para el nuevo dashboard de clasificación
+- `frontend/index.html` — Loading screen y theme-color actualizados a modo claro
+- `CHANGELOG.md`, `VERSION.md` — Documentación actualizada
 - `Dockerfile` — `COPY database/ ./database/`
 - `backend-python/app/main.py` — `init_db()`, `lifespan`, `execute_one()` fix, `/api/health` con `connected`, logging, versión 5.5.3
 - `backend-python/tests/test_database_persistence.py` — tests de integración de persistencia (nuevo)

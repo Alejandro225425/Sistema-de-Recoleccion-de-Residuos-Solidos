@@ -420,7 +420,7 @@ export function App() {
 }
 
 function Content(props: { data: Bootstrap; monitor: Monitor; session: Session; view: View; onCreateReport: (report: Omit<Report, "id" | "status">) => Promise<void>; onResolveReport: (id: number) => Promise<void>; onOperationUpdate: (payload: OperationUpdatePayload) => Promise<void>; onCreateCollection: (payload: { truck_id: number; zone_id: number; kg: number }) => Promise<void>; onConfirmCollection: (collectionId: number) => Promise<void>; }) {
-  const { data, monitor, session, view, onOperationUpdate, onResolveReport, onCreateCollection, onConfirmCollection } = props;
+  const { data, monitor, session, view, onCreateReport, onOperationUpdate, onResolveReport, onCreateCollection, onConfirmCollection } = props;
   const safeData = data ?? emptyBootstrap;
   if (view === "dashboard") return <Dashboard data={safeData} monitor={monitor} session={session} onConfirmCollection={onConfirmCollection} />;
   if (view === "admin") return (
@@ -430,7 +430,7 @@ function Content(props: { data: Bootstrap; monitor: Monitor; session: Session; v
   );
   if (view === "schedules") return <Schedules schedules={Array.isArray(data?.schedules) ? data.schedules : []} citizenZone={session?.zone} />;
   if (view === "reports") return <Reports {...props} data={safeData} />;
-  if (view === "waste") return <Waste />;
+  if (view === "waste") return <Waste data={safeData} monitor={monitor} session={session} onCreateReport={onCreateReport} />;
   if (view === "routes") return <Routes data={safeData} monitor={monitor} session={session} onCreateCollection={onCreateCollection} />;
   return <Analytics data={safeData} session={session} onConfirmCollection={onConfirmCollection} />;
 }
@@ -1097,41 +1097,231 @@ export function Reports({ data, session, onCreateReport, onResolveReport }: { da
   );
 }
 
-function Waste() {
+export function Waste({ data, monitor, session, onCreateReport }: { data: Bootstrap; monitor: Monitor; session?: Session | null; onCreateReport?: (report: Omit<Report, "id" | "status">) => Promise<void>; }) {
+  const safeData = data ?? emptyBootstrap;
+  const safeSchedules = useMemo(() => (Array.isArray(safeData.schedules) ? safeData.schedules : []), [safeData.schedules]);
+  const safeContainers = useMemo(() => (Array.isArray(monitor.containers) ? monitor.containers : Array.isArray(safeData.containers) ? safeData.containers : []), [monitor.containers, safeData.containers]);
+  const safeZones = useMemo(() => (Array.isArray(safeData.zones) ? safeData.zones : []), [safeData.zones]);
+  const isCitizen = session?.role === "ciudadano";
+  const isOperator = session?.role === "operador" || session?.role === "admin";
+  const citizenZone = session?.zone ?? "";
+
+  const [searchQuery, setSearchQuery] = useState("");
+  const [filterWaste, setFilterWaste] = useState("Todos");
+  const [filterZone, setFilterZone] = useState("Todos");
+  const [reportingProblem, setReportingProblem] = useState(false);
+  const [problemZone, setProblemZone] = useState("");
+  const [problemDetail, setProblemDetail] = useState("");
+  const [problemSubmitting, setProblemSubmitting] = useState(false);
+  const [problemMessage, setProblemMessage] = useState("");
+
+  const wasteTypes = useMemo(() => {
+    const types = new Set<string>();
+    safeSchedules.forEach(s => {
+      s.waste.split(/[,\s]+/).forEach(t => {
+        const trimmed = t.trim();
+        if (trimmed) types.add(trimmed);
+      });
+    });
+    return ["Todos", ...Array.from(types).sort()];
+  }, [safeSchedules]);
+
+  const zones = useMemo(() => {
+    const zoneSet = new Set<string>();
+    safeSchedules.forEach(s => zoneSet.add(s.zone));
+    return ["Todos", ...Array.from(zoneSet).sort()];
+  }, [safeSchedules]);
+
+  const filteredSchedules = useMemo(() => {
+    return safeSchedules.filter(s => {
+      const matchWaste = filterWaste === "Todos" || s.waste.toLowerCase().includes(filterWaste.toLowerCase());
+      const matchZone = filterZone === "Todos" || s.zone.toLowerCase() === filterZone.toLowerCase();
+      const matchSearch = searchQuery.trim() === "" || s.zone.toLowerCase().includes(searchQuery.trim().toLowerCase()) || s.waste.toLowerCase().includes(searchQuery.trim().toLowerCase());
+      return matchWaste && matchZone && matchSearch;
+    });
+  }, [safeSchedules, filterWaste, filterZone, searchQuery]);
+
+  const wasteStats = useMemo(() => {
+    const stats: Record<string, { count: number; zones: string[] }> = {};
+    safeSchedules.forEach(s => {
+      s.waste.split(/[,\s]+/).forEach(t => {
+        const trimmed = t.trim();
+        if (!trimmed) return;
+        if (!stats[trimmed]) stats[trimmed] = { count: 0, zones: [] };
+        stats[trimmed].count++;
+        if (!stats[trimmed].zones.includes(s.zone)) stats[trimmed].zones.push(s.zone);
+      });
+    });
+    return stats;
+  }, [safeSchedules]);
+
+  const containerStats = useMemo(() => {
+    const total = safeContainers.length;
+    const full = safeContainers.filter(c => String(c.status).toLowerCase() === "lleno").length;
+    const avgFill = total > 0 ? Math.round(safeContainers.reduce((sum, c) => sum + (Number(c.fill_level) || 0), 0) / total) : 0;
+    return { total, full, avgFill };
+  }, [safeContainers]);
+
+  const citizenSchedules = useMemo(() => {
+    if (!isCitizen || !citizenZone) return safeSchedules;
+    return safeSchedules.filter(s => s.zone.toLowerCase() === citizenZone.toLowerCase());
+  }, [isCitizen, citizenZone, safeSchedules]);
+
+  const displaySchedules = isCitizen ? citizenSchedules : filteredSchedules;
+
+  async function submitProblem(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!onCreateReport || !problemZone || !problemDetail.trim()) {
+      setProblemMessage("Completa la zona y el detalle del problema.");
+      return;
+    }
+    setProblemSubmitting(true);
+    setProblemMessage("");
+    try {
+      await onCreateReport({
+        citizen: session?.name ?? "Operador",
+        zone: problemZone,
+        type: "Clasificacion",
+        detail: problemDetail.trim()
+      });
+      setProblemMessage("Problema de clasificacion reportado correctamente.");
+      setProblemZone("");
+      setProblemDetail("");
+      setReportingProblem(false);
+    } catch (error) {
+      setProblemMessage("No se pudo reportar el problema. Intentalo de nuevo.");
+    } finally {
+      setProblemSubmitting(false);
+    }
+  }
+
+  function getWasteTag(waste: string): string {
+    const lower = waste.toLowerCase();
+    if (lower.includes("organico")) return "green";
+    if (lower.includes("no reciclable")) return "red";
+    if (lower.includes("reciclable")) return "blue";
+    if (lower.includes("mixto")) return "yellow";
+    return "";
+  }
+
   return (
-    <div className="grid waste-grid">
-      <article className="card organic">
-        <h2>Organicos</h2>
-        <p>Restos de comida, cascaras, hojas y residuos biodegradables.</p>
-        <span className="tag">Compostaje</span>
-        <ul className="waste-tips">
-          <li>Restos de frutas y verduras</li>
-          <li>Cascaras de huevo trituradas</li>
-          <li>Hojas secas y ramas pequenas</li>
-        </ul>
-      </article>
-      <article className="card recycle">
-        <h2>Reciclables</h2>
-        <p>Papel, carton, plastico limpio, vidrio y metales separados.</p>
-        <span className="tag blue">Reciclaje</span>
-        <ul className="waste-tips">
-          <li>Papel y carton limpios</li>
-          <li>Botellas de plastico enjuagadas</li>
-          <li>Vidrio transparente y de color</li>
-          <li>Latas y envases metalicos</li>
-        </ul>
-      </article>
-      <article className="card reject">
-        <h2>No reciclables</h2>
-        <p>Papel higienico, tecnopor contaminado, colillas y residuos sanitarios.</p>
-        <span className="tag red">Disposicion final</span>
-        <ul className="waste-tips">
-          <li>Papel higienico y toallas usadas</li>
-          <li>Tecnopor contaminado con comida</li>
-          <li>Colillas de cigarro</li>
-          <li>Residuos sanitarios y medicamentos</li>
-        </ul>
-      </article>
+    <div className="waste-dashboard">
+      <div className="metrics-grid">
+        <Metric value={`${safeSchedules.length}`} label="Zonas con clasificacion" />
+        <Metric value={`${containerStats.total}`} label="Contenedores monitoreados" />
+        <Metric value={`${containerStats.full}`} label="Contenedores llenos" />
+        <Metric value={`${containerStats.avgFill}%`} label="Llenado promedio" />
+        <Metric value={`${Object.keys(wasteStats).length}`} label="Tipos de residuo" />
+      </div>
+
+      <div className="dashboard-sections">
+        <section className="panel">
+          <div className="panel-header">
+            <h2>Guia de clasificacion por zona</h2>
+            {isOperator && (
+              <button type="button" className="export-btn" onClick={() => setReportingProblem(true)}>
+                Reportar problema de clasificacion
+              </button>
+            )}
+          </div>
+
+          {reportingProblem && (
+            <div className="panel" style={{ marginBottom: 16, padding: 16 }}>
+              <h3>Reportar problema de clasificacion</h3>
+              <form className="form-grid" onSubmit={submitProblem}>
+                <label htmlFor="problem-zone">Zona
+                  <select id="problem-zone" value={problemZone} onChange={e => setProblemZone(e.target.value)}>
+                    <option value="">Seleccionar zona</option>
+                    {safeZones.map(z => <option key={z.id} value={z.name}>{z.name}</option>)}
+                  </select>
+                </label>
+                <label htmlFor="problem-detail">Descripcion del problema
+                  <textarea id="problem-detail" value={problemDetail} onChange={e => setProblemDetail(e.target.value)} placeholder="Describe el problema de clasificacion encontrado" minLength={8} maxLength={600} />
+                </label>
+                {problemMessage && <p className={`hint ${problemMessage.includes("correctamente") ? "success" : "error"}`} role="alert">{problemMessage}</p>}
+                <div className="form-actions">
+                  <button type="submit" disabled={problemSubmitting}>{problemSubmitting ? "Enviando..." : "Enviar reporte"}</button>
+                  <button type="button" className="btn-secondary" onClick={() => { setReportingProblem(false); setProblemMessage(""); }}>Cancelar</button>
+                </div>
+              </form>
+            </div>
+          )}
+
+          <div className="search-box">
+            <span className="search-icon">🔍</span>
+            <input type="text" placeholder="Buscar zona o tipo de residuo..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} aria-label="Buscar clasificacion" />
+          </div>
+
+          <div className="filter-bar">
+            <select value={filterWaste} onChange={e => setFilterWaste(e.target.value)} aria-label="Filtrar por tipo de residuo" style={{ width: "auto", minWidth: 160 }}>
+              {wasteTypes.map(t => <option key={t} value={t}>{t}</option>)}
+            </select>
+            <select value={filterZone} onChange={e => setFilterZone(e.target.value)} aria-label="Filtrar por zona" style={{ width: "auto", minWidth: 160 }}>
+              {zones.map(z => <option key={z} value={z}>{z}</option>)}
+            </select>
+          </div>
+
+          {displaySchedules.length === 0 ? (
+            <p className="empty-state">No hay horarios de clasificacion que coincidan con los filtros.</p>
+          ) : (
+            <div className="list">
+              {displaySchedules.map(schedule => (
+                <article className="item" key={schedule.id}>
+                  <div className="item-row">
+                    <strong>{schedule.zone}</strong>
+                    <span className={`tag ${getWasteTag(schedule.waste)}`}>{schedule.waste}</span>
+                  </div>
+                  <span>{schedule.day} · {schedule.time}</span>
+                  <p>Tipo de residuo: {schedule.waste}</p>
+                </article>
+              ))}
+            </div>
+          )}
+        </section>
+
+        <section className="panel">
+          <h2>Estadisticas de residuos</h2>
+          <div className="list">
+            {Object.entries(wasteStats).map(([type, stat]) => (
+              <div className="item" key={type}>
+                <div className="item-row">
+                  <strong>{type}</strong>
+                  <span className={`tag ${getWasteTag(type)}`}>{stat.count} zona{stat.count !== 1 ? "s" : ""}</span>
+                </div>
+                <span>Zonas: {stat.zones.join(", ")}</span>
+              </div>
+            ))}
+            {Object.keys(wasteStats).length === 0 && (
+              <p className="empty-state">No hay datos de clasificacion disponibles.</p>
+            )}
+          </div>
+        </section>
+
+        <section className="panel">
+          <h2>Estado de contenedores</h2>
+          <div className="list">
+            {safeContainers.length === 0 ? (
+              <p className="empty-state">No hay contenedores monitoreados.</p>
+            ) : (
+              safeContainers.map(container => (
+                <article className="item" key={container.id}>
+                  <div className="item-row">
+                    <strong>{container.name}</strong>
+                    <span className={`tag ${String(container.status).toLowerCase() === "lleno" ? "red" : "blue"}`}>{container.status}</span>
+                  </div>
+                  <span>Zona ID: {container.zone_id} · {container.fill_level}% lleno</span>
+                  <p>Actualizado: {container.updated_at ? new Date(container.updated_at).toLocaleString("es-PE") : "Sin fecha"}</p>
+                </article>
+              ))
+            )}
+          </div>
+        </section>
+
+        <section className="panel">
+          <h2>Mapa de puntos de clasificacion</h2>
+          <Map zones={safeZones} trucks={safeData.trucks ?? []} routes={safeData.routes ?? []} prioritizedZones={safeData.prioritized_zones ?? []} />
+        </section>
+      </div>
     </div>
   );
 }

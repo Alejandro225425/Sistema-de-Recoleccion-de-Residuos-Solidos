@@ -251,7 +251,7 @@ def cors_origin_regex() -> Optional[str]:
     return r"https://.*\.vercel\.app|https://.*\.vercel\.sh|http://localhost:5173|http://127\.0\.0\.1:5173"
 
 
-app = FastAPI(title="SIR Cusco API", version="5.5.3")
+app = FastAPI(title="SIR Cusco API", version="5.5.4")
 
 app.add_middleware(
     CORSMiddleware,
@@ -1178,7 +1178,7 @@ def get_current_user_optional(authorization: str | None = Header(default=None)) 
 def root() -> dict[str, Any]:
     return {
         "service": "SIR Cusco API",
-        "version": "5.5.3",
+        "version": "5.5.4",
         "status": "ok",
         "endpoints": {
             "health": "/api/health",
@@ -1200,7 +1200,7 @@ def health() -> dict[str, Any]:
         "status": "ok" if DB_CONNECTED or db_status == "memory" else "degraded",
         "database": db_status,
         "connected": DB_CONNECTED,
-        "version": "5.5.3",
+        "version": "5.5.4",
         "mode": "production" if DB_CONNECTED else "demo",
     }
 

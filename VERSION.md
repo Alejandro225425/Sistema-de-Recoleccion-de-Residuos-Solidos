@@ -1,6 +1,30 @@
-# Sistema de Recolección de Residuos Sólidos - Versión 5.5.3
+# Sistema de Recolección de Residuos Sólidos - Versión 5.5.4
 
-## Versión 5.5.3 - Corrección de persistencia de datos en producción
+## Versión 5.5.4 - Dashboard de Clasificación de Residuos mejorado
+
+### Cambios destacados
+- **Dashboard de Clasificación (Waste)** completamente reemplazado y mejorado:
+  - Contenido hardcodeado reemplazado por datos dinámicos del backend (schedules, containers, zones).
+  - Integración total con el estado de la aplicación (`data`, `monitor`, `session`).
+  - Guía de clasificación por zona con horarios y tipos de residuo.
+  - Filtros por tipo de residuo y zona.
+  - Búsqueda global de zonas y tipos de residuo.
+  - Estadísticas dinámicas: contenedores monitoreados, llenado promedio, tipos de residuo, zonas con clasificación.
+  - Mapa de puntos de clasificación/recolección integrado con OpenStreetMap.
+  - Opción de reportar problemas de clasificación (visible solo para operador y admin).
+  - Adaptación por rol: ciudadano ve solo su zona, operador y admin ven toda la información.
+- **Eliminación completa del modo oscuro**: la interfaz utiliza exclusivamente modo claro.
+  - Se eliminaron el hook `isDarkMode`, el `localStorage` de preferencia de tema y el botón de alternancia.
+  - Se eliminaron los selectores CSS `html[data-theme="dark"]`, `html[data-theme="light"]` y `@media (prefers-color-scheme: dark)`.
+  - Se eliminaron las variables CSS `--bg-dark`, `--panel-dark`, `--accent-dark`.
+  - Se actualizó `color-scheme` a `light` únicamente.
+  - Loading screen y theme-color actualizados a colores del proyecto.
+
+### Archivos modificados
+- `frontend/src/main.tsx` — Componente `Waste` reemplazado con dashboard completo; eliminación de modo oscuro de `App`
+- `frontend/src/styles.css` — Estilos para el nuevo dashboard de clasificación; eliminación de estilos de modo oscuro
+- `frontend/index.html` — Loading screen y theme-color actualizados a modo claro
+- `CHANGELOG.md`, `VERSION.md` — Documentación actualizada
 
 ### Causa raíz
 Las cuentas y datos creados no se guardaban permanentemente porque el backend en producción (Render) no tenía configurada la base de datos PostgreSQL (`DATABASE_URL` era `sync: false` / opcional en `render.yaml` y no se provisionaba ninguna base de datos), por lo que el backend arrancaba en **modo memoria (in-memory)** y perdía todos los datos en cada reinicio o cambio de proceso.
