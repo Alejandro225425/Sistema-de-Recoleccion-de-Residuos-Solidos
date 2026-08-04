@@ -695,6 +695,7 @@ textarea { min-height: 100px; resize: vertical; font-family: inherit; }
 .tag.red { background: var(--error); }
 .tag.yellow { background: var(--warning); }
 .tag.blue { background: var(--info); }
+.tag.green { background: #22c55e; color: #fff; }
 
 .actions { display: flex; gap: 10px; flex-wrap: wrap; }
 .form-grid { display: grid; grid-template-columns: repeat(2, minmax(170px, 1fr)); gap: 14px; }
