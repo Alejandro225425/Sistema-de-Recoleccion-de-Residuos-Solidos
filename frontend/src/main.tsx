@@ -544,26 +544,25 @@ export function Dashboard({ data, monitor, session, onConfirmCollection }: { dat
     });
 
     const activeSchedules = (effectiveData.schedules ?? []).slice(0, 3);
-    const fallbackSchedule = [
-      { hour: "08:00", zone: "Centro Historico", truck: "C-02", action: "Despacho inicial" },
-      { hour: "09:00", zone: "Wanchaq", truck: "C-01", action: "Revisión de contenedores" },
-      { hour: "10:00", zone: "Santiago", truck: "C-03", action: "Atención de reporte" },
-    ];
-
-    const dispatchData = activeSchedules.length > 0
+    const scheduleBased = activeSchedules.length > 0
       ? activeSchedules.map((s, index) => ({
-          hour: s.time.split(" - ")[0] ?? fallbackSchedule[index].hour,
+          hour: (s.time || "").split(" - ")[0] ?? `${String(8 + index).padStart(2, "0")}:00`,
           zone: s.zone,
-          truck: routes[index]?.truck ?? fallbackSchedule[index].truck,
+          truck: routes[index]?.truck ?? effectiveData.trucks[index]?.code ?? `C-${index + 1}`,
           action: `Recolección: ${s.waste}`,
         }))
-      : fallbackSchedule;
+      : (effectiveData.zones ?? []).slice(0, 3).map((zone, index) => ({
+          hour: `${String(8 + index).padStart(2, "0")}:00`,
+          zone: zone.name,
+          truck: effectiveData.trucks[index]?.code ?? `C-${index + 1}`,
+          action: "Despacho inicial",
+        }));
 
-    return dispatchData.map((step, index) => ({
+    return scheduleBased.map((step, index) => ({
       ...step,
       status: index === tick % 3 ? "En curso" : index < tick % 3 ? "Completado" : "Programado"
     }));
-  }, [monitor.truck_assignments, effectiveData.prioritized_zones, effectiveData.optimized_routes, effectiveData.routes, tick, isCitizen]);
+  }, [monitor.truck_assignments, effectiveData.prioritized_zones, effectiveData.optimized_routes, effectiveData.routes, effectiveData.schedules, effectiveData.zones, effectiveData.trucks, tick, isCitizen]);
 
   const alerts = useMemo(() => isCitizen ? [] : (monitor.alerts ?? []).map((alert, index) => ({
     id: index,
@@ -1058,8 +1057,12 @@ export function Reports({ data, session, onCreateReport, onResolveReport }: { da
 
     const normalizedQuery = searchQuery.trim().toLowerCase();
     return roleFilteredReports.filter(report => {
-      if (filterStatus !== "Todos" && report.status !== filterStatus) {
-        return false;
+      if (filterStatus !== "Todos") {
+        const reportStatus = String(report.status ?? "").toLowerCase().replace(/\s+/g, " ");
+        const normalizedFilter = filterStatus.trim().toLowerCase().replace(/\s+/g, " ");
+        if (reportStatus !== normalizedFilter) {
+          return false;
+        }
       }
       if (!normalizedQuery) {
         return true;
@@ -1135,6 +1138,7 @@ export function Waste({ data, monitor, session, onCreateReport }: { data: Bootst
   const safeZones = useMemo(() => (Array.isArray(safeData.zones) ? safeData.zones : []), [safeData.zones]);
   const isCitizen = session?.role === "ciudadano";
   const isOperator = session?.role === "operador" || session?.role === "admin";
+  const canReportProblem = isCitizen || isOperator;
   const citizenZone = session?.zone ?? "";
 
   const [searchQuery, setSearchQuery] = useState("");
@@ -1253,11 +1257,11 @@ export function Waste({ data, monitor, session, onCreateReport }: { data: Bootst
         <section className="panel">
           <div className="panel-header">
             <h2>Guia de clasificacion por zona</h2>
-            {isOperator && (
-              <button type="button" className="export-btn" onClick={() => setReportingProblem(true)}>
-                Reportar problema de clasificacion
-              </button>
-            )}
+          {canReportProblem && (
+            <button type="button" className="export-btn" onClick={() => setReportingProblem(true)}>
+              Reportar problema de clasificacion
+            </button>
+          )}
           </div>
 
           {reportingProblem && (
