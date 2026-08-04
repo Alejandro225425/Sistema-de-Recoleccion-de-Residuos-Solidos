@@ -1,12 +1,14 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 """
 Sistema de verificación pre-ejecución para SIR Cusco.
 Verifica que todos los requisitos estén instalados y configurados.
 """
-
 import sys
 import subprocess
+import codecs
 from pathlib import Path
+sys.stdout = codecs.getwriter("utf-8")(sys.stdout.buffer)
 
 
 def check_python_version():
