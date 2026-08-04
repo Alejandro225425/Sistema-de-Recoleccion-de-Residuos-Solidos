@@ -2,6 +2,25 @@
 
 ## 2026-08-04
 
+### Version 5.5.7 - Auditoría integral de dashboards del rol Administrador y correcciones de seguridad
+
+- **Seguridad backend - POST /api/reports**: se restringió la creación de reportes al rol `ciudadano` exclusivamente. Los roles `operador` y `admin` ahora reciben `403 Forbidden` al intentar registrar incidencias, alineando la creación de reportes con la función de cada rol (ciudadanos reportan, operadores/admin resuelven).
+- **Frontend Reports**: se ocultó el formulario de creación de reportes para `operador` y `admin`. Ahora muestran un mensaje informativo indicando que solo los ciudadanos pueden registrar incidencias, y que operadores/administradores pueden resolverlas desde la lista de seguimiento.
+- **Frontend Dashboard**: se agregaron métricas específicas para admin (usuarios registrados, zonas activas, camiones en mantenimiento) y una sección "Estado del sistema" con información de salud del sistema (modo BD, usuarios, zonas, camiones, reportes abiertos, rutas con retraso, contenedores críticos).
+- **Frontend Routes**: se amplió el formulario de registro de recolecciones para incluir el rol `admin` (antes solo `conductor` y `operador`).
+- **Frontend Analytics**: se agregaron métricas adicionales para admin (total de usuarios, zonas activas, camiones en mantenimiento).
+- **Frontend Waste**: se amplió `canReportProblem` para incluir `operador` y `admin` (antes solo `ciudadano`), permitiendo que cualquier rol reporte problemas de clasificación.
+- **Frontend statusTone**: se corrigió para distinguir "Pendiente" con tono rojo, "En revisión" con amarillo, "Resuelto" con azul y "Parcial" con amarillo.
+- **Frontend Reports**: se corrigió `canCreateReport` para que solo sea `true` para el rol `ciudadano` (antes incluía `operador` y `admin`).
+- **Compilación**: `tsc --noEmit` sin errores, `npm run build` frontend exitoso.
+- **Tests**: 21/21 tests de frontend pasan, 21/21 tests de backend pasan.
+
+### Archivos modificados
+- `backend-python/app/main.py` — Restringir POST /api/reports a rol ciudadano
+- `frontend/src/main.tsx` — Métricas admin Dashboard, salud del sistema, Routes collection admin, Analytics admin metrics, Waste canReportProblem, Reports canCreateReport, statusTone fix
+
+## 2026-08-04
+
 ### Version 5.5.6 - Corrección de bugs y mejora de estabilidad en dashboard de administración
 
 - **Backend - create_report**: se revirtió el bloqueo de roles `admin`/`operador` en la creación de reportes. Ahora permiten crear reportes (incidencias/observaciones municipales); la restricción de zona aplica solo a ciudadanos.

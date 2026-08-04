@@ -1620,14 +1620,15 @@ def get_reports(current_user: dict[str, Any] = Depends(require_current_user)) ->
 @app.post("/api/reports")
 def create_report(payload: ReportCreate, current_user: dict[str, Any] = Depends(require_current_user)) -> dict[str, Any]:
     role = normalize_role(str(current_user.get("role", "ciudadano")))
-    if role == "ciudadano":
-        citizen_zone = str(current_user.get("zone", "")).strip().lower()
-        report_zone = str(payload.zone).strip().lower()
-        if citizen_zone and report_zone and citizen_zone != report_zone:
-            zones = [z.get("name", "").lower() for z in bootstrap().get("zones", [])]
-            if report_zone not in zones:
-                raise HTTPException(status_code=400, detail="La zona seleccionada no existe")
-            raise HTTPException(status_code=403, detail="Solo puedes reportar incidencias en tu zona asignada")
+    if role != "ciudadano":
+        raise HTTPException(status_code=403, detail="Solo ciudadanos pueden registrar incidencias")
+    citizen_zone = str(current_user.get("zone", "")).strip().lower()
+    report_zone = str(payload.zone).strip().lower()
+    if citizen_zone and report_zone and citizen_zone != report_zone:
+        zones = [z.get("name", "").lower() for z in bootstrap().get("zones", [])]
+        if report_zone not in zones:
+            raise HTTPException(status_code=400, detail="La zona seleccionada no existe")
+        raise HTTPException(status_code=403, detail="Solo puedes reportar incidencias en tu zona asignada")
     try:
         report = execute_one(
             "insert into reports (citizen, zone, type, detail, status) values (%s, %s, %s, %s, 'Pendiente') returning id, citizen, zone, type, detail, status",

@@ -1,4 +1,21 @@
-# Sistema de Recolección de Residuos Sólidos - Versión 5.5.6
+# Sistema de Recolección de Residuos Sólidos - Versión 5.5.7
+
+## Versión 5.5.7 - Auditoría integral de dashboards del rol Administrador y correcciones de seguridad
+
+### Cambios destacados
+- **Seguridad backend - POST /api/reports**: se restringió la creación de reportes al rol `ciudadano` exclusivamente. Los roles `operador` y `admin` ahora reciben `403 Forbidden` al intentar registrar incidencias.
+- **Frontend Reports**: se ocultó el formulario de creación de reportes para `operador` y `admin`. Ahora muestran un mensaje informativo.
+- **Frontend Dashboard**: se agregaron métricas específicas para admin y una sección "Estado del sistema" con información de salud del sistema.
+- **Frontend Routes**: se amplió el formulario de registro de recolecciones para incluir el rol `admin`.
+- **Frontend Analytics**: se agregaron métricas adicionales para admin (total de usuarios, zonas activas, camiones en mantenimiento).
+- **Frontend Waste**: se amplió `canReportProblem` para incluir `operador` y `admin`.
+- **Frontend statusTone**: se corrigió para distinguir "Pendiente" con tono rojo.
+- **Compilación**: `tsc --noEmit` sin errores, `npm run build` exitoso.
+- **Tests**: 21/21 frontend, 21/21 backend.
+
+### Archivos modificados
+- `backend-python/app/main.py` — Restringir POST /api/reports a rol ciudadano
+- `frontend/src/main.tsx` — Métricas admin Dashboard, salud del sistema, Routes collection admin, Analytics admin metrics, Waste canReportProblem, Reports canCreateReport, statusTone fix
 
 ## Versión 5.5.6 - Corrección de bugs y mejora de estabilidad en dashboard de administración
 

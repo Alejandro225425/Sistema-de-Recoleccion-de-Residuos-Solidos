@@ -1074,7 +1074,7 @@ export function Reports({ data, session, onCreateReport, onResolveReport }: { da
   const isOperator = session.role === "operador";
   const isAdmin = session.role === "admin";
   const canResolve = isOperator || isAdmin;
-  const canCreateReport = isCitizen || isOperator || isAdmin;
+  const canCreateReport = isCitizen;
   const isForeignZone = isCitizen && formZone && session.zone && String(formZone).trim().toLowerCase() !== String(session.zone).trim().toLowerCase();
 
   const reportTypes = useMemo(() => {
