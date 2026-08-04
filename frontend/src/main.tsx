@@ -2,6 +2,7 @@ import React, { FormEvent, useCallback, useEffect, useMemo, useRef, useState } f
 import { createRoot } from "react-dom/client";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line, Legend } from "recharts";
 import iconRetinaUrl from "leaflet/dist/images/marker-icon-2x.png";
 import iconUrl from "leaflet/dist/images/marker-icon.png";
 import shadowUrl from "leaflet/dist/images/marker-shadow.png";
@@ -1083,17 +1084,18 @@ export function Dashboard({ data, monitor, session, onConfirmCollection, health,
 
 function Schedules({ schedules, citizenZone }: { schedules: Schedule[]; citizenZone?: string }) {
   const [search, setSearch] = useState("");
-  const [selectedDay, setSelectedDay] = useState("Todos");
+  const [selectedDays, setSelectedDays] = useState<string[]>(["Todos"]);
   const [sortBy, setSortBy] = useState<"zone" | "day" | "time" | "waste">("zone");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
+  const [countdown, setCountdown] = useState<string>("");
 
   const filtered = useMemo(() => {
     return schedules.filter(s => {
       const matchSearch = String(s.zone ?? "").toLowerCase().includes(String(search ?? "").toLowerCase());
-      const matchDay = selectedDay === "Todos" || s.day.toLowerCase().includes(selectedDay.toLowerCase());
+      const matchDay = selectedDays.includes("Todos") || selectedDays.some(d => s.day.toLowerCase().includes(d.toLowerCase()));
       return matchSearch && matchDay;
     });
-  }, [schedules, search, selectedDay]);
+  }, [schedules, search, selectedDays]);
 
   const sorted = useMemo(() => {
     return [...filtered].sort((a, b) => {
@@ -1103,6 +1105,32 @@ function Schedules({ schedules, citizenZone }: { schedules: Schedule[]; citizenZ
       return sortDir === "asc" ? cmp : -cmp;
     });
   }, [filtered, sortBy, sortDir]);
+
+  useEffect(() => {
+    const computeCountdown = () => {
+      if (!citizenZone) { setCountdown(""); return; }
+      const zone = String(citizenZone).toLowerCase();
+      const now = new Date();
+      const dayNames = ["domingo", "lunes", "martes", "miércoles", "jueves", "viernes", "sábado"];
+      const today = dayNames[now.getDay()];
+      const matching = schedules.filter(s =>
+        String(s.zone ?? "").toLowerCase() === zone && s.day.toLowerCase().includes(today)
+      );
+      if (matching.length === 0) { setCountdown(""); return; }
+      const [hours, minutes] = matching[0].time.split(":").map(Number);
+      const target = new Date(now);
+      target.setHours(hours, minutes, 0, 0);
+      if (target <= now) target.setDate(target.getDate() + 1);
+      const diff = target.getTime() - now.getTime();
+      const h = Math.floor(diff / 3600000);
+      const m = Math.floor((diff % 3600000) / 60000);
+      const s = Math.floor((diff % 60000) / 1000);
+      setCountdown(`${h}h ${m}m ${s}s`);
+    };
+    computeCountdown();
+    const interval = window.setInterval(computeCountdown, 1000);
+    return () => window.clearInterval(interval);
+  }, [schedules, citizenZone]);
 
   const days = useMemo(() => ["Todos", ...new Set(schedules.map(s => s.day))], [schedules]);
 
@@ -1130,6 +1158,7 @@ function Schedules({ schedules, citizenZone }: { schedules: Schedule[]; citizenZ
           <span className="citizen-schedule-icon">📅</span>
           <div className="citizen-schedule-content">
             <strong>Recolecciones en tu zona</strong>
+            {countdown && <p className="countdown">⏰ Próxima recolección en: {countdown}</p>}
             {citizenSchedules.map(s => (
               <p key={s.id}>{s.day} · {s.time} · {s.waste}</p>
             ))}
@@ -1159,18 +1188,27 @@ function Schedules({ schedules, citizenZone }: { schedules: Schedule[]; citizenZ
         />
       </div>
 
-      <div className="filter-bar">
-        {days.map(day => (
-          <button
-            key={day}
-            className={`filter-btn ${selectedDay === day ? "active" : ""}`}
-            onClick={() => setSelectedDay(day)}
-            aria-pressed={selectedDay === day}
-          >
-            {day}
-          </button>
-        ))}
-      </div>
+<div className="filter-bar">
+         {days.map(day => (
+           <button
+             key={day}
+             className={`filter-btn ${selectedDays.includes(day) ? "active" : ""}`}
+             onClick={() => {
+               if (day === "Todos") {
+                 setSelectedDays(["Todos"]);
+               } else {
+                 setSelectedDays(prev => {
+                   const next = prev.filter(d => d !== "Todos");
+                   return next.includes(day) ? next.filter(d => d !== day) : [...next, day];
+                 });
+               }
+             }}
+             aria-pressed={selectedDays.includes(day)}
+           >
+             {day}
+           </button>
+         ))}
+       </div>
 
       <div className="list" role="list" aria-label="Lista de horarios">
         {sorted.length === 0 ? (
@@ -1199,6 +1237,10 @@ export function Reports({ data, session, onCreateReport, onResolveReport }: { da
   const [filterStatus, setFilterStatus] = useState("Todos");
   const [searchQuery, setSearchQuery] = useState("");
   const [formError, setFormError] = useState("");
+  const [selectedReport, setSelectedReport] = useState<Report | null>(null);
+  const [showDetail, setShowDetail] = useState(false);
+  const [priority, setPriority] = useState("Media");
+  const [assignedTruck, setAssignedTruck] = useState<number | "">("");
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -1208,15 +1250,28 @@ export function Reports({ data, session, onCreateReport, onResolveReport }: { da
       return;
     }
 
-    setSubmitting(true);
-    setFormError("");
-    try {
-      await onCreateReport({
-        citizen: session.name,
-        zone: formZone,
-        type: formType,
-        detail: trimmedDetail
-      });
+setSubmitting(true);
+      setFormError("");
+      const isDuplicate = safeReports.some(r =>
+        String(r.citizen ?? "").toLowerCase() === String(session.name ?? "").toLowerCase() &&
+        String(r.zone ?? "").toLowerCase() === String(formZone).toLowerCase() &&
+        String(r.type ?? "").toLowerCase() === String(formType).toLowerCase() &&
+        !String(r.status ?? "").toLowerCase().includes("resuelto")
+      );
+      if (isDuplicate) {
+        setFormError("Ya existe un reporte similar pendiente o en revisión para esta zona y tipo. Verifica antes de enviar otro.");
+        setSubmitting(false);
+        return;
+      }
+      try {
+        await onCreateReport({
+          citizen: session.name,
+          zone: formZone,
+          type: formType,
+          detail: trimmedDetail,
+          priority,
+          assigned_truck: assignedTruck !== "" ? assignedTruck : undefined
+        } as Omit<Report, "id" | "status">);
       setFormZone(String(session.zone ?? "").trim());
       setFormType("");
       setFormDetail("");
@@ -1300,10 +1355,22 @@ export function Reports({ data, session, onCreateReport, onResolveReport }: { da
                <option value="">Seleccionar tipo</option>
                {reportTypes.map(t => <option key={t} value={t}>{t}</option>)}
              </select>
-             <label className="wide" htmlFor="report-detail">Detalle</label>
-             <textarea id="report-detail" name="detail" required minLength={8} maxLength={600} placeholder="Describe el problema encontrado" value={formDetail} onChange={e => setFormDetail(e.target.value)} />
-             {formError && <p className="hint error wide" role="alert">{formError}</p>}
-             <button type="submit" disabled={submitting}>{submitting ? "Enviando..." : "Enviar reporte"}</button>
+<label className="wide" htmlFor="report-detail">Detalle</label>
+              <textarea id="report-detail" name="detail" required minLength={8} maxLength={600} placeholder="Describe el problema encontrado" value={formDetail} onChange={e => setFormDetail(e.target.value)} />
+              <label htmlFor="report-priority">Prioridad</label>
+              <select id="report-priority" name="priority" value={priority} onChange={e => setPriority(e.target.value)}>
+                <option value="Baja">Baja</option>
+                <option value="Media">Media</option>
+                <option value="Alta">Alta</option>
+                <option value="Urgente">Urgente</option>
+              </select>
+              <label htmlFor="report-truck">Asignar camión</label>
+              <select id="report-truck" name="truck" value={assignedTruck} onChange={e => setAssignedTruck(e.target.value ? Number(e.target.value) : "")}>
+                <option value="">Sin asignar</option>
+                {safeTrucks.map(t => <option key={t.id} value={t.id}>{`${t.code} - ${t.driver}`}</option>)}
+              </select>
+              {formError && <p className="hint error wide" role="alert">{formError}</p>}
+              <button type="submit" disabled={submitting}>{submitting ? "Enviando..." : "Enviar reporte"}</button>
            </form>
          ) : (
            <p className="hint">Solo los ciudadanos pueden registrar incidencias. Los operadores y administradores pueden resolverlas desde la lista de seguimiento.</p>
@@ -1331,11 +1398,32 @@ export function Reports({ data, session, onCreateReport, onResolveReport }: { da
             <button key={status} type="button" className={`filter-btn ${filterStatus === status ? "active" : ""}`} onClick={() => setFilterStatus(status)} aria-pressed={filterStatus === status}>{status}</button>
           ))}
         </div>
-        <ReportList reports={filteredReports} trucks={safeTrucks} showDriverFilter={!isCitizen} showResolve={canResolve} onResolveReport={onResolveReport} />
-      </section>
-    </div>
-  );
-}
+<ReportList reports={filteredReports} trucks={safeTrucks} showDriverFilter={!isCitizen} showResolve={canResolve} onResolveReport={onResolveReport} onViewDetail={setSelectedReport} />
+       </section>
+
+       {showDetail && selectedReport && (
+         <div className="modal-overlay" onClick={() => { setShowDetail(false); setSelectedReport(null); }}>
+           <div className="modal" onClick={e => e.stopPropagation()}>
+             <div className="modal-header">
+               <h2>Detalle del reporte #{selectedReport.id}</h2>
+               <button type="button" className="modal-close" onClick={() => { setShowDetail(false); setSelectedReport(null); }}>✕</button>
+             </div>
+             <div className="modal-body">
+               <p><strong>Tipo:</strong> {selectedReport.type ?? "Sin tipo"}</p>
+               <p><strong>Zona:</strong> {selectedReport.zone ?? "Sin zona"}</p>
+               <p><strong>Ciudadano:</strong> {selectedReport.citizen ?? "Sin ciudadano"}</p>
+               <p><strong>Estado:</strong> <span className={`tag ${statusTone(selectedReport.status)}`}>{selectedReport.status ?? "Sin estado"}</span></p>
+               <p><strong>Prioridad:</strong> {(selectedReport as any).priority ?? "Media"}</p>
+               {(selectedReport as any).assigned_truck && <p><strong>Camión asignado:</strong> {(selectedReport as any).assigned_truck}</p>}
+               <p><strong>Detalle:</strong> {selectedReport.detail ?? "Sin detalle"}</p>
+               {(selectedReport as any).resolved_at && <p><strong>Resuelto el:</strong> {new Date((selectedReport as any).resolved_at).toLocaleString("es-PE")}</p>}
+             </div>
+           </div>
+         </div>
+       )}
+     </div>
+   );
+ }
 
 export function Waste({ data, monitor, session, onCreateReport }: { data: Bootstrap; monitor: Monitor; session?: Session | null; onCreateReport?: (report: Omit<Report, "id" | "status">) => Promise<void>; }) {
   const safeData = data ?? emptyBootstrap;
@@ -1698,7 +1786,7 @@ useEffect(() => {
              <p className="hint" style={{ marginBottom: 8 }}>📍 Viendo rutas de tu camión: <strong>{myTruck.code}</strong> ({myTruck.driver})</p>
            )}
            <div className="list">
-             {visibleRoutes.map(route => <Item key={route.id} title={`${route.truck} - ${route.zone}`} detail={`Avance ${route.progress}% | ETA ${route.eta} | ${route.delay}`} color={String(route.delay ?? "").toLowerCase().includes("retraso") ? "yellow" : "blue"} />)}
+             {visibleRoutes.map(route => <Item key={route.id} title={`${route.truck} - ${route.zone}`} detail={`Avance ${route.progress}% | ETA ${route.eta} | ${route.delay} | ${(route as any).waypoints?.length ?? 0} puntos`} color={String(route.delay ?? "").toLowerCase().includes("retraso") ? "yellow" : "blue"} />)}
              {isConductor && myTruck && visibleRoutes.length === 0 && (
                <p className="empty-state">No hay rutas activas para tu camión.</p>
              )}
@@ -1931,6 +2019,15 @@ function Analytics({ data, session, onConfirmCollection }: { data: Bootstrap; se
     return breakdown;
   }, [data.schedules]);
 
+  const zoneBreakdown = useMemo(() => {
+    const breakdown: Record<string, number> = {};
+    safeCollections.forEach(c => {
+      const zone = String(c.zone ?? "Sin zona");
+      breakdown[zone] = (breakdown[zone] ?? 0) + 1;
+    });
+    return breakdown;
+  }, [safeCollections]);
+
   const filteredCollections = useMemo(() => {
     const days = Number(dateRange);
     const cutoff = new Date();
@@ -2102,10 +2199,56 @@ function Analytics({ data, session, onConfirmCollection }: { data: Bootstrap; se
             </article>
           ))}
         </div>
-      </section>
-    </>
-  );
-}
+</section>
+
+       {Object.keys(wasteBreakdown).length > 0 && (
+         <section className="panel" style={{ marginBottom: "24px" }}>
+           <h2>Distribución por tipo de residuo</h2>
+           <ResponsiveContainer width="100%" height={300}>
+             <BarChart data={Object.entries(wasteBreakdown).map(([name, value]) => ({ name, value }))}>
+               <CartesianGrid strokeDasharray="3 3" />
+               <XAxis dataKey="name" />
+               <YAxis />
+               <Tooltip />
+               <Bar dataKey="value" fill="#0f8b8d" />
+             </BarChart>
+           </ResponsiveContainer>
+         </section>
+       )}
+
+       {filteredCollections.length > 0 && (
+         <section className="panel" style={{ marginBottom: "24px" }}>
+           <h2>Recolecciones por día</h2>
+           <ResponsiveContainer width="100%" height={300}>
+             <LineChart data={filteredCollections.map(c => ({
+               fecha: c.date,
+               kg: Number(c.kg) || 0,
+             })).sort((a, b) => a.fecha.localeCompare(b.fecha))}>
+               <CartesianGrid strokeDasharray="3 3" />
+               <XAxis dataKey="fecha" />
+               <YAxis />
+               <Tooltip />
+               <Legend />
+               <Line type="monotone" dataKey="kg" stroke="#0f8b8d" name="Kg recolectados" />
+             </LineChart>
+           </ResponsiveContainer>
+         </section>
+       )}
+
+       {Object.keys(wasteBreakdown).length > 0 && (
+         <section className="panel" style={{ marginBottom: "24px" }}>
+           <h2>Distribución por zona</h2>
+           <ResponsiveContainer width="100%" height={300}>
+             <PieChart>
+               <Pie data={Object.entries(zoneBreakdown).map(([name, value]) => ({ name, value }))} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={100} label />
+               <Tooltip />
+             </PieChart>
+           </ResponsiveContainer>
+         </section>
+       )}
+     </>
+   );
+ }
 
 function Map({ zones, trucks, routes, prioritizedZones }: { zones: Zone[]; trucks: Truck[]; routes: Route[]; prioritizedZones: Array<{ id: number; name: string; priority_score: number; criticality: string; latitude?: number; longitude?: number }> }) {
   const ref = useRef<HTMLDivElement | null>(null);
@@ -2144,7 +2287,14 @@ function Map({ zones, trucks, routes, prioritizedZones }: { zones: Zone[]; truck
       }
     });
     trucks.forEach(truck => L.circleMarker([truck.latitude, truck.longitude], { radius: 8, color: "#f5b942", fillOpacity: 0.9 }).bindPopup(`${truck.code} - ${truck.status}`).addTo(layer));
-    routes.forEach(route => L.circle([route.latitude, route.longitude], { radius: 450, color: String(route.delay ?? "").toLowerCase().includes("retraso") ? "#c94735" : "#0f8b8d" }).bindPopup(`${route.truck}: ${route.eta}`).addTo(layer));
+    routes.forEach(route => {
+       L.circle([route.latitude, route.longitude], { radius: 450, color: String(route.delay ?? "").toLowerCase().includes("retraso") ? "#c94735" : "#0f8b8d" }).bindPopup(`${route.truck}: ${route.eta}`).addTo(layer);
+       const waypoints = (route as any).waypoints;
+       if (waypoints && waypoints.length > 1) {
+         const points = waypoints.map((w: any) => [w.latitude ?? route.latitude, w.longitude ?? route.longitude] as [number, number]);
+         L.polyline(points, { color: "#0f8b8d", weight: 3, opacity: 0.7 }).addTo(layer);
+       }
+     });
     mapRef.current.invalidateSize();
   }, [signature, zones, trucks, routes, prioritizedZones]);
 
@@ -2161,7 +2311,7 @@ function Map({ zones, trucks, routes, prioritizedZones }: { zones: Zone[]; truck
   return <div className="map" ref={ref} />;
 }
 
-export function ReportList({ reports, trucks = [], showDriverFilter = false, showResolve = false, onResolveReport }: { reports: Report[]; trucks?: Truck[]; showDriverFilter?: boolean; showResolve?: boolean; onResolveReport?: (id: number) => Promise<void>; }) {
+export function ReportList({ reports, trucks = [], showDriverFilter = false, showResolve = false, onResolveReport, onViewDetail }: { reports: Report[]; trucks?: Truck[]; showDriverFilter?: boolean; showResolve?: boolean; onResolveReport?: (id: number) => Promise<void>; onViewDetail?: (report: Report) => void; }) {
   const [driverSearch, setDriverSearch] = useState("");
   const [resolvingId, setResolvingId] = useState<number | null>(null);
   const safeReports = useMemo(() => (Array.isArray(reports) ? reports : []), [reports]);
@@ -2219,31 +2369,37 @@ export function ReportList({ reports, trucks = [], showDriverFilter = false, sho
       ) : (
         <div className="list" role="list" aria-label="Lista de reportes">
 {filtered.map(report => {
-             const zoneKey = String(report.zone ?? "").toLowerCase();
-             const reportDriver = driverByZone[zoneKey] ?? "Sin conductor asignado";
-             return (
-              <article className="item" key={report.id}>
-                <div className="item-row">
-                  <strong>{report.type ?? "Sin tipo"}</strong>
-                  <span className={`tag ${statusTone(report.status)}`}>{report.status ?? "Sin estado"}</span>
-                </div>
-                <span>{report.zone ?? "Sin zona"} | {report.citizen ?? "Sin ciudadano"} | {reportDriver}</span>
-                <p>{report.detail ?? "Sin detalle"}</p>
-                {showResolve && (
-                  <div className="item-actions">
-                    <button
-                      type="button"
-                      className="report-action-btn"
-                      onClick={() => void handleResolve(report.id)}
-                      disabled={resolvingId === report.id}
-                      aria-label={`Resolver reporte ${report.id}`}
-                    >
-                      {resolvingId === report.id ? "Procesando..." : "Resolver reporte"}
-                    </button>
-                  </div>
-                )}
-              </article>
-            );
+              const zoneKey = String(report.zone ?? "").toLowerCase();
+              const reportDriver = driverByZone[zoneKey] ?? "Sin conductor asignado";
+              return (
+               <article className="item" key={report.id}>
+                 <div className="item-row">
+                   <strong>{report.type ?? "Sin tipo"}</strong>
+                   <span className={`tag ${statusTone(report.status)}`}>{report.status ?? "Sin estado"}</span>
+                   {(report as any).priority && <span className={`tag ${(report as any).priority === "Urgente" || (report as any).priority === "Alta" ? "red" : (report as any).priority === "Media" ? "yellow" : "blue"}`}>{(report as any).priority}</span>}
+                 </div>
+                 <span>{report.zone ?? "Sin zona"} | {report.citizen ?? "Sin ciudadano"} | {reportDriver}</span>
+                 <p>{report.detail ?? "Sin detalle"}</p>
+                 {showResolve && (
+                   <div className="item-actions">
+                     <button
+                       type="button"
+                       className="report-action-btn"
+                       onClick={(e) => { e.stopPropagation(); void handleResolve(report.id); }}
+                       disabled={resolvingId === report.id}
+                       aria-label={`Resolver reporte ${report.id}`}
+                     >
+                       {resolvingId === report.id ? "Procesando..." : "Resolver reporte"}
+                     </button>
+                   </div>
+                 )}
+                 {onViewDetail && (
+                   <div className="item-actions">
+                     <button type="button" className="report-action-btn" onClick={() => onViewDetail(report)}>Ver detalle</button>
+                   </div>
+                 )}
+               </article>
+             );
           })}
         </div>
       )}

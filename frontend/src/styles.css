@@ -952,3 +952,9 @@ textarea { min-height: 100px; resize: vertical; font-family: inherit; }
   color: var(--muted);
   font-size: 0.85rem;
 }
+.modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 1000; }
+.modal { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 24px; max-width: 500px; width: 90%; max-height: 80vh; overflow-y: auto; }
+.modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+.modal-header h2 { margin: 0; font-size: 1.2rem; }
+.modal-close { background: none; border: none; font-size: 1.2rem; cursor: pointer; padding: 4px 8px; }
+.modal-body p { margin: 8px 0; line-height: 1.6; }

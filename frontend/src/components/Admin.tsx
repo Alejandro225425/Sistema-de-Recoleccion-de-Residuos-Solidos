@@ -793,12 +793,42 @@ async function deleteMaintenance(item: MaintenanceRecord) {
              </li>
            ))}
          </ul>
-      </section>
+</section>
 
-      <section className="panel">
-        <h2>Eventos operativos</h2>
-        <p>Envía actualizaciones de ruta y contenedor desde el panel administrativo.</p>
-        <form className="form-grid" onSubmit={submitEventUpdate}>
+       <section className="panel">
+         <h2>Flota</h2>
+         <div className="list">
+           {(safeData.trucks ?? []).map(truck => (
+             <Item key={truck.id} title={`${truck.code} - ${truck.driver}`} detail={`${truck.status} · Zona: ${truck.zone}`} color={truck.status === "Activo" ? "blue" : "yellow"} />
+           ))}
+         </div>
+       </section>
+
+       <section className="panel">
+         <h2>Gestión de recolecciones</h2>
+         <div className="list">
+           {(safeData.collections ?? []).map(collection => (
+             <Item key={collection.id} title={`${collection.date} - ${collection.zone}`} detail={`${collection.truck} · ${collection.kg} kg · ${collection.status}`} color={collection.status === "Confirmada" ? "blue" : "yellow"} />
+           ))}
+         </div>
+       </section>
+
+       <section className="panel">
+         <h2>Registro de auditoría</h2>
+         <div className="list">
+           <Item title="Usuarios" detail={`${safeData.users?.length ?? 0} registrados`} color="blue" />
+           <Item title="Zonas" detail={`${safeData.zones?.length ?? 0} activas`} color="blue" />
+           <Item title="Camiones" detail={`${safeData.trucks?.length ?? 0} registrados`} color="blue" />
+           <Item title="Reportes" detail={`${safeData.reports?.length ?? 0} totales`} color="blue" />
+           <Item title="Recolecciones" detail={`${safeData.collections?.length ?? 0} registradas`} color="blue" />
+           <Item title="Mantenimiento" detail={`${safeData.maintenance?.length ?? 0} registros`} color="blue" />
+         </div>
+       </section>
+
+       <section className="panel">
+         <h2>Eventos operativos</h2>
+         <p>Envía actualizaciones de ruta y contenedor desde el panel administrativo.</p>
+         <form className="form-grid" onSubmit={submitEventUpdate}>
           <label htmlFor="event-type">Tipo de evento<select id="event-type" value={eventType} onChange={event => setEventType(event.currentTarget.value as "route_update" | "container_update") }>
             <option value="route_update">Actualización de ruta</option>
             <option value="container_update">Actualización de contenedor</option>
