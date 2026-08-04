@@ -1385,7 +1385,10 @@ def remove_truck(truck_id: int) -> dict[str, Any]:
 
 
 @app.get("/api/maintenance")
-def get_maintenance() -> list[dict[str, Any]]:
+def get_maintenance(current_user: dict[str, Any] | None = Depends(get_current_user_optional)) -> list[dict[str, Any]]:
+    role = normalize_role(str(current_user.get("role", "ciudadano"))) if current_user else "ciudadano"
+    if role != "admin":
+        return []
     return bootstrap()["maintenance"]
 
 
@@ -1448,8 +1451,22 @@ def build_monitor(simulate: bool = True) -> dict[str, Any]:
 
 
 @app.get("/api/operations/monitor")
-def get_monitor() -> dict[str, Any]:
-    return build_monitor()
+def get_monitor(current_user: dict[str, Any] | None = Depends(get_current_user_optional)) -> dict[str, Any]:
+    monitor_data = build_monitor()
+    role = normalize_role(str(current_user.get("role", "ciudadano"))) if current_user else "ciudadano"
+    if role == "ciudadano" and current_user is not None:
+        citizen_zone = str(current_user.get("zone", "")).strip().lower()
+        filtered_notifications = [
+            notification for notification in monitor_data.get("notifications", [])
+            if not citizen_zone or citizen_zone in str(notification.get("message", "")).lower() or citizen_zone in str(notification.get("title", "")).lower()
+        ]
+        monitor_data = dict(monitor_data)
+        monitor_data["notifications"] = filtered_notifications
+        monitor_data.pop("maintenance", None)
+    elif role != "admin":
+        monitor_data.pop("maintenance", None)
+        monitor_data.pop("users", None)
+    return monitor_data
 
 
 @app.post("/api/operations/update")
@@ -1558,10 +1575,18 @@ def update_operation(payload: OperationUpdateRequest, current_user: dict[str, An
 
 @app.get("/alerts")
 @app.get("/api/alerts")
-def get_alerts() -> dict[str, list[str]]:
+def get_alerts(current_user: dict[str, Any] | None = Depends(get_current_user_optional)) -> dict[str, list[str]]:
     data = bootstrap()
+    role = normalize_role(str(current_user.get("role", "ciudadano"))) if current_user else "ciudadano"
     routes = data.get("routes", [])
     containers = data.get("containers", [])
+    if role == "ciudadano" and current_user is not None:
+        citizen_zone = str(current_user.get("zone", "")).strip().lower()
+        filtered_routes = [
+            route for route in routes
+            if not citizen_zone or str(route.get("zone", "")).strip().lower() == citizen_zone
+        ]
+        routes = filtered_routes
     return {"alerts": build_alerts(routes=routes, containers=containers)}
 
 
@@ -1588,6 +1613,15 @@ def get_reports(current_user: dict[str, Any] = Depends(require_current_user)) ->
 
 @app.post("/api/reports")
 def create_report(payload: ReportCreate, current_user: dict[str, Any] = Depends(require_current_user)) -> dict[str, Any]:
+    role = normalize_role(str(current_user.get("role", "ciudadano")))
+    if role == "ciudadano":
+        citizen_zone = str(current_user.get("zone", "")).strip().lower()
+        report_zone = str(payload.zone).strip().lower()
+        if citizen_zone and report_zone and citizen_zone != report_zone:
+            zones = [z.get("name", "").lower() for z in bootstrap().get("zones", [])]
+            if report_zone not in zones:
+                raise HTTPException(status_code=400, detail="La zona seleccionada no existe")
+            raise HTTPException(status_code=403, detail="Solo puedes reportar incidencias en tu zona asignada")
     try:
         report = execute_one(
             "insert into reports (citizen, zone, type, detail, status) values (%s, %s, %s, %s, 'Pendiente') returning id, citizen, zone, type, detail, status",
@@ -1654,6 +1688,26 @@ def confirm_collection(collection_id: int, current_user: dict[str, Any] = Depend
 
 
 @app.get("/api/analytics/summary")
-def get_analytics() -> dict[str, Any]:
-    return bootstrap()["analytics"]
+def get_analytics_summary(current_user: dict[str, Any] = Depends(require_current_user)) -> dict[str, Any]:
+    analytics = bootstrap()["analytics"]
+    role = normalize_role(str(current_user.get("role", "ciudadano")))
+    if role == "ciudadano":
+        reports = bootstrap().get("reports", [])
+        collections = bootstrap().get("collections", [])
+        citizen_name = str(current_user.get("name", "")).lower()
+        citizen_zone = str(current_user.get("zone", "")).strip().lower()
+        citizen_reports = [r for r in reports if str(r.get("citizen", "")).lower() == citizen_name]
+        citizen_collections = [c for c in collections if not citizen_zone or str(c.get("zone", "")).strip().lower() == citizen_zone]
+        confirmed = sum(1 for c in citizen_collections if str(c.get("status", "")).lower() == "confirmada")
+        return {
+            "total_kg": analytics.get("total_kg", 0),
+            "compliance": analytics.get("compliance", 0),
+            "open_reports": len([r for r in citizen_reports if str(r.get("status", "")).lower() != "resuelto"]),
+            "active_trucks": analytics.get("active_trucks", 0),
+            "confirmed_collections": confirmed,
+            "zones": analytics.get("zones", 0),
+            "citizen_reports": len(citizen_reports),
+            "citizen_collections": len(citizen_collections),
+        }
+    return analytics
 

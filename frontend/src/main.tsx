@@ -559,7 +559,7 @@ export function Dashboard({ data, monitor, session, onConfirmCollection }: { dat
   const citizenAlerts = useMemo(() => {
     if (!isCitizen) return [];
     const items: Array<{ id: string | number; icon: string; title: string; description: string; time: string; tone: string }> = [];
-    const unreadNotifications = ((monitor.notifications ?? []) as Array<Record<string, any>>).filter(n => {
+    const unreadNotifications = ((data.notifications ?? []) as Array<Record<string, any>>).filter(n => {
       const message = String(n.message ?? n.title ?? "").toLowerCase();
       const title = String(n.title ?? "").toLowerCase();
       const zone = String(session.zone ?? "").toLowerCase();
@@ -598,7 +598,7 @@ export function Dashboard({ data, monitor, session, onConfirmCollection }: { dat
       });
     }
     return items;
-  }, [isCitizen, monitor.notifications, session.zone, pendingCollections.length, pendingReports.length]);
+  }, [isCitizen, data.notifications, session.zone, pendingCollections.length, pendingReports.length]);
 
   const recommendation = useMemo(() => {
     if (pendingCollections.length > 0) return "Confirma tus recolecciones pendientes para mantener actualizado el estado del servicio en tu zona.";
@@ -1014,6 +1014,8 @@ export function Reports({ data, session, onCreateReport, onResolveReport }: { da
   const isCitizen = session.role === "ciudadano";
   const canResolve = session.role === "operador" || session.role === "admin";
 
+  const isForeignZone = isCitizen && formZone && session.zone && String(formZone).trim().toLowerCase() !== String(session.zone).trim().toLowerCase();
+
   const safeReports = useMemo(() => (Array.isArray(data.reports) ? data.reports : []), [data.reports]);
   const safeZones = useMemo(() => (Array.isArray(data.zones) ? data.zones : []), [data.zones]);
   const safeTrucks = useMemo(() => (Array.isArray(data.trucks) ? data.trucks : []), [data.trucks]);
@@ -1055,6 +1057,7 @@ export function Reports({ data, session, onCreateReport, onResolveReport }: { da
             <option value="">Seleccionar zona</option>
             {safeZones.map(zone => <option key={zone.id} value={zone.name}>{zone.name}</option>)}
           </select>
+          {isForeignZone && <p className="hint warning wide" role="status">Estas reportando en una zona diferente a la tuya asignada ({session.zone}).</p>}
           <label htmlFor="report-type">Tipo</label>
           <select id="report-type" name="type" value={formType} onChange={e => setFormType(e.target.value)}>
             <option value="">Seleccionar tipo</option>

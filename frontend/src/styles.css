@@ -453,6 +453,7 @@ textarea { min-height: 100px; resize: vertical; font-family: inherit; }
 .hint { color: var(--muted); font-size: 0.88rem; margin: 8px 0 0 0; }
 .hint.error { color: var(--error, #c94735); font-weight: 600; }
 .hint.success { color: var(--eco-primary); font-weight: 600; }
+.hint.warning { color: var(--warning, #d97706); font-weight: 600; }
 
 .auth-message {
   padding: 12px 14px; border-radius: 8px; font-size: 0.9rem;
