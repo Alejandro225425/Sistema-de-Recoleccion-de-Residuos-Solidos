@@ -224,13 +224,16 @@ class MemoryStore:
         self.password_resets: dict[str, dict[str, Any]] = {}
 
     def analytics(self) -> dict[str, Any]:
+        total_collections = len(self.collections)
+        confirmed = len([c for c in self.collections if c["status"] == "Confirmada"])
+        compliance = round((confirmed / max(1, total_collections)) * 100) if total_collections > 0 else 0
         return {
             "zones": len(self.zones),
             "active_trucks": len([truck for truck in self.trucks if truck["status"] == "En ruta"]),
             "open_reports": len([report for report in self.reports if report["status"] != "Resuelto"]),
-            "confirmed_collections": len([collection for collection in self.collections if collection["status"] == "Confirmada"]),
+            "confirmed_collections": confirmed,
             "total_kg": sum(collection["kg"] for collection in self.collections),
-            "compliance": 87,
+            "compliance": compliance,
         }
 
 
@@ -417,13 +420,16 @@ def analytics_from(rows: dict[str, list[dict[str, Any]]]) -> dict[str, Any]:
     collections = rows["collections"]
     reports = rows["reports"]
     trucks = rows["trucks"]
+    total_collections = len(collections)
+    confirmed = len([c for c in collections if c["status"] == "Confirmada"])
+    compliance = round((confirmed / max(1, total_collections)) * 100) if total_collections > 0 else 0
     return {
         "zones": len(rows["zones"]),
         "active_trucks": len([truck for truck in trucks if truck["status"] == "En ruta"]),
         "open_reports": len([report for report in reports if report["status"] != "Resuelto"]),
-        "confirmed_collections": len([collection for collection in collections if collection["status"] == "Confirmada"]),
+        "confirmed_collections": confirmed,
         "total_kg": sum(collection["kg"] for collection in collections),
-        "compliance": 87,
+        "compliance": compliance,
     }
 
 

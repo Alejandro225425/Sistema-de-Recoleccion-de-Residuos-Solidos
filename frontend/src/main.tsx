@@ -130,6 +130,14 @@ function exportToPDF(title: string, html: string) {
   printWindow.print();
 }
 
+function extractWasteTypes(waste: string): string[] {
+  if (!waste) return [];
+  return waste
+    .split(/[,\s]+/)
+    .map(t => t.trim())
+    .filter(t => t && !["y", "e", "y", "e"].includes(t.toLowerCase()));
+}
+
 class ErrorBoundary extends React.Component<
   { children: React.ReactNode; fallback?: React.ReactNode },
   { hasError: boolean; error: Error | null; errorInfo: React.ErrorInfo | null }
@@ -535,13 +543,23 @@ export function Dashboard({ data, monitor, session, onConfirmCollection }: { dat
       return bUrgency - aUrgency || b.progress - a.progress;
     });
 
-    const sequence = [
-      { hour: "08:00", zone: prioritized[0]?.name ?? "Centro Historico", truck: routes[0]?.truck ?? "C-02", action: "Despacho inicial" },
-      { hour: "09:00", zone: prioritized[1]?.name ?? "Wanchaq", truck: routes[1]?.truck ?? "C-01", action: "Revisión de contenedores" },
-      { hour: "10:00", zone: prioritized[2]?.name ?? "Santiago", truck: routes[2]?.truck ?? "C-03", action: "Atención de reporte" }
+    const activeSchedules = (effectiveData.schedules ?? []).slice(0, 3);
+    const fallbackSchedule = [
+      { hour: "08:00", zone: "Centro Historico", truck: "C-02", action: "Despacho inicial" },
+      { hour: "09:00", zone: "Wanchaq", truck: "C-01", action: "Revisión de contenedores" },
+      { hour: "10:00", zone: "Santiago", truck: "C-03", action: "Atención de reporte" },
     ];
 
-    return sequence.map((step, index) => ({
+    const dispatchData = activeSchedules.length > 0
+      ? activeSchedules.map((s, index) => ({
+          hour: s.time.split(" - ")[0] ?? fallbackSchedule[index].hour,
+          zone: s.zone,
+          truck: routes[index]?.truck ?? fallbackSchedule[index].truck,
+          action: `Recolección: ${s.waste}`,
+        }))
+      : fallbackSchedule;
+
+    return dispatchData.map((step, index) => ({
       ...step,
       status: index === tick % 3 ? "En curso" : index < tick % 3 ? "Completado" : "Programado"
     }));
@@ -875,7 +893,7 @@ function Schedules({ schedules, citizenZone }: { schedules: Schedule[]; citizenZ
   const filtered = useMemo(() => {
     return schedules.filter(s => {
       const matchSearch = String(s.zone ?? "").toLowerCase().includes(String(search ?? "").toLowerCase());
-      const matchDay = selectedDay === "Todos" || s.day === selectedDay;
+      const matchDay = selectedDay === "Todos" || s.day.toLowerCase().includes(selectedDay.toLowerCase());
       return matchSearch && matchDay;
     });
   }, [schedules, search, selectedDay]);
@@ -1014,6 +1032,19 @@ export function Reports({ data, session, onCreateReport, onResolveReport }: { da
   const isCitizen = session.role === "ciudadano";
   const canResolve = session.role === "operador" || session.role === "admin";
 
+  const reportTypes = useMemo(() => {
+    const types = new Set<string>();
+    const reports = Array.isArray(data?.reports) ? data.reports : [];
+    reports.forEach(r => {
+      if (r.type) types.add(r.type);
+    });
+    const schedules = Array.isArray(data?.schedules) ? data.schedules : [];
+    schedules.forEach(s => {
+      extractWasteTypes(s.waste).forEach(t => types.add(t));
+    });
+    return ["Acumulacion de basura", "Retraso", "Contenedor lleno", "Otro", ...Array.from(types)];
+  }, [data?.reports, data?.schedules]);
+
   const isForeignZone = isCitizen && formZone && session.zone && String(formZone).trim().toLowerCase() !== String(session.zone).trim().toLowerCase();
 
   const safeReports = useMemo(() => (Array.isArray(data.reports) ? data.reports : []), [data.reports]);
@@ -1061,10 +1092,7 @@ export function Reports({ data, session, onCreateReport, onResolveReport }: { da
           <label htmlFor="report-type">Tipo</label>
           <select id="report-type" name="type" value={formType} onChange={e => setFormType(e.target.value)}>
             <option value="">Seleccionar tipo</option>
-            <option>Acumulacion de basura</option>
-            <option>Retraso</option>
-            <option>Contenedor lleno</option>
-            <option>Otro</option>
+            {reportTypes.map(t => <option key={t} value={t}>{t}</option>)}
           </select>
           <label className="wide" htmlFor="report-detail">Detalle</label>
           <textarea id="report-detail" name="detail" required minLength={8} maxLength={600} placeholder="Describe el problema encontrado" value={formDetail} onChange={e => setFormDetail(e.target.value)} />
@@ -1147,12 +1175,10 @@ export function Waste({ data, monitor, session, onCreateReport }: { data: Bootst
   const wasteStats = useMemo(() => {
     const stats: Record<string, { count: number; zones: string[] }> = {};
     safeSchedules.forEach(s => {
-      s.waste.split(/[,\s]+/).forEach(t => {
-        const trimmed = t.trim();
-        if (!trimmed) return;
-        if (!stats[trimmed]) stats[trimmed] = { count: 0, zones: [] };
-        stats[trimmed].count++;
-        if (!stats[trimmed].zones.includes(s.zone)) stats[trimmed].zones.push(s.zone);
+      extractWasteTypes(s.waste).forEach(t => {
+        if (!stats[t]) stats[t] = { count: 0, zones: [] };
+        stats[t].count++;
+        if (!stats[t].zones.includes(s.zone)) stats[t].zones.push(s.zone);
       });
     });
     return stats;
@@ -1197,6 +1223,12 @@ export function Waste({ data, monitor, session, onCreateReport }: { data: Bootst
       setProblemSubmitting(false);
     }
   }
+
+  const zoneNameById = useMemo(() => {
+    const map: Record<number, string> = {};
+    (safeData.zones ?? []).forEach(z => { map[z.id] = z.name; });
+    return map;
+  }, [safeData.zones]);
 
   function getWasteTag(waste: string): string {
     const lower = waste.toLowerCase();
@@ -1312,7 +1344,7 @@ export function Waste({ data, monitor, session, onCreateReport }: { data: Bootst
                     <strong>{container.name}</strong>
                     <span className={`tag ${String(container.status).toLowerCase() === "lleno" ? "red" : "blue"}`}>{container.status}</span>
                   </div>
-                  <span>Zona ID: {container.zone_id} · {container.fill_level}% lleno</span>
+                  <span>Zona: {zoneNameById[container.zone_id] ?? `ID: ${container.zone_id}`} · {container.fill_level}% lleno</span>
                   <p>Actualizado: {container.updated_at ? new Date(container.updated_at).toLocaleString("es-PE") : "Sin fecha"}</p>
                 </article>
               ))
@@ -1331,6 +1363,8 @@ export function Waste({ data, monitor, session, onCreateReport }: { data: Bootst
 
 function Routes({ data, monitor, session, onCreateCollection }: { data: Bootstrap; monitor: Monitor; session?: Session | null; onCreateCollection?: (payload: { truck_id: number; zone_id: number; kg: number }) => Promise<void>; }) {
   const [alerts, setAlerts] = useState<string[]>([]);
+  const [geoError, setGeoError] = useState(false);
+  const [collectionMessage, setCollectionMessage] = useState("");
   const trucks = monitor.trucks ?? data.trucks ?? [];
   const routes = monitor.optimized_routes ?? data.routes ?? [];
   const prioritizedZones = monitor.prioritized_zones ?? data.prioritized_zones ?? [];
@@ -1340,35 +1374,43 @@ function Routes({ data, monitor, session, onCreateCollection }: { data: Bootstra
   const [submittingCollection, setSubmittingCollection] = useState(false);
 
   useEffect(() => {
-    fetch(`${geoBase}/alerts`).then(response => response.json()).then(payload => setAlerts(payload.alerts ?? [])).catch(() => setAlerts([]));
+    fetch(`${geoBase}/alerts`).then(response => {
+      if (!response.ok) throw new Error("Geo service unavailable");
+      return response.json();
+    }).then(payload => { setAlerts(payload.alerts ?? []); setGeoError(false); }).catch(() => { setAlerts([]); setGeoError(true); });
   }, []);
 
   async function submitCollection(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!onCreateCollection) return;
     setSubmittingCollection(true);
+    setCollectionMessage("");
     try {
       await onCreateCollection({ truck_id: Number(selectedTruck), zone_id: Number(selectedZone), kg: Number(kgValue) });
+      setCollectionMessage("Recolección registrada correctamente.");
+      setKgValue(0);
     } catch (error) {
-      console.error(error);
+      setCollectionMessage("No se pudo registrar la recolección. Intentalo de nuevo.");
     } finally {
       setSubmittingCollection(false);
     }
   }
 
   return (
-    <>
-      <div className="two-col">
-        <section className="panel"><h2>Mapa operativo OpenStreetMap</h2><Map zones={data.zones ?? []} trucks={trucks} routes={routes} prioritizedZones={prioritizedZones} /></section>
-        <section className="panel">
-          <h2>Seguimiento GPS</h2>
-          <div className="list">
-            {routes.map(route => <Item key={route.id} title={`${route.truck} - ${route.zone}`} detail={`Avance ${route.progress}% | ETA ${route.eta} | ${route.delay}`} color={String(route.delay ?? "").toLowerCase().includes("retraso") ? "yellow" : "blue"} />)}
-            {alerts.map(alert => <Item key={alert} title="Microservicio TS" detail={alert} color="blue" />)}
-          </div>
-        </section>
-      </div>
-      {(session?.role === "conductor" || session?.role === "operador") && (
+<>
+       <div className="two-col">
+         <section className="panel"><h2>Mapa operativo OpenStreetMap</h2><Map zones={data.zones ?? []} trucks={trucks} routes={routes} prioritizedZones={prioritizedZones} /></section>
+         <section className="panel">
+           <h2>Seguimiento GPS</h2>
+           {geoError && <p className="hint error">El servicio de alertas geo no está disponible. Los datos pueden estar desactualizados.</p>}
+           <div className="list">
+             {routes.map(route => <Item key={route.id} title={`${route.truck} - ${route.zone}`} detail={`Avance ${route.progress}% | ETA ${route.eta} | ${route.delay}`} color={String(route.delay ?? "").toLowerCase().includes("retraso") ? "yellow" : "blue"} />)}
+             {alerts.map(alert => <Item key={alert} title="Microservicio TS" detail={alert} color="blue" />)}
+           </div>
+         </section>
+       </div>
+       {collectionMessage && <div role="alert" className="app-alert">{collectionMessage}</div>}
+       {(session?.role === "conductor" || session?.role === "operador") && (
         <section className="panel" style={{ marginTop: 16 }}>
           <h2>Registrar recoleccion</h2>
           <form className="form-grid" onSubmit={submitCollection}>
