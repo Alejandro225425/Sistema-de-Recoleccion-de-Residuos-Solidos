@@ -87,7 +87,7 @@ Esta versión corrige de forma definitiva la regresión por la cual el panel de 
 |---|-----------|----------|----------|
 | 1 | `styles.css` | `.search-box` sin `position: relative` → ícono absoluto se desborda | Se agrega `position: relative; display: flex; align-items: center` |
 | 2 | `Admin.tsx` | Clase `two-col` (2 hijos esperados) con 6 paneles → layout colapsado | Nueva clase `.admin-grid` con `repeat(2, 1fr)` responsive |
-| 3 | `Admin.tsx` | `style` inline con fallbacks de tema claro → texto invisible en modo oscuro | Se elimina el `style` inline; colores vienen de variables CSS |
+| 3 | `Admin.tsx` | `style` inline con colores hardcodeados → texto invisible en ciertos contextos | Se elimina el `style` inline; colores vienen de variables CSS |
 | 4 | `main.tsx` | Token JWT expirado no detectado → Admin con datos vacíos | `loadData()` detecta 401 y limpia la sesión automáticamente |
 | 5 | `styles.css` | `.loading` sin estilos → spinner puede ser invisible | Se agrega clase `.loading` con flex y colores de tema |
 
@@ -252,7 +252,7 @@ Esta es la **versión 4.5.1** del Sistema Inteligente de Recolección de Residuo
 - Desplegar en producción
 
 ## Estado actual
-- **Versión 4.5.1**: corrección definitiva del Dashboard de Administración. ErrorBoundary envuelve el contenido Admin, fallbacks CSS en todas las clases admin (`var(--bg, #f0f5f2)`), `color-scheme: light dark`, mejor contraste en modo oscuro para `.admin-list-item`, y null checks defensivas en `getOperationalSignal`, `Dashboard.effectiveData`, `Routes`, `Schedules` y `Analytics` para prevenir errores de runtime como "Cannot read properties of null (reading 'value')". Tests frontend: 16 passed.
+- **Versión 4.5.1**: corrección definitiva del Dashboard de Administración. ErrorBoundary envuelve el contenido Admin, fallbacks CSS en todas las clases admin (`var(--bg, #f0f5f2)`), null checks defensivas en `getOperationalSignal`, `Dashboard.effectiveData`, `Routes`, `Schedules` y `Analytics` para prevenir errores de runtime como "Cannot read properties of null (reading 'value')". Tests frontend: 16 passed.
 - Endpoint operativo `/api/health` validado y funcionando en modo memoria y con persistencia PostgreSQL cuando `DATABASE_URL` está configurada.
 - Backend Python verificado con `20 passed` en la suite de pruebas.
 - Frontend React validado con pruebas e2e reales contra FastAPI y microservicio TypeScript compilado con éxito.
@@ -260,7 +260,7 @@ Esta es la **versión 4.5.1** del Sistema Inteligente de Recolección de Residuo
 
 | Versión | Rama | Estado |
 |---------|------|--------|
-| **4.5.1** | `main`, `version-4.5` | ErrorBoundary, fallbacks CSS, color-scheme, null-safety defensiva |
+| **4.5.1** | `main`, `version-4.5` | ErrorBoundary, fallbacks CSS, null-safety defensiva |
 | **4.5.0** | `main`, `version-4.5` | Corrección visual del panel de administración y mejoras de UX |
 | **3.0.0** | `main`, `version-3` | Proyecto organizado y documentación consolidada |
 | 2.0.0 | `main`, `v2.0.0` | Configuración de despliegue lista para producción |

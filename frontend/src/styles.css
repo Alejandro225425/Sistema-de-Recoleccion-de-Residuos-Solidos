@@ -20,36 +20,6 @@
   --success: #52b788;
   --info: #2d6cdf;
   --text-light: #e8f5e9;
-  --bg-dark: #0f1419;
-  --panel-dark: #1a1f27;
-  --accent-dark: #52b788;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --ink: #e8f5e9;
-    --muted: #b0b8c1;
-    --line: #2a3037;
-    --bg: #0f1419;
-    --panel: #1a1f27;
-  }
-}
-
-html[data-theme="light"] {
-  --ink: #1d2730;
-  --muted: #66727d;
-  --line: #e0e7e3;
-  --bg: #f0f5f2;
-  --panel: #ffffff;
-}
-
-html[data-theme="dark"] {
-  --ink: #e8f5e9;
-  --muted: #b0b8c1;
-  --line: #2a3037;
-  --bg: #0f1419;
-  --panel: #1a1f27;
-  --eco-secondary: #183225;
 }
 
 @keyframes slideIn {
@@ -87,10 +57,10 @@ html[data-theme="dark"] {
 }
 
 html, body, #root {
-  height: 100%;
-  margin: 0;
-  color-scheme: light dark;
-}
+   height: 100%;
+   margin: 0;
+   color-scheme: light;
+ }
 body {
   display: block;
 }
@@ -237,10 +207,6 @@ button.btn-gold:hover { background: var(--eco-gold-light); box-shadow: 0 6px 20p
   background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.15);
 }
 .sidebar-footer button:hover { background: rgba(255,255,255,0.15); }
-
-.sidebar-footer .theme-toggle {
-  display: flex; align-items: center; gap: 8px; justify-content: flex-start;
-}
 
 /* Mobile hamburger */
 .hamburger {
@@ -680,13 +646,10 @@ textarea { min-height: 100px; resize: vertical; font-family: inherit; }
 .list { display: grid; gap: 10px; overflow-x: hidden; margin-top: 16px; }
 
 .admin-list-item {
-  display: flex; justify-content: space-between; align-items: center; gap: 12px;
-  flex-wrap: wrap; border: 1px solid var(--line); border-radius: 14px; padding: 14px;
-  background: linear-gradient(180deg, rgba(255,255,255,0.9), rgba(240,245,242,0.92));
-}
-html[data-theme="dark"] .admin-list-item {
-  background: color-mix(in srgb, var(--panel, #1a1f27) 85%, var(--bg, #0f1419) 15%);
-}
+   display: flex; justify-content: space-between; align-items: center; gap: 12px;
+   flex-wrap: wrap; border: 1px solid var(--line); border-radius: 14px; padding: 14px;
+   background: linear-gradient(180deg, rgba(255,255,255,0.9), rgba(240,245,242,0.92));
+ }
 .admin-list-main { display: grid; gap: 4px; min-width: 0; }
 .admin-list-meta { color: var(--muted); font-size: 0.95rem; }
 .admin-list-actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }

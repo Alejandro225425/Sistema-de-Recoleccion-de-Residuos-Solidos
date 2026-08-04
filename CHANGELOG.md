@@ -65,7 +65,7 @@
 
 ### Version 4.5.3 - Interfaz fija en modo claro
 
-- Se dejó la interfaz fija en modo claro por defecto.
+- La interfaz utiliza exclusivamente modo claro.
 - Se eliminó la opción de alternar al modo oscuro desde la barra lateral del frontend.
 - Se actualizó la documentación principal para reflejar este cambio visual en la experiencia de usuario.
 
@@ -106,17 +106,18 @@
 3. **CSS fallbacks agregados a todas las clases admin** (`frontend/src/styles.css`):
    - `.admin-grid`, `.admin-shell`, `.page-header`, `.main-content`, `.app-shell`, `.loading` y `.hint.error` ahora tienen valores por defecto hardcodeados (ej. `var(--bg, #f0f5f2)`) para garantizar que el dashboard sea visible incluso si las variables CSS no están definidas.
 
-4. **`color-scheme: light dark` agregado** (`frontend/src/styles.css` y `frontend/src/main.tsx`):
-   - Se añadió `color-scheme: light dark` a la regla `html, body, #root`.
-   - Se cambió `document.documentElement.style.colorScheme` de `isDarkMode ? "dark" : "light"` a `"light dark"` para permitir que el navegador adapte automáticamente los controles nativos al tema activo.
+4. **`color-scheme: light` aplicado** (`frontend/src/styles.css` y `frontend/src/main.tsx`):
+    - Se estableció `color-scheme: light` en la regla `html, body, #root` para que el navegador adapte los controles nativos al tema claro.
 
-5. **Contraste mejorado en modo oscuro para `.admin-list-item`** (`frontend/src/styles.css`):
-   - La clase `html[data-theme="dark"] .admin-list-item` usaba un gradiente lineal con `rgba()` que podía colapsar a negro total si `--panel` no estaba definido.
-   - **Solución**: se cambió a `color-mix(in srgb, var(--panel, #1a1f27) 85%, var(--bg, #0f1419) 15%)` con fallbacks.
+5. **Eliminación completa del modo oscuro** (`frontend/src/styles.css`, `frontend/src/main.tsx`):
+    - Se eliminaron los selectores `html[data-theme="dark"]`, `html[data-theme="light"]` y `@media (prefers-color-scheme: dark)`.
+    - Se eliminaron las variables CSS `--bg-dark`, `--panel-dark`, `--accent-dark`.
+    - Se eliminó el hook `isDarkMode`, el `localStorage` de preferencia de tema y el botón de alternancia de la barra lateral.
+    - Se eliminó la clase `.sidebar-footer .theme-toggle` y el selector `html[data-theme="dark"] .admin-list-item`.
 
 #### Archivos modificados
 - `frontend/src/main.tsx` — ErrorBoundary envuelve Content; fallback usa clases CSS; `color-scheme` global
-- `frontend/src/styles.css` — fallbacks en todas las clases admin; `color-scheme` en root
+- `frontend/src/styles.css` — fallbacks en todas las clases admin; `color-scheme` en root; eliminación de estilos y selectores de modo oscuro
 - `frontend/src/components/Admin.test.tsx` — 2 tests nuevos (paneles visibles, datos undefined/null)
 
 #### Verificación
