@@ -1,5 +1,30 @@
 # Changelog
 
+## 2026-08-04
+
+### Version 5.5.6 - Corrección de bugs y mejora de estabilidad en dashboard de administración
+
+- **Backend - create_report**: se revirtió el bloqueo de roles `admin`/`operador` en la creación de reportes. Ahora permiten crear reportes (incidencias/observaciones municipales); la restricción de zona aplica solo a ciudadanos.
+- **Dashboard Principal**: se corrigió "Contenedores críticos" para usar `effectiveData.containers` (mezcla de bootstrap + monitor en tiempo real) en lugar de `data.containers` (solo bootstrap).
+- **Admin**: se agregó latitud, longitud y criticidad a los inputs del formulario de creación/edición de zonas (antes hardcodeados a 0, 0, "Media").
+- **Admin**: se agregó `onRefresh` a todas las operaciones CRUD (zonas, horarios, camiones, mantenimiento, usuarios) para sincronizar el estado local con los datos del bootstrap tras mutaciones, evitando que el poll de 10s del monitor sobreescriba actualizaciones optimistas.
+- **Admin**: se sincronizó `formValues.zone` con `session.zone` al crear usuarios, usando `session?.zone` dinámicamente.
+- **Admin**: se agregó día "Sábado" al dropdown de días de horario.
+- **Reports**: se corrigió `setFormZone("")` → ahora se restablece a `session.zone` al enviar el formulario.
+- **Reports**: se eliminó duplicado de `isForeignZone`.
+- **Waste**: se corrigió typo "Clasificacion" → "Clasificación".
+- **Waste**: se corrigió filtro de tipos de residuo para usar `extractWasteTypes` (filtra conjunciones "y"/"e") en lugar de `split` raw.
+- **Routes**: se corrigió typo "recoleccion" → "recolección".
+- **App**: se agregó endpoint `/api/health` con verificación real de conectividad y `lastSync` timestamp; se eliminó detección de modo DB basada en `compliance_estimate` (siempre truthy).
+- **Código limpio**: se eliminó código muerto del toggle de modo oscuro (isDarkMode, botón theme-toggle, preferencia localStorage) — `styles.css` no contiene selectores `[data-theme="dark"]`.
+- **Compilación**: `tsc --noEmit` sin errores, `npm run build` frontend exitoso.
+- **Tests**: 21/21 tests de frontend pasan, 21/21 tests de backend pasan.
+
+### Archivos modificados
+- `backend-python/app/main.py` — Revertir bloqueo create_report admin/operador
+- `frontend/src/main.tsx` — Corregir Dashboard containers, health check, typos, filtros Waste, reset zona Reports
+- `frontend/src/components/Admin.tsx` — Lat/lng/criticality zonas, onRefresh CRUD, session.zone usuarios, Sábado horario, try/catch eventos
+
 ## 2026-08-03
 
 ### Version 5.5.5 - Auditoría integral de dashboards del rol Operador Municipal

@@ -23,7 +23,7 @@ const initialUserFormValues = {
   zone: "Centro Historico",
 };
 
-export default function Admin({ data, session, onOperationUpdate }: { data: Bootstrap; session: Session; onOperationUpdate: (payload: OperationUpdatePayload) => Promise<void>; }) {
+export default function Admin({ data, session, onOperationUpdate, onRefresh }: { data: Bootstrap; session: Session; onOperationUpdate: (payload: OperationUpdatePayload) => Promise<void>; onRefresh?: () => Promise<void>; }) {
   const safeData = useMemo(() => {
     const base = data ?? { zones: [], schedules: [], trucks: [], routes: [], reports: [], collections: [], analytics: { zones: 0, active_trucks: 0, open_reports: 0, confirmed_collections: 0, total_kg: 0, compliance: 0 } };
     return {
@@ -45,7 +45,10 @@ export default function Admin({ data, session, onOperationUpdate }: { data: Boot
   const [deletingUserIds, setDeletingUserIds] = useState<number[]>([]);
   const [creating, setCreating] = useState(false);
   const [feedback, setFeedback] = useState("");
-  const [formValues, setFormValues] = useState(initialUserFormValues);
+  const [formValues, setFormValues] = useState(() => ({
+    ...initialUserFormValues,
+    zone: session?.zone ?? initialUserFormValues.zone,
+  }));
 
   useEffect(() => {
     if (feedback) {
@@ -57,6 +60,9 @@ export default function Admin({ data, session, onOperationUpdate }: { data: Boot
   const [zones, setZones] = useState<Zone[]>(safeData.zones);
   const [zoneSearch, setZoneSearch] = useState("");
   const [newZoneName, setNewZoneName] = useState("");
+  const [newZoneLat, setNewZoneLat] = useState("");
+  const [newZoneLng, setNewZoneLng] = useState("");
+  const [newZoneCriticality, setNewZoneCriticality] = useState("Media");
   const [editingZoneId, setEditingZoneId] = useState<number | null>(null);
   const [editingZoneName, setEditingZoneName] = useState("");
 
@@ -149,6 +155,7 @@ export default function Admin({ data, session, onOperationUpdate }: { data: Boot
       });
       setUsers(prev => prev.map(item => item.id === user.id ? { ...item, role: updated.role ?? nextRole } : item));
       setFeedback(`Rol actualizado para ${user.name}`);
+      await onRefresh?.();
     } catch (error) {
       const message = error instanceof Error ? error.message : 'No se pudo actualizar el usuario';
       setFeedback(message);
@@ -164,6 +171,7 @@ export default function Admin({ data, session, onOperationUpdate }: { data: Boot
       await request(`/users/${user.id}`, { method: 'DELETE' });
       setUsers(prev => prev.filter(item => item.id !== user.id));
       setFeedback(`Usuario ${user.name} eliminado`);
+      await onRefresh?.();
     } catch (error) {
       const message = error instanceof Error ? error.message : 'No se pudo eliminar el usuario';
       setFeedback(message);
@@ -186,11 +194,12 @@ export default function Admin({ data, session, onOperationUpdate }: { data: Boot
           zone: formValues.zone,
         })
       });
-      if (created) {
-        setUsers(prev => [...prev, { ...created, email: formValues.email, role: formValues.role, zone: formValues.zone }]);
-      }
-      setFeedback(`Usuario creado: ${formValues.name}`);
-      setFormValues(initialUserFormValues);
+       if (created) {
+         setUsers(prev => [...prev, { ...created, email: formValues.email, role: formValues.role, zone: formValues.zone }]);
+       }
+       setFeedback(`Usuario creado: ${formValues.name}`);
+       setFormValues({ ...initialUserFormValues, zone: session?.zone ?? initialUserFormValues.zone });
+       await onRefresh?.();
     } catch (error) {
       const message = error instanceof Error ? error.message : 'No se pudo crear el usuario';
       setFeedback(message);
@@ -202,15 +211,25 @@ export default function Admin({ data, session, onOperationUpdate }: { data: Boot
   async function createZone(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!newZoneName.trim()) return;
+    const lat = Number(newZoneLat);
+    const lng = Number(newZoneLng);
+    if (isNaN(lat) || isNaN(lng)) {
+      setFeedback("Ingresa coordenadas válidas para latitud y longitud.");
+      return;
+    }
     setCreating(true);
     try {
       const created = await request<Zone>('/zones', {
         method: 'POST',
-        body: JSON.stringify({ name: newZoneName, latitude: 0, longitude: 0, criticality: 'Media' })
+        body: JSON.stringify({ name: newZoneName, latitude: lat, longitude: lng, criticality: newZoneCriticality })
       });
       setZones(prev => [...prev, created]);
       setNewZoneName('');
+      setNewZoneLat('');
+      setNewZoneLng('');
+      setNewZoneCriticality('Media');
       setFeedback(`Zona creada: ${created.name}`);
+      await onRefresh?.();
     } catch (error) {
       setFeedback(error instanceof Error ? error.message : 'No se pudo crear la zona');
     } finally {
@@ -231,10 +250,11 @@ export default function Admin({ data, session, onOperationUpdate }: { data: Boot
         method: 'PATCH',
         body: JSON.stringify({ name: editingZoneName })
       });
-      setZones(prev => prev.map(zone => zone.id === editingZoneId ? { ...zone, name: updated.name } : zone));
-      setEditingZoneId(null);
-      setEditingZoneName("");
-      setFeedback(`Zona actualizada: ${updated.name}`);
+       setZones(prev => prev.map(zone => zone.id === editingZoneId ? { ...zone, name: updated.name } : zone));
+       setEditingZoneId(null);
+       setEditingZoneName("");
+       setFeedback(`Zona actualizada: ${updated.name}`);
+       await onRefresh?.();
     } catch (error) {
       setFeedback(error instanceof Error ? error.message : 'No se pudo editar la zona');
     }
@@ -245,6 +265,7 @@ export default function Admin({ data, session, onOperationUpdate }: { data: Boot
       await request(`/zones/${zoneId}`, { method: 'DELETE' });
       setZones(prev => prev.filter(zone => zone.id !== zoneId));
       setFeedback('Zona eliminada');
+      await onRefresh?.();
     } catch (error) {
       setFeedback(error instanceof Error ? error.message : 'No se pudo eliminar la zona');
     }
@@ -261,6 +282,7 @@ export default function Admin({ data, session, onOperationUpdate }: { data: Boot
       setSchedules(prev => [...prev, created]);
       setNewSchedule({ zone_id: safeData.zones[0]?.id ?? 1, day: 'Lunes', time: '08:00', waste: 'Orgánicos' });
       setFeedback(`Horario creado para ${created.zone}`);
+      await onRefresh?.();
     } catch (error) {
       setFeedback(error instanceof Error ? error.message : 'No se pudo crear el horario');
     } finally {
@@ -285,6 +307,7 @@ export default function Admin({ data, session, onOperationUpdate }: { data: Boot
       setEditingScheduleId(null);
       setEditingSchedule({ zone_id: 1, day: 'Lunes', time: '08:00', waste: 'Orgánicos' });
       setFeedback(`Horario actualizado para ${updated.zone}`);
+      await onRefresh?.();
     } catch (error) {
       setFeedback(error instanceof Error ? error.message : 'No se pudo editar el horario');
     }
@@ -295,6 +318,7 @@ export default function Admin({ data, session, onOperationUpdate }: { data: Boot
       await request(`/schedules/${scheduleId}`, { method: 'DELETE' });
       setSchedules(prev => prev.filter(s => s.id !== scheduleId));
       setFeedback('Horario eliminado');
+      await onRefresh?.();
     } catch (error) {
       setFeedback(error instanceof Error ? error.message : 'No se pudo eliminar el horario');
     }
@@ -311,6 +335,7 @@ export default function Admin({ data, session, onOperationUpdate }: { data: Boot
       setTrucks(prev => [...prev, created]);
       setNewTruck({ code: '', driver: '', status: 'En ruta', zone_id: safeData.zones[0]?.id ?? 1, latitude: 0, longitude: 0 });
       setFeedback(`Camión creado: ${created.code}`);
+      await onRefresh?.();
     } catch (error) {
       setFeedback(error instanceof Error ? error.message : 'No se pudo crear el camión');
     } finally {
@@ -336,6 +361,7 @@ export default function Admin({ data, session, onOperationUpdate }: { data: Boot
       setEditingTruckId(null);
       setEditingTruck({ code: '', driver: '', status: 'En ruta', zone_id: safeData.zones[0]?.id ?? 1, latitude: 0, longitude: 0 });
       setFeedback(`Camión actualizado: ${updated.code}`);
+      await onRefresh?.();
     } catch (error) {
       setFeedback(error instanceof Error ? error.message : 'No se pudo editar el camión');
     } finally {
@@ -350,6 +376,7 @@ export default function Admin({ data, session, onOperationUpdate }: { data: Boot
       await request(`/trucks/${truck.id}`, { method: 'DELETE' });
       setTrucks(prev => prev.filter(t => t.id !== truck.id));
       setFeedback(`Camión ${truck.code} eliminado`);
+      await onRefresh?.();
     } catch (error) {
       setFeedback(error instanceof Error ? error.message : 'No se pudo eliminar el camión');
     } finally {
@@ -369,6 +396,7 @@ export default function Admin({ data, session, onOperationUpdate }: { data: Boot
       setMaintenance(prev => [...prev, created]);
       setNewMaintenance({ truck_id: safeData.trucks[0]?.id ?? 0, description: '', status: 'Pendiente' });
       setFeedback(`Mantenimiento creado para camión ${created.truck_id}`);
+      await onRefresh?.();
     } catch (error) {
       setFeedback(error instanceof Error ? error.message : 'No se pudo crear el mantenimiento');
     } finally {
@@ -394,6 +422,7 @@ export default function Admin({ data, session, onOperationUpdate }: { data: Boot
       setEditingMaintenanceId(null);
       setEditingMaintenance({ truck_id: safeData.trucks[0]?.id ?? 0, description: '', status: 'Pendiente' });
       setFeedback(`Mantenimiento #${updated.id} actualizado`);
+      await onRefresh?.();
     } catch (error) {
       setFeedback(error instanceof Error ? error.message : 'No se pudo editar el mantenimiento');
     } finally {
@@ -408,6 +437,7 @@ export default function Admin({ data, session, onOperationUpdate }: { data: Boot
       await request(`/maintenance/${item.id}`, { method: 'DELETE' });
       setMaintenance(prev => prev.filter(m => m.id !== item.id));
       setFeedback(`Mantenimiento #${item.id} eliminado`);
+      await onRefresh?.();
     } catch (error) {
       setFeedback(error instanceof Error ? error.message : 'No se pudo eliminar el mantenimiento');
     } finally {
@@ -435,12 +465,16 @@ export default function Admin({ data, session, onOperationUpdate }: { data: Boot
       if (eventStatus.trim()) payload.status = eventStatus;
     }
 
-    await onOperationUpdate(payload);
-    setEventProgress("");
-    setEventDelay("");
-    setEventFillLevel("");
-    setEventStatus("");
-    setEventNote("");
+    try {
+      await onOperationUpdate(payload);
+      setEventProgress("");
+      setEventDelay("");
+      setEventFillLevel("");
+      setEventStatus("");
+      setEventNote("");
+    } catch (error) {
+      setFeedback(error instanceof Error ? error.message : 'No se pudo enviar el evento operativo');
+    }
   }
 
   return (
@@ -509,12 +543,15 @@ export default function Admin({ data, session, onOperationUpdate }: { data: Boot
         <p>Administra las zonas de recolección y priorización urbana.</p>
         {editingZoneId === null ? (
           <form className="form-grid" onSubmit={createZone}>
-            <label htmlFor="new-zone-name">Nombre de la zona<input id="new-zone-name" required placeholder="Nombre de zona" value={newZoneName} onChange={event => {
-              const value = event.currentTarget.value;
-              setNewZoneName(value);
-            }} /></label>
-            <button type="submit" disabled={creating}>{creating ? "Creando..." : "Crear zona"}</button>
-          </form>
+             <label htmlFor="new-zone-name">Nombre de la zona<input id="new-zone-name" required placeholder="Nombre de zona" value={newZoneName} onChange={event => {
+               const value = event.currentTarget.value;
+               setNewZoneName(value);
+             }} /></label>
+             <label htmlFor="new-zone-lat">Latitud<input id="new-zone-lat" required type="number" step="0.0000001" value={newZoneLat} onChange={event => setNewZoneLat(event.currentTarget.value)} placeholder="-13.5166" /></label>
+             <label htmlFor="new-zone-lng">Longitud<input id="new-zone-lng" required type="number" step="0.0000001" value={newZoneLng} onChange={event => setNewZoneLng(event.currentTarget.value)} placeholder="-71.9670" /></label>
+             <label htmlFor="new-zone-criticality">Criticidad<select id="new-zone-criticality" value={newZoneCriticality} onChange={event => setNewZoneCriticality(event.currentTarget.value)}><option>Alta</option><option>Media</option><option>Baja</option></select></label>
+             <button type="submit" disabled={creating}>{creating ? "Creando..." : "Crear zona"}</button>
+           </form>
         ) : (
           <form className="form-grid" onSubmit={saveZoneEdit}>
             <label htmlFor="edit-zone-name">Nombre de la zona<input id="edit-zone-name" required value={editingZoneName} onChange={event => {
@@ -562,7 +599,7 @@ export default function Admin({ data, session, onOperationUpdate }: { data: Boot
             <label htmlFor="schedule-day">Día<select id="schedule-day" value={newSchedule.day} onChange={event => {
               const value = event.currentTarget.value;
               setNewSchedule(prev => ({ ...prev, day: value }));
-            }}><option>Lunes</option><option>Martes</option><option>Miércoles</option><option>Jueves</option><option>Viernes</option></select></label>
+            }}><option>Lunes</option><option>Martes</option><option>Miércoles</option><option>Jueves</option><option>Viernes</option><option>Sábado</option></select></label>
             <label htmlFor="schedule-time">Hora<input id="schedule-time" type="time" value={newSchedule.time} onChange={event => {
               const value = event.currentTarget.value;
               setNewSchedule(prev => ({ ...prev, time: value }));
@@ -582,7 +619,7 @@ export default function Admin({ data, session, onOperationUpdate }: { data: Boot
             <label htmlFor="edit-schedule-day">Día<select id="edit-schedule-day" value={editingSchedule.day} onChange={event => {
               const value = event.currentTarget.value;
               setEditingSchedule(prev => ({ ...prev, day: value }));
-            }}><option>Lunes</option><option>Martes</option><option>Miércoles</option><option>Jueves</option><option>Viernes</option></select></label>
+            }}><option>Lunes</option><option>Martes</option><option>Miércoles</option><option>Jueves</option><option>Viernes</option><option>Sábado</option></select></label>
             <label htmlFor="edit-schedule-time">Hora<input id="edit-schedule-time" type="time" value={editingSchedule.time} onChange={event => {
               const value = event.currentTarget.value;
               setEditingSchedule(prev => ({ ...prev, time: value }));
