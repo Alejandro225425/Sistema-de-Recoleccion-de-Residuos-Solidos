@@ -250,7 +250,7 @@ export function App() {
 
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
-  async function loadData() {
+   async function loadData() {
     setLoading(true);
     try {
       const bootstrap = await request<Bootstrap>("/bootstrap");
@@ -459,6 +459,7 @@ export function Dashboard({ data, monitor, session, onConfirmCollection, health,
   const intervalRef = useRef<number | null>(null);
   const isCitizen = session.role === "ciudadano";
   const isAdmin = session.role === "admin";
+  const isConductor = session.role === "conductor";
 
   useEffect(() => {
     if (isCitizen) return;
@@ -514,6 +515,26 @@ export function Dashboard({ data, monitor, session, onConfirmCollection, health,
     return zone ? `${zone.name} · ${zone.criticality}` : session.zone || "Sin zona asignada";
   }, [data.zones, session.zone]);
 
+  const myTruck = useMemo(() => {
+    if (!isConductor) return undefined;
+    const trucks = Array.isArray(effectiveData.trucks) ? effectiveData.trucks : [];
+    return trucks.find(t => String(t.driver ?? "").toLowerCase() === String(session.name ?? "").toLowerCase());
+  }, [isConductor, effectiveData.trucks, session.name]);
+
+  const myZoneCollections = useMemo(() => {
+    if (!isConductor) return [];
+    const zoneLower = String(session.zone ?? "").toLowerCase();
+    if (!zoneLower) return [];
+    return (Array.isArray(data.collections) ? data.collections : []).filter(c => String(c.zone ?? "").toLowerCase() === zoneLower);
+  }, [isConductor, data.collections, session.zone]);
+
+  const myZoneReports = useMemo(() => {
+    if (!isConductor) return [];
+    const zoneLower = String(session.zone ?? "").toLowerCase();
+    if (!zoneLower) return [];
+    return (Array.isArray(data.reports) ? data.reports : []).filter(r => String(r.zone ?? "").toLowerCase() === zoneLower);
+  }, [isConductor, data.reports, session.zone]);
+
   const metrics = [
     ...(isCitizen
       ? [
@@ -536,6 +557,22 @@ export function Dashboard({ data, monitor, session, onConfirmCollection, health,
             [data.trucks?.filter((t: Truck) => t.status === "Mantenimiento").length ?? 0, "Camiones en mantenimiento", "🔧"],
           ] : []),
         ]
+      : isConductor
+      ? [
+          [myZoneCollections.length, "Recolecciones en mi zona", "✅"],
+          [myZoneCollections.filter(c => String(c.status ?? "").toLowerCase().includes("confirmada")).length, "Confirmadas", "✅"],
+          [myZoneReports.length, "Incidencias en mi zona", "🚨"],
+          [myZoneReports.filter(r => !String(r.status ?? "").toLowerCase().includes("resuelto")).length, "Incidencias abiertas", "🟡"],
+          ...(myTruck ? [
+            [myZoneCollections.reduce((sum, c) => sum + (Number(c.kg) || 0), 0), "Kg recolectados hoy", "⚖️"],
+            [`${myTruck.code} - ${myTruck.status}`, "Mi camión", "🚛"],
+          ] : []),
+          ...(monitor.performance ? [
+            [monitor.performance.delayed_routes, "Rutas con retraso", "⏱️"],
+            [`${monitor.performance.average_progress}%`, "Progreso medio", "📈"],
+            [monitor.performance.compliance_estimate, "Índice de cumplimiento", "✅"],
+          ] : []),
+        ]
       : [
           [effectiveData.analytics.zones, "Zonas Activas", "🗺️"],
           [effectiveData.analytics.active_trucks, "Camiones en Ruta", "🚛"],
@@ -549,37 +586,53 @@ export function Dashboard({ data, monitor, session, onConfirmCollection, health,
         ]),
   ];
 
+  const conductorZone = String(session.zone ?? "").toLowerCase();
+  const conductorTruckCode = String(myTruck?.code ?? "").toLowerCase();
+
   const dispatchBoard = useMemo(() => {
     if (isCitizen) return [];
     if (monitor.truck_assignments?.length) {
-      return monitor.truck_assignments.slice(0, 3).map((assignment, index) => ({
+      const allAssignments = monitor.truck_assignments.map((assignment, index) => ({
         hour: `${String(8 + index).padStart(2, "0")}:00`,
         zone: assignment.zone,
         truck: assignment.truck_code,
         action: assignment.action ?? `Atender ${assignment.zone}`,
         status: index === tick % 3 ? "En curso" : index < tick % 3 ? "Completado" : "Programado"
       }));
+      if (isConductor) {
+        const zoneFiltered = allAssignments.filter(a => String(a.zone ?? "").toLowerCase() === conductorZone);
+        if (zoneFiltered.length) return zoneFiltered.slice(0, 3);
+      }
+      return allAssignments.slice(0, 3);
     }
 
     const prioritized = [...(effectiveData.prioritized_zones ?? [])].sort((a, b) => b.priority_score - a.priority_score);
-    const routes = [...(effectiveData.optimized_routes ?? effectiveData.routes ?? [])].sort((a, b) => {
+    const allRoutes = [...(effectiveData.optimized_routes ?? effectiveData.routes ?? [])].sort((a, b) => {
       const aUrgency = /retraso/i.test(a.delay) || a.progress < 40 ? 1 : 0;
       const bUrgency = /retraso/i.test(b.delay) || b.progress < 40 ? 1 : 0;
       return bUrgency - aUrgency || b.progress - a.progress;
     });
 
-    const activeSchedules = (effectiveData.schedules ?? []).slice(0, 3);
+    const filteredRoutes = isConductor && conductorTruckCode
+      ? allRoutes.filter(r => String(r.truck ?? "").toLowerCase() === conductorTruckCode)
+      : allRoutes;
+
+    const activeSchedules = (effectiveData.schedules ?? []).filter(s =>
+      !isConductor || !conductorZone || String(s.zone ?? "").toLowerCase() === conductorZone
+    ).slice(0, 3);
     const scheduleBased = activeSchedules.length > 0
       ? activeSchedules.map((s, index) => ({
           hour: (s.time || "").split(" - ")[0] ?? `${String(8 + index).padStart(2, "0")}:00`,
           zone: s.zone,
-          truck: routes[index]?.truck ?? effectiveData.trucks[index]?.code ?? `C-${index + 1}`,
+          truck: filteredRoutes[index]?.truck ?? effectiveData.trucks[index]?.code ?? `C-${index + 1}`,
           action: `Recolección: ${s.waste}`,
         }))
-      : (effectiveData.zones ?? []).slice(0, 3).map((zone, index) => ({
+      : (effectiveData.zones ?? []).filter(z =>
+          !isConductor || !conductorZone || String(z.name ?? "").toLowerCase() === conductorZone
+        ).slice(0, 3).map((zone, index) => ({
           hour: `${String(8 + index).padStart(2, "0")}:00`,
           zone: zone.name,
-          truck: effectiveData.trucks[index]?.code ?? `C-${index + 1}`,
+          truck: filteredRoutes[index]?.truck ?? effectiveData.trucks[index]?.code ?? `C-${index + 1}`,
           action: "Despacho inicial",
         }));
 
@@ -587,16 +640,44 @@ export function Dashboard({ data, monitor, session, onConfirmCollection, health,
       ...step,
       status: index === tick % 3 ? "En curso" : index < tick % 3 ? "Completado" : "Programado"
     }));
-  }, [monitor.truck_assignments, effectiveData.prioritized_zones, effectiveData.optimized_routes, effectiveData.routes, effectiveData.schedules, effectiveData.zones, effectiveData.trucks, tick, isCitizen]);
+  }, [monitor.truck_assignments, effectiveData.prioritized_zones, effectiveData.optimized_routes, effectiveData.routes, effectiveData.schedules, effectiveData.zones, effectiveData.trucks, tick, isCitizen, isConductor, conductorZone, conductorTruckCode]);
 
-  const alerts = useMemo(() => isCitizen ? [] : (monitor.alerts ?? []).map((alert, index) => ({
-    id: index,
-    icon: String(alert ?? "").toLowerCase().includes("retraso") ? "🚛" : "🔔",
-    title: alert ?? "Alerta",
-    description: alert ?? "Alerta",
-    time: "Ahora",
-    status: String(alert ?? "").toLowerCase().includes("retraso") ? "pendiente" : "activo"
-  })), [monitor.alerts, isCitizen]);
+  const alerts = useMemo(() => {
+    if (isCitizen) return [];
+    const allAlerts = (monitor.alerts ?? []).map((alert, index) => ({
+      id: index,
+      icon: String(alert ?? "").toLowerCase().includes("retraso") ? "🚛" : "🔔",
+      title: alert ?? "Alerta",
+      description: alert ?? "Alerta",
+      time: "Ahora",
+      status: String(alert ?? "").toLowerCase().includes("retraso") ? "pendiente" : "activo"
+    }));
+    if (isConductor && conductorZone && myTruck) {
+      const truckPrefix = `${String(myTruck.code ?? "")}`;
+      const zonePrefix = String(session.zone ?? "");
+      return allAlerts.filter(alert =>
+        String(alert.title ?? "").toLowerCase().includes(truckPrefix.toLowerCase()) ||
+        String(alert.title ?? "").toLowerCase().includes(zonePrefix.toLowerCase()) ||
+        String(alert.description ?? "").toLowerCase().includes(truckPrefix.toLowerCase()) ||
+        String(alert.description ?? "").toLowerCase().includes(zonePrefix.toLowerCase())
+      );
+    }
+    return allAlerts;
+  }, [monitor.alerts, isCitizen, isConductor, conductorZone, myTruck, session.zone]);
+
+  const interventionPlan = useMemo(() => {
+    const all = effectiveData.intervention_plan ?? [];
+    if (isConductor && conductorZone) {
+      const filtered = all.filter(step => {
+        const stepZone = String(step.zone ?? "").toLowerCase();
+        const stepRoute = String(step.route ?? "").toLowerCase();
+        const detail = String(step.detail ?? "").toLowerCase();
+        return stepZone === conductorZone || stepRoute.includes(conductorZone) || detail.includes(conductorZone);
+      });
+      return filtered.length > 0 ? filtered : all;
+    }
+    return all;
+  }, [effectiveData.intervention_plan, isConductor, conductorZone]);
 
   const citizenAlerts = useMemo(() => {
     if (!isCitizen) return [];
@@ -831,6 +912,49 @@ export function Dashboard({ data, monitor, session, onConfirmCollection, health,
         </span>
       </div>
 
+      {isConductor && myTruck && (
+        <section className="panel" style={{ marginBottom: 16 }}>
+          <h2>🚛 Mi camión</h2>
+          <div className="metrics-grid">
+            <div className="metric-card">
+              <span className="metric-icon" aria-hidden="true">🚚</span>
+              <div className="metric-content">
+                <strong className="metric-value">{myTruck.code}</strong>
+                <span className="metric-label">Código de camión</span>
+              </div>
+            </div>
+            <Metric value={myTruck.status} label="Estado" />
+            <Metric value={myTruck.zone} label="Zona asignada" />
+            <Metric value={zoneSummary} label="Crítica" />
+          </div>
+          {(() => {
+            const myRoute = (effectiveData.optimized_routes ?? effectiveData.routes ?? []).find(
+              r => String(r.truck ?? "").toLowerCase() === String(myTruck.code ?? "").toLowerCase()
+            );
+            return myRoute ? (
+              <div style={{ marginTop: 12 }}>
+                <Item
+                  title="Ruta asignada"
+                  detail={`Avance ${myRoute.progress}% | ETA ${myRoute.eta} | ${myRoute.delay}`}
+                  color={String(myRoute.delay ?? "").toLowerCase().includes("retraso") ? "yellow" : "blue"}
+                />
+              </div>
+            ) : (
+              <p style={{ color: "var(--muted)", marginTop: 12, padding: "8px 0" }}>Sin ruta activa asignada a tu camión.</p>
+            );
+          })()}
+          {myZoneCollections.length > 0 && (
+            <div style={{ marginTop: 12 }}>
+              <Item
+                title="Última recolección"
+                detail={`${myZoneCollections[0].truck} · ${myZoneCollections[0].kg} kg · ${myZoneCollections[0].status}`}
+                color="blue"
+              />
+            </div>
+          )}
+        </section>
+      )}
+
       <div className="dashboard-sections">
         <section className="panel panel-large">
           <h2>🗺️ Mapa Operativo</h2>
@@ -858,10 +982,10 @@ export function Dashboard({ data, monitor, session, onConfirmCollection, health,
         <section className="panel panel-alerts">
           <div className="alerts-header">
             <h2>🚧 Plan de intervención</h2>
-            <span className="alert-count">{effectiveData.intervention_plan?.length ?? 0}</span>
+            <span className="alert-count">{interventionPlan.length}</span>
           </div>
           <div className="alerts-list">
-            {(effectiveData.intervention_plan ?? []).map((step, index) => (
+            {interventionPlan.map((step, index) => (
               <div className="alert-item alert-activo" key={`${step.title}-${index}`}>
                 <div className="alert-icon">✅</div>
                 <div className="alert-content">
@@ -871,7 +995,7 @@ export function Dashboard({ data, monitor, session, onConfirmCollection, health,
                 </div>
               </div>
             ))}
-            {(effectiveData.intervention_plan ?? []).length === 0 && (
+            {interventionPlan.length === 0 && (
               <p style={{ color: "var(--muted)", padding: "12px 0" }}>No hay acciones de intervención prioritarias definidas.</p>
             )}
           </div>
@@ -1074,7 +1198,7 @@ export function Reports({ data, session, onCreateReport, onResolveReport }: { da
   const isOperator = session.role === "operador";
   const isAdmin = session.role === "admin";
   const canResolve = isOperator || isAdmin;
-  const canCreateReport = isCitizen || isOperator || isAdmin;
+  const canCreateReport = isCitizen;
   const isForeignZone = isCitizen && formZone && session.zone && String(formZone).trim().toLowerCase() !== String(session.zone).trim().toLowerCase();
 
   const reportTypes = useMemo(() => {
@@ -1416,12 +1540,42 @@ function Routes({ data, monitor, session, onCreateCollection }: { data: Bootstra
   const [alerts, setAlerts] = useState<string[]>([]);
   const [geoError, setGeoError] = useState(false);
   const [collectionMessage, setCollectionMessage] = useState("");
+  const [collectionError, setCollectionError] = useState("");
+  const isConductor = session?.role === "conductor";
+  const isOperatorOrAdmin = session?.role === "operador" || session?.role === "admin";
+  const canRegisterCollection = isConductor || isOperatorOrAdmin || false;
   const trucks = monitor.trucks ?? data.trucks ?? [];
   const routes = monitor.optimized_routes ?? data.routes ?? [];
   const prioritizedZones = monitor.prioritized_zones ?? data.prioritized_zones ?? [];
+  const safeZones = Array.isArray(data.zones) ? data.zones : [];
+  const safeTrucks = Array.isArray(trucks) ? trucks : [];
+
+  const myTruck = useMemo(() => {
+    if (!session) return undefined;
+    return safeTrucks.find(t => String(t.driver ?? "").trim().toLowerCase() === String(session.name ?? "").trim().toLowerCase());
+  }, [safeTrucks, session?.name, session?.role]);
+
+  const conductorZone = useMemo(() => {
+    if (!session) return undefined;
+    const zoneLower = String(session.zone ?? "").trim().toLowerCase();
+    return safeZones.find(z => String(z.name ?? "").trim().toLowerCase() === zoneLower);
+  }, [safeZones, session?.zone, session?.role]);
+
+  const availableTrucks = useMemo(() => {
+    if (isConductor && myTruck) return [myTruck];
+    return safeTrucks;
+  }, [isConductor, myTruck, safeTrucks]);
+
+  const visibleRoutes = useMemo(() => {
+    if (isConductor && myTruck) {
+      return routes.filter(r => String(r.truck ?? "").toLowerCase() === String(myTruck.code ?? "").toLowerCase());
+    }
+    return routes;
+  }, [routes, isConductor, myTruck]);
+
   const [kgValue, setKgValue] = useState(0);
-  const [selectedTruck, setSelectedTruck] = useState<number | "">(trucks[0]?.id ?? "");
-  const [selectedZone, setSelectedZone] = useState<number | "">(data.zones?.[0]?.id ?? "");
+  const [selectedTruck, setSelectedTruck] = useState<number | "">(myTruck?.id ?? safeTrucks[0]?.id ?? "");
+  const [selectedZone, setSelectedZone] = useState<number | "">(conductorZone?.id ?? safeZones[0]?.id ?? "");
   const [submittingCollection, setSubmittingCollection] = useState(false);
 
   useEffect(() => {
@@ -1431,17 +1585,46 @@ function Routes({ data, monitor, session, onCreateCollection }: { data: Bootstra
     }).then(payload => { setAlerts(payload.alerts ?? []); setGeoError(false); }).catch(() => { setAlerts([]); setGeoError(true); });
   }, []);
 
+  useEffect(() => {
+    setSelectedTruck(myTruck?.id ?? safeTrucks[0]?.id ?? "");
+    setSelectedZone(conductorZone?.id ?? safeZones[0]?.id ?? "");
+  }, [myTruck, conductorZone]);
+
   async function submitCollection(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!onCreateCollection) return;
+    setCollectionError("");
+
+    const truckId = Number(selectedTruck);
+    const zoneId = Number(selectedZone);
+    const kg = Number(kgValue);
+
+    if (!truckId || isNaN(truckId) || truckId <= 0) {
+      setCollectionError("Selecciona un camión válido.");
+      return;
+    }
+    if (!zoneId || isNaN(zoneId) || zoneId <= 0) {
+      setCollectionError("Selecciona una zona válida.");
+      return;
+    }
+    if (isNaN(kg) || kg < 0) {
+      setCollectionError("Ingresa una cantidad válida de kilogramos.");
+      return;
+    }
+    if (kg === 0) {
+      setCollectionError("El kg recolectado no puede ser 0.");
+      return;
+    }
+
     setSubmittingCollection(true);
     setCollectionMessage("");
     try {
-      await onCreateCollection({ truck_id: Number(selectedTruck), zone_id: Number(selectedZone), kg: Number(kgValue) });
+      await onCreateCollection({ truck_id: truckId, zone_id: zoneId, kg: kg });
       setCollectionMessage("Recolección registrada correctamente.");
       setKgValue(0);
     } catch (error) {
-      setCollectionMessage("No se pudo registrar la recolección. Intentalo de nuevo.");
+      const msg = error instanceof Error ? error.message : "No se pudo registrar la recolección. Intentalo de nuevo.";
+      setCollectionError(msg);
     } finally {
       setSubmittingCollection(false);
     }
@@ -1450,39 +1633,50 @@ function Routes({ data, monitor, session, onCreateCollection }: { data: Bootstra
   return (
 <>
        <div className="two-col">
-         <section className="panel"><h2>Mapa operativo OpenStreetMap</h2><Map zones={data.zones ?? []} trucks={trucks} routes={routes} prioritizedZones={prioritizedZones} /></section>
+         <section className="panel"><h2>Mapa operativo OpenStreetMap</h2><Map zones={data.zones ?? []} trucks={safeTrucks} routes={routes} prioritizedZones={prioritizedZones} /></section>
          <section className="panel">
            <h2>Seguimiento GPS</h2>
            {geoError && <p className="hint error">El servicio de alertas geo no está disponible. Los datos pueden estar desactualizados.</p>}
+           {isConductor && myTruck && (
+             <p className="hint" style={{ marginBottom: 8 }}>📍 Viendo rutas de tu camión: <strong>{myTruck.code}</strong> ({myTruck.driver})</p>
+           )}
            <div className="list">
-             {routes.map(route => <Item key={route.id} title={`${route.truck} - ${route.zone}`} detail={`Avance ${route.progress}% | ETA ${route.eta} | ${route.delay}`} color={String(route.delay ?? "").toLowerCase().includes("retraso") ? "yellow" : "blue"} />)}
+             {visibleRoutes.map(route => <Item key={route.id} title={`${route.truck} - ${route.zone}`} detail={`Avance ${route.progress}% | ETA ${route.eta} | ${route.delay}`} color={String(route.delay ?? "").toLowerCase().includes("retraso") ? "yellow" : "blue"} />)}
+             {isConductor && myTruck && visibleRoutes.length === 0 && (
+               <p className="empty-state">No hay rutas activas para tu camión.</p>
+             )}
              {alerts.map(alert => <Item key={alert} title="Microservicio TS" detail={alert} color="blue" />)}
            </div>
          </section>
        </div>
-       {collectionMessage && <div role="alert" className="app-alert">{collectionMessage}</div>}
-       {(session?.role === "conductor" || session?.role === "operador" || session?.role === "admin") && (
+        {collectionMessage && <div role="alert" className="app-alert success">{collectionMessage}</div>}
+        {collectionError && <div role="alert" className="app-alert error">{collectionError}</div>}
+       {canRegisterCollection && (
         <section className="panel" style={{ marginTop: 16 }}>
-          <h2>Registrar recolección</h2>
+          <h2>
+            {isConductor && myTruck
+              ? `Registrar recolección - ${myTruck.code} (${myTruck.driver})`
+              : "Registrar recolección"}
+          </h2>
           <form className="form-grid" onSubmit={submitCollection}>
-            <label>Camion
+            <label>Camión
               <select value={selectedTruck} onChange={event => setSelectedTruck(event.target.value ? Number(event.target.value) : "")}>
-                {trucks.map(truck => <option key={truck.id} value={truck.id}>{truck.code} - {truck.driver}</option>)}
+                {availableTrucks.map(truck => <option key={truck.id} value={truck.id}>{truck.code} - {truck.driver}</option>)}
               </select>
             </label>
             <label>Zona
               <select value={selectedZone} onChange={event => setSelectedZone(event.target.value ? Number(event.target.value) : "")}>
-                {(data.zones ?? []).map(zone => <option key={zone.id} value={zone.id}>{zone.name}</option>)}
+                {safeZones.map(zone => <option key={zone.id} value={zone.id}>{zone.name}</option>)}
               </select>
             </label>
             <label>Kg recolectados
-              <input name="kg" type="number" min={0} value={kgValue} onChange={event => setKgValue(Number(event.target.value))} required />
+              <input name="kg" type="number" min={1} value={kgValue} onChange={event => { const val = Number(event.target.value); setKgValue(isNaN(val) ? 0 : val); }} required />
             </label>
-            <button type="submit" className="btn-primary" disabled={submittingCollection}>{submittingCollection ? "Registrando..." : "Registrar recoleccion"}</button>
+            <button type="submit" className="btn-primary" disabled={submittingCollection}>{submittingCollection ? "Registrando..." : "Registrar recolección"}</button>
           </form>
         </section>
-      )}
-    </>
+       )}
+     </>
   );
 }
 
@@ -1641,17 +1835,33 @@ function Analytics({ data, session, onConfirmCollection }: { data: Bootstrap; se
   const performance = data.performance;
   const isCitizen = session?.role === "ciudadano";
   const isOperator = session?.role === "operador";
+  const isConductor = session?.role === "conductor";
+  const conductorZone = isConductor ? String(session?.zone ?? "").toLowerCase() : null;
+
   const safeReports = useMemo(() => {
     const reports = Array.isArray(data.reports) ? data.reports : [];
-    if (!isCitizen || !session) return reports;
-    return reports.filter(report => String(report.citizen ?? "").toLowerCase() === String(session.name ?? "").toLowerCase());
-  }, [data.reports, isCitizen, session?.name]);
+    if (isCitizen && session) {
+      return reports.filter(report => String(report.citizen ?? "").toLowerCase() === String(session.name ?? "").toLowerCase());
+    }
+    if (isConductor && conductorZone) {
+      return reports.filter(report => String(report.zone ?? "").toLowerCase() === conductorZone);
+    }
+    return reports;
+  }, [data.reports, isCitizen, isConductor, session?.name, conductorZone]);
+
   const safeCollections = useMemo(() => {
     const collections = Array.isArray(data.collections) ? data.collections : [];
-    if (!isCitizen) return collections;
-    const citizenZone = String(session?.zone ?? "").toLowerCase();
-    return collections.filter(col => !citizenZone || String(col.zone ?? "").toLowerCase() === citizenZone);
-  }, [data.collections, isCitizen, session?.zone]);
+    if (isCitizen && session) {
+      const citizenZone = String(session?.zone ?? "").toLowerCase();
+      return collections.filter(col => !citizenZone || String(col.zone ?? "").toLowerCase() === citizenZone);
+    }
+    if (isConductor && conductorZone) {
+      return collections.filter(col => String(col.zone ?? "").toLowerCase() === conductorZone);
+    }
+    return collections;
+  }, [data.collections, isCitizen, isConductor, conductorZone, session?.zone]);
+
+  const myZoneCollections = safeCollections;
   const reportCounts = safeReports.reduce((acc, report) => {
     acc[report.status] = (acc[report.status] ?? 0) + 1;
     return acc;
@@ -1685,6 +1895,15 @@ function Analytics({ data, session, onConfirmCollection }: { data: Bootstrap; se
         { nombre: "Zonas activas", valor: `${data.zones?.length ?? 0}` },
         { nombre: "Camiones en mantenimiento", valor: `${data.trucks?.filter(t => t.status === "Mantenimiento").length ?? 0}` },
       ]
+    : isConductor
+    ? [
+        { nombre: "Total kg recolectados", valor: `${myZoneCollections.reduce((sum, c) => sum + (Number(c.kg) || 0), 0)} kg` },
+        { nombre: "Recolecciones en mi zona", valor: myZoneCollections.length },
+        { nombre: "Recolecciones confirmadas", valor: `${collectionCounts["Confirmada"] ?? 0}/${safeCollections.length}` },
+        { nombre: "Incidencias en mi zona", valor: safeReports.length },
+        { nombre: "Incidencias abiertas", valor: reportCounts.Pendiente + reportCounts["En revision"] },
+        { nombre: "Zonas monitoreadas", valor: `${data.zones?.length ?? 0}` },
+      ]
     : [
         { nombre: "Residuos registrados", valor: `${analytics.total_kg} kg` },
         { nombre: "Cumplimiento de rutas", valor: `${analytics.compliance}%` },
@@ -1696,7 +1915,7 @@ function Analytics({ data, session, onConfirmCollection }: { data: Bootstrap; se
         { nombre: "Recolecciones confirmadas", valor: `${collectionCounts["Confirmada"] ?? 0}/${safeCollections.length}` },
       ];
 
-  return (
+      return (
     <>
       <div className="grid metrics">
         {isCitizen ? (
@@ -1719,6 +1938,17 @@ function Analytics({ data, session, onConfirmCollection }: { data: Bootstrap; se
             <Metric value={`${performance?.total_routes ?? 0}`} label="Rutas monitoreadas" />
             <Metric value={`${performance?.compliance_estimate ?? 0}%`} label="Índice de cumplimiento" />
           </>
+        ) : isConductor ? (
+          <>
+            <Metric value={`${myZoneCollections.reduce((sum, c) => sum + (Number(c.kg) || 0), 0)} kg`} label="Kg recolectados en zona" />
+            <Metric value={myZoneCollections.length} label="Recolecciones en mi zona" />
+            <Metric value={`${collectionCounts["Confirmada"] ?? 0}/${safeCollections.length}`} label="Confirmadas" />
+            <Metric value={safeReports.length} label="Incidencias en mi zona" />
+            <Metric value={reportCounts.Pendiente + reportCounts["En revision"]} label="Incidencias abiertas" />
+            <Metric value={`${analytics.compliance}%`} label="Cumplimiento de rutas" />
+            <Metric value={`${performance?.delayed_routes ?? 0}`} label="Rutas con retraso" />
+            <Metric value={`${performance?.compliance_estimate ?? 0}%`} label="Índice de cumplimiento" />
+          </>
         ) : (
           <>
             <Metric value={`${analytics.total_kg} kg`} label="Residuos registrados" />
@@ -1734,7 +1964,7 @@ function Analytics({ data, session, onConfirmCollection }: { data: Bootstrap; se
       </div>
       <section className="panel">
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-          <h2>Historial de recoleccion</h2>
+          <h2>{isConductor ? "Historial de recolecciones de mi zona" : "Historial de recolecciones"}</h2>
           <div style={{ display: "flex", gap: 8 }}>
             <button type="button" className="export-btn" onClick={() => exportToCSV("metricas", metricsCSV)}>
               📥 Exportar métricas CSV
@@ -1746,7 +1976,7 @@ function Analytics({ data, session, onConfirmCollection }: { data: Bootstrap; se
         </div>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px", marginBottom: "24px" }}>
           <section className="panel" style={{ padding: "16px" }}>
-            <h3>Resumen de reportes</h3>
+            <h3>{isConductor ? "Incidencias en mi zona" : "Resumen de reportes"}</h3>
             <ul style={{ listStyle: "none", padding: 0, margin: 0, lineHeight: 1.8 }}>
               <li>Pendientes: <strong>{reportCounts.Pendiente}</strong></li>
               <li>En revisión: <strong>{reportCounts["En revision"]}</strong></li>

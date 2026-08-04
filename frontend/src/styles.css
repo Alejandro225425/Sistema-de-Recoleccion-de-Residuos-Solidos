@@ -505,6 +505,14 @@ textarea { min-height: 100px; resize: vertical; font-family: inherit; }
   color: var(--error); border: 1px solid color-mix(in srgb, var(--error) 25%, transparent);
   font-weight: 600; font-size: 0.9rem;
 }
+.app-alert.error {
+  background: color-mix(in srgb, var(--error) 15%, var(--panel));
+  color: var(--error); border: 1px solid color-mix(in srgb, var(--error) 35%, transparent);
+}
+.app-alert.success {
+  background: color-mix(in srgb, var(--eco-primary) 10%, var(--panel));
+  color: var(--eco-primary); border: 1px solid color-mix(in srgb, var(--eco-primary) 25%, transparent);
+}
 
 .dashboard-role-row {
   display: flex; justify-content: flex-end; margin-bottom: 16px; padding: 0 32px;
