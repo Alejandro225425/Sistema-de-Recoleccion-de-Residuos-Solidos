@@ -1,4 +1,26 @@
-# Sistema de Recolección de Residuos Sólidos - Versión 5.5.5
+# Sistema de Recolección de Residuos Sólidos - Versión 5.5.6
+
+## Versión 5.5.6 - Corrección de bugs y mejora de estabilidad en dashboard de administración
+
+### Cambios destacados
+- **Backend - create_report**: se revirtió el bloqueo de roles `admin`/`operador` en la creación de reportes. Ahora permiten crear reportes; la restricción de zona aplica solo a ciudadanos.
+- **Dashboard Principal**: se corrigió "Contenedores críticos" para usar `effectiveData.containers` en lugar de `data.containers`.
+- **Admin**: se agregó latitud, longitud y criticidad a los inputs del formulario de creación/edición de zonas.
+- **Admin**: se agregó `onRefresh` a todas las operaciones CRUD para sincronizar estado local tras mutaciones.
+- **Admin**: se sincronizó `formValues.zone` con `session.zone`.
+- **Admin**: se agregó día "Sábado" al dropdown de horarios.
+- **Reports**: se corrigió `setFormZone("")` → ahora restablece a `session.zone`.
+- **Waste**: se corrigió typo "Clasificacion" → "Clasificación" y filtro de tipos con `extractWasteTypes`.
+- **Routes**: se corrigió typo "recoleccion" → "recolección".
+- **App**: se agregó endpoint `/api/health` con verificación real de conectividad y `lastSync`.
+- **Código limpio**: se eliminó código muerto del toggle de modo oscuro.
+- **Compilación**: `tsc --noEmit` sin errores, `npm run build` exitoso.
+- **Tests**: 21/21 frontend, 21/21 backend.
+
+### Archivos modificados
+- `backend-python/app/main.py` — Revertir bloqueo create_report admin/operador
+- `frontend/src/main.tsx` — Dashboard containers, health check, typos, filtros Waste, reset zona Reports
+- `frontend/src/components/Admin.tsx` — Lat/lng/criticality zonas, onRefresh CRUD, session.zone usuarios, Sábado horario, try/catch eventos
 
 ## Versión 5.5.5 - Auditoría integral de dashboards del rol Operador Municipal
 

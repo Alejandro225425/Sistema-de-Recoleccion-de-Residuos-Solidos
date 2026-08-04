@@ -67,9 +67,11 @@ const emptyBootstrap: Bootstrap = {
 };
 
 function statusTone(status: string | undefined | null) {
-  const s = (status ?? "").toString().toLowerCase();
+  const s = (status ?? "").toString().toLowerCase().trim();
   if (s === "resuelto") return "blue";
   if (s === "en revision") return "yellow";
+  if (s === "pendiente") return "red";
+  if (s === "parcial") return "yellow";
   return "red";
 }
 
@@ -221,6 +223,8 @@ export function App() {
   const [view, setView] = useState<View>("dashboard");
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("");
+  const [health, setHealth] = useState<{ mode: string; connected: boolean; database: string } | null>(null);
+  const [lastSync, setLastSync] = useState("");
   const roleViews: Record<Role, View[]> = {
     admin: views,
     operador: ["dashboard", "reports", "routes", "analytics"],
@@ -239,17 +243,12 @@ export function App() {
     });
   }, [session]);
 
-  const [isDarkMode, setIsDarkMode] = useState(() => {
-    const saved = localStorage.getItem("eco-dark-mode");
-    return saved ? JSON.parse(saved) : window.matchMedia("(prefers-color-scheme: dark)").matches;
-  });
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-
   useEffect(() => {
-    localStorage.setItem("eco-dark-mode", JSON.stringify(isDarkMode));
-    document.documentElement.dataset.theme = isDarkMode ? "dark" : "light";
-    document.documentElement.style.colorScheme = "light dark";
-  }, [isDarkMode]);
+    document.documentElement.dataset.theme = "light";
+    document.documentElement.style.colorScheme = "light";
+  }, []);
+
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   async function loadData() {
     setLoading(true);
@@ -273,8 +272,18 @@ export function App() {
     try {
       const monitorPayload = await request<Monitor>("/operations/monitor");
       setMonitor(monitorPayload);
+      setLastSync(new Date().toLocaleString("es-PE"));
     } catch (error) {
       console.error("Error loading monitor data:", error);
+    }
+  }
+
+  async function loadHealth() {
+    try {
+      const healthPayload = await request<{ mode: string; connected: boolean; database: string }>("/health");
+      setHealth(healthPayload);
+    } catch {
+      setHealth(null);
     }
   }
 
@@ -284,10 +293,11 @@ export function App() {
     }
   }, [session, view]);
 
-  useEffect(() => {
-    loadData().catch(() => setMessage("No se pudo conectar con FastAPI. Verifica que el backend este ejecutandose."));
-    loadMonitor().catch(() => {});
-    const monitorInterval = window.setInterval(() => {
+   useEffect(() => {
+     loadData().catch(() => setMessage("No se pudo conectar con FastAPI. Verifica que el backend este ejecutandose."));
+     loadMonitor().catch(() => {});
+     loadHealth().catch(() => {});
+     const monitorInterval = window.setInterval(() => {
       loadMonitor().catch(() => {});
     }, 10000);
     return () => window.clearInterval(monitorInterval);
@@ -393,9 +403,6 @@ export function App() {
         </nav>
         <div className="sidebar-footer">
           <button type="button" onClick={logout}>Cerrar sesión</button>
-          <button type="button" className="theme-toggle" onClick={() => setIsDarkMode((value: boolean) => !value)}>
-            {isDarkMode ? "☀️ Modo Claro" : "🌙 Modo Oscuro"}
-          </button>
         </div>
       </aside>
 
@@ -409,17 +416,20 @@ export function App() {
           {loading ? (
             <div className="loading">Cargando datos...</div>
           ) : (
-            <Content
-              data={effectiveData}
-              monitor={monitor}
-              session={session}
-              view={view}
-              onCreateReport={createReport}
-              onResolveReport={resolveReport}
-              onOperationUpdate={updateOperation}
-              onCreateCollection={createCollection}
-              onConfirmCollection={confirmCollection}
-            />
+             <Content
+               data={effectiveData}
+               monitor={monitor}
+               session={session}
+               view={view}
+               onCreateReport={createReport}
+               onResolveReport={resolveReport}
+               onOperationUpdate={updateOperation}
+               onCreateCollection={createCollection}
+               onConfirmCollection={confirmCollection}
+               health={health}
+               lastSync={lastSync}
+               onRefresh={loadData}
+             />
           )}
         </ErrorBoundary>
       </section>
@@ -427,13 +437,13 @@ export function App() {
   );
 }
 
-function Content(props: { data: Bootstrap; monitor: Monitor; session: Session; view: View; onCreateReport: (report: Omit<Report, "id" | "status">) => Promise<void>; onResolveReport: (id: number) => Promise<void>; onOperationUpdate: (payload: OperationUpdatePayload) => Promise<void>; onCreateCollection: (payload: { truck_id: number; zone_id: number; kg: number }) => Promise<void>; onConfirmCollection: (collectionId: number) => Promise<void>; }) {
-  const { data, monitor, session, view, onCreateReport, onOperationUpdate, onResolveReport, onCreateCollection, onConfirmCollection } = props;
+function Content(props: { data: Bootstrap; monitor: Monitor; session: Session; view: View; onCreateReport: (report: Omit<Report, "id" | "status">) => Promise<void>; onResolveReport: (id: number) => Promise<void>; onOperationUpdate: (payload: OperationUpdatePayload) => Promise<void>; onCreateCollection: (payload: { truck_id: number; zone_id: number; kg: number }) => Promise<void>; onConfirmCollection: (collectionId: number) => Promise<void>; health: { mode: string; connected: boolean; database: string } | null; lastSync: string; onRefresh: () => Promise<void>; }) {
+  const { data, monitor, session, view, onCreateReport, onOperationUpdate, onResolveReport, onCreateCollection, onConfirmCollection, health, lastSync, onRefresh } = props;
   const safeData = data ?? emptyBootstrap;
-  if (view === "dashboard") return <Dashboard data={safeData} monitor={monitor} session={session} onConfirmCollection={onConfirmCollection} />;
+  if (view === "dashboard") return <Dashboard data={safeData} monitor={monitor} session={session} onConfirmCollection={onConfirmCollection} health={health} lastSync={lastSync} />;
   if (view === "admin") return (
     <ErrorBoundary fallback={<div className="panel" style={{ margin: 32 }}><h2>Error en Administración</h2><p className="hint error">El panel de administración encontró un error al cargar. Reintenta desde el menú lateral.</p><button type="button" onClick={() => window.location.reload()}>Recargar página</button></div>}>
-      <Admin data={safeData} session={session} onOperationUpdate={onOperationUpdate} />
+      <Admin data={safeData} session={session} onOperationUpdate={onOperationUpdate} onRefresh={onRefresh} />
     </ErrorBoundary>
   );
   if (view === "schedules") return <Schedules schedules={Array.isArray(data?.schedules) ? data.schedules : []} citizenZone={session?.zone} />;
@@ -443,11 +453,12 @@ function Content(props: { data: Bootstrap; monitor: Monitor; session: Session; v
   return <Analytics data={safeData} session={session} onConfirmCollection={onConfirmCollection} />;
 }
 
-export function Dashboard({ data, monitor, session, onConfirmCollection }: { data: Bootstrap; monitor: Monitor; session: Session; onConfirmCollection?: (collectionId: number) => Promise<void>; }) {
+export function Dashboard({ data, monitor, session, onConfirmCollection, health, lastSync }: { data: Bootstrap; monitor: Monitor; session: Session; onConfirmCollection?: (collectionId: number) => Promise<void>; health: { mode: string; connected: boolean; database: string } | null; lastSync: string; }) {
   const [tick, setTick] = useState(0);
   const tickRef = useRef(0);
   const intervalRef = useRef<number | null>(null);
   const isCitizen = session.role === "ciudadano";
+  const isAdmin = session.role === "admin";
 
   useEffect(() => {
     if (isCitizen) return;
@@ -510,6 +521,20 @@ export function Dashboard({ data, monitor, session, onConfirmCollection }: { dat
           [pendingCollections.length, "Recolecciones pendientes", "✅"],
           [myReports.filter(r => String(r.status ?? "").toLowerCase().includes("resuelto")).length, "Reportes resueltos", "👍"],
           [safeCollections.length, "Recolecciones en mi zona", "📍"],
+        ]
+      : isAdmin
+      ? [
+          [effectiveData.analytics.zones, "Zonas Activas", "🗺️"],
+          [effectiveData.analytics.active_trucks, "Camiones en Ruta", "🚛"],
+          [effectiveData.analytics.open_reports, "Alertas Pendientes", "🚨"],
+          [`${effectiveData.analytics.confirmed_collections}/${effectiveData.collections.length}`, "Recolecciones", "✅"],
+          ...(monitor.performance ? [
+            [monitor.performance.delayed_routes, "Rutas con retraso", "⏱️"],
+            [`${monitor.performance.average_progress}%`, "Progreso medio", "📈"],
+            [monitor.performance.compliance_estimate, "Índice de cumplimiento", "✅"],
+            [data.users?.length ?? 0, "Usuarios registrados", "👥"],
+            [data.trucks?.filter((t: Truck) => t.status === "Mantenimiento").length ?? 0, "Camiones en mantenimiento", "🔧"],
+          ] : []),
         ]
       : [
           [effectiveData.analytics.zones, "Zonas Activas", "🗺️"],
@@ -852,32 +877,49 @@ export function Dashboard({ data, monitor, session, onConfirmCollection }: { dat
           </div>
         </section>
 
-        <section className="panel panel-alerts">
-          <div className="alerts-header">
-            <h2>⚠️ Alertas Activas</h2>
-            <span className="alert-count">{alerts.length}</span>
-          </div>
-          <div className="alerts-list">
-            {alerts.map(alert => (
-              <div className={`alert-item alert-${alert.status}`} key={`alert-${alert.id}-${alert.title}`}>
-                <div className="alert-icon" aria-hidden="true">{alert.icon}</div>
-                <div className="alert-content">
-                  <h4>{alert.title}</h4>
-                  <p>{alert.description}</p>
-                  <span className="alert-time">{alert.time}</span>
-                </div>
-                <span className={`alert-status alert-status-${alert.status}`} aria-label={`Estado: ${alert.status}`}>
-                  {alert.status === "activo" ? "🔴" : alert.status === "pendiente" ? "🟡" : "🟢"}
-                </span>
-              </div>
-            ))}
-            {alerts.length === 0 && (
-              <p style={{ color: "var(--muted)", padding: "12px 0", textAlign: "center" }}>
-                No hay alertas activas en este momento.
-              </p>
-            )}
-          </div>
-        </section>
+{isAdmin && (
+         <section className="panel panel-alerts">
+           <div className="alerts-header">
+             <h2>🔧 Estado del sistema</h2>
+             <span className="alert-count">{data.users?.length ?? 0} usuarios · {data.zones?.length ?? 0} zonas · {data.trucks?.length ?? 0} camiones</span>
+           </div>
+           <div className="alerts-list">
+             <Item title="Base de datos" detail={`Modo: ${health?.connected ? "Producción (PostgreSQL)" : health ? "Demo (memoria)" : "Desconectado"}`} color="blue" />
+             <Item title="Última sincronización" detail={lastSync || new Date().toLocaleString("es-PE")} color="blue" />
+             <Item title="Reportes abiertos" detail={`${effectiveData.analytics.open_reports} incidencias pendientes`} color={effectiveData.analytics.open_reports > 2 ? "red" : "blue"} />
+             <Item title="Rutas con retraso" detail={`${monitor.performance?.delayed_routes ?? 0} rutas afectadas`} color={(monitor.performance?.delayed_routes ?? 0) > 0 ? "yellow" : "blue"} />
+             <Item title="Contenedores críticos" detail={`${(effectiveData.containers ?? []).filter((c: any) => c.fill_level >= 85).length} con llenado ≥ 85%`} color={(effectiveData.containers ?? []).filter((c: any) => c.fill_level >= 85).length > 0 ? "red" : "blue"} />
+           </div>
+         </section>
+       )}
+       {alerts.length > 0 && (
+         <section className="panel panel-alerts">
+           <div className="alerts-header">
+             <h2>⚠️ Alertas Activas</h2>
+             <span className="alert-count">{alerts.length}</span>
+           </div>
+           <div className="alerts-list">
+             {alerts.map(alert => (
+               <div className={`alert-item alert-${alert.status}`} key={`alert-${alert.id}-${alert.title}`}>
+                 <div className="alert-icon" aria-hidden="true">{alert.icon}</div>
+                 <div className="alert-content">
+                   <h4>{alert.title}</h4>
+                   <p>{alert.description}</p>
+                   <span className="alert-time">{alert.time}</span>
+                 </div>
+                 <span className={`alert-status alert-status-${alert.status}`} aria-label={`Estado: ${alert.status}`}>
+                   {alert.status === "activo" ? "🔴" : alert.status === "pendiente" ? "🟡" : "🟢"}
+                 </span>
+               </div>
+             ))}
+             {alerts.length === 0 && (
+               <p style={{ color: "var(--muted)", padding: "12px 0", textAlign: "center" }}>
+                 No hay alertas activas en este momento.
+               </p>
+             )}
+           </div>
+         </section>
+       )}
       </div>
     </>
   );
@@ -1017,7 +1059,7 @@ export function Reports({ data, session, onCreateReport, onResolveReport }: { da
         type: formType,
         detail: trimmedDetail
       });
-      setFormZone("");
+      setFormZone(String(session.zone ?? "").trim());
       setFormType("");
       setFormDetail("");
       event.currentTarget.reset();
@@ -1030,7 +1072,10 @@ export function Reports({ data, session, onCreateReport, onResolveReport }: { da
   }
   const isCitizen = session.role === "ciudadano";
   const isOperator = session.role === "operador";
-  const canResolve = session.role === "operador" || session.role === "admin";
+  const isAdmin = session.role === "admin";
+  const canResolve = isOperator || isAdmin;
+  const canCreateReport = isCitizen || isOperator || isAdmin;
+  const isForeignZone = isCitizen && formZone && session.zone && String(formZone).trim().toLowerCase() !== String(session.zone).trim().toLowerCase();
 
   const reportTypes = useMemo(() => {
     const types = new Set<string>();
@@ -1044,8 +1089,6 @@ export function Reports({ data, session, onCreateReport, onResolveReport }: { da
     });
     return ["Acumulacion de basura", "Retraso", "Contenedor lleno", "Otro", ...Array.from(types)];
   }, [data?.reports, data?.schedules]);
-
-  const isForeignZone = (isCitizen || isOperator) && formZone && session.zone && String(formZone).trim().toLowerCase() !== String(session.zone).trim().toLowerCase();
 
   const safeReports = useMemo(() => (Array.isArray(data.reports) ? data.reports : []), [data.reports]);
   const safeZones = useMemo(() => (Array.isArray(data.zones) ? data.zones : []), [data.zones]);
@@ -1084,26 +1127,30 @@ export function Reports({ data, session, onCreateReport, onResolveReport }: { da
 
   return (
     <div className="two-col">
-      <section className="panel">
-        <h2>Registrar incidencia</h2>
-        <form className="form-grid" onSubmit={submit}>
-          <label htmlFor="report-zone">Zona</label>
-          <select id="report-zone" name="zone" value={formZone} onChange={e => setFormZone(e.target.value)}>
-            <option value="">Seleccionar zona</option>
-            {safeZones.map(zone => <option key={zone.id} value={zone.name}>{zone.name}</option>)}
-          </select>
-          {isForeignZone && <p className="hint warning wide" role="status">Estas reportando en una zona diferente a la tuya asignada ({session.zone}).</p>}
-          <label htmlFor="report-type">Tipo</label>
-          <select id="report-type" name="type" value={formType} onChange={e => setFormType(e.target.value)}>
-            <option value="">Seleccionar tipo</option>
-            {reportTypes.map(t => <option key={t} value={t}>{t}</option>)}
-          </select>
-          <label className="wide" htmlFor="report-detail">Detalle</label>
-          <textarea id="report-detail" name="detail" required minLength={8} maxLength={600} placeholder="Describe el problema encontrado" value={formDetail} onChange={e => setFormDetail(e.target.value)} />
-          {formError && <p className="hint error wide" role="alert">{formError}</p>}
-          <button type="submit" disabled={submitting}>{submitting ? "Enviando..." : "Enviar reporte"}</button>
-        </form>
-      </section>
+<section className="panel">
+         <h2>Registrar incidencia</h2>
+         {canCreateReport ? (
+           <form className="form-grid" onSubmit={submit}>
+             <label htmlFor="report-zone">Zona</label>
+             <select id="report-zone" name="zone" value={formZone} onChange={e => setFormZone(e.target.value)}>
+               <option value="">Seleccionar zona</option>
+               {safeZones.map(zone => <option key={zone.id} value={zone.name}>{zone.name}</option>)}
+             </select>
+             {isForeignZone && <p className="hint warning wide" role="status">Estas reportando en una zona diferente a la tuya asignada ({session.zone}).</p>}
+             <label htmlFor="report-type">Tipo</label>
+             <select id="report-type" name="type" value={formType} onChange={e => setFormType(e.target.value)}>
+               <option value="">Seleccionar tipo</option>
+               {reportTypes.map(t => <option key={t} value={t}>{t}</option>)}
+             </select>
+             <label className="wide" htmlFor="report-detail">Detalle</label>
+             <textarea id="report-detail" name="detail" required minLength={8} maxLength={600} placeholder="Describe el problema encontrado" value={formDetail} onChange={e => setFormDetail(e.target.value)} />
+             {formError && <p className="hint error wide" role="alert">{formError}</p>}
+             <button type="submit" disabled={submitting}>{submitting ? "Enviando..." : "Enviar reporte"}</button>
+           </form>
+         ) : (
+           <p className="hint">Solo los ciudadanos pueden registrar incidencias. Los operadores y administradores pueden resolverlas desde la lista de seguimiento.</p>
+         )}
+       </section>
       <section className="panel">
         <div className="panel-header">
           <h2>{isCitizen ? "Mis reportes" : "Seguimiento"}</h2>
@@ -1138,14 +1185,14 @@ export function Waste({ data, monitor, session, onCreateReport }: { data: Bootst
   const safeContainers = useMemo(() => (Array.isArray(monitor.containers) ? monitor.containers : Array.isArray(safeData.containers) ? safeData.containers : []), [monitor.containers, safeData.containers]);
   const safeZones = useMemo(() => (Array.isArray(safeData.zones) ? safeData.zones : []), [safeData.zones]);
   const isCitizen = session?.role === "ciudadano";
-  const canReportProblem = isCitizen;
+  const canReportProblem = isCitizen || session?.role === "operador" || session?.role === "admin";
   const citizenZone = session?.zone ?? "";
 
   const [searchQuery, setSearchQuery] = useState("");
   const [filterWaste, setFilterWaste] = useState("Todos");
   const [filterZone, setFilterZone] = useState("Todos");
   const [reportingProblem, setReportingProblem] = useState(false);
-  const [problemZone, setProblemZone] = useState("");
+  const [problemZone, setProblemZone] = useState(() => String(session?.zone ?? "").trim());
   const [problemDetail, setProblemDetail] = useState("");
   const [problemSubmitting, setProblemSubmitting] = useState(false);
   const [problemMessage, setProblemMessage] = useState("");
@@ -1153,7 +1200,7 @@ export function Waste({ data, monitor, session, onCreateReport }: { data: Bootst
   const wasteTypes = useMemo(() => {
     const types = new Set<string>();
     safeSchedules.forEach(s => {
-      s.waste.split(/[,\s]+/).forEach(t => {
+      extractWasteTypes(s.waste).forEach(t => {
         const trimmed = t.trim();
         if (trimmed) types.add(trimmed);
       });
@@ -1214,11 +1261,11 @@ export function Waste({ data, monitor, session, onCreateReport }: { data: Bootst
       await onCreateReport({
         citizen: session?.name ?? "Operador",
         zone: problemZone,
-        type: "Clasificacion",
+        type: "Clasificación",
         detail: problemDetail.trim()
       });
-      setProblemMessage("Problema de clasificacion reportado correctamente.");
-      setProblemZone("");
+      setProblemMessage("Problema de clasificación reportado correctamente.");
+      setProblemZone(String(session?.zone ?? "").trim());
       setProblemDetail("");
       setReportingProblem(false);
     } catch (error) {
@@ -1414,9 +1461,9 @@ function Routes({ data, monitor, session, onCreateCollection }: { data: Bootstra
          </section>
        </div>
        {collectionMessage && <div role="alert" className="app-alert">{collectionMessage}</div>}
-       {(session?.role === "conductor" || session?.role === "operador") && (
+       {(session?.role === "conductor" || session?.role === "operador" || session?.role === "admin") && (
         <section className="panel" style={{ marginTop: 16 }}>
-          <h2>Registrar recoleccion</h2>
+          <h2>Registrar recolección</h2>
           <form className="form-grid" onSubmit={submitCollection}>
             <label>Camion
               <select value={selectedTruck} onChange={event => setSelectedTruck(event.target.value ? Number(event.target.value) : "")}>
@@ -1614,6 +1661,7 @@ function Analytics({ data, session, onConfirmCollection }: { data: Bootstrap; se
     return acc;
   }, {} as Record<string, number>);
   const analytics = data?.analytics ?? emptyBootstrap.analytics;
+  const isAdmin = session?.role === "admin";
   const metricsCSV = isCitizen
     ? [
         { nombre: "Mis reportes pendientes", valor: reportCounts.Pendiente },
@@ -1621,7 +1669,7 @@ function Analytics({ data, session, onConfirmCollection }: { data: Bootstrap; se
         { nombre: "Recolecciones confirmadas", valor: `${collectionCounts["Confirmada"] ?? 0}/${safeCollections.length}` },
         { nombre: "Total reportes", valor: safeReports.length },
       ]
-    : isOperator
+    : isAdmin
     ? [
         { nombre: "Residuos registrados", valor: `${analytics.total_kg} kg` },
         { nombre: "Cumplimiento de rutas", valor: `${analytics.compliance}%` },
@@ -1631,8 +1679,11 @@ function Analytics({ data, session, onConfirmCollection }: { data: Bootstrap; se
         { nombre: "Progreso medio", valor: `${performance?.average_progress ?? 0}%` },
         { nombre: "Llenado promedio contenedores", valor: `${performance?.average_container_fill ?? 0}%` },
         { nombre: "Recolecciones confirmadas", valor: `${collectionCounts["Confirmada"] ?? 0}/${safeCollections.length}` },
-        { nombre: "Rutas completadas", valor: `${performance?.total_routes ?? 0}` },
+        { nombre: "Total rutas", valor: `${performance?.total_routes ?? 0}` },
         { nombre: "Índice de cumplimiento", valor: `${performance?.compliance_estimate ?? 0}%` },
+        { nombre: "Usuarios registrados", valor: `${data.users?.length ?? 0}` },
+        { nombre: "Zonas activas", valor: `${data.zones?.length ?? 0}` },
+        { nombre: "Camiones en mantenimiento", valor: `${data.trucks?.filter(t => t.status === "Mantenimiento").length ?? 0}` },
       ]
     : [
         { nombre: "Residuos registrados", valor: `${analytics.total_kg} kg` },
@@ -1642,7 +1693,7 @@ function Analytics({ data, session, onConfirmCollection }: { data: Bootstrap; se
         { nombre: "Rutas con retraso", valor: performance?.delayed_routes ?? 0 },
         { nombre: "Progreso medio", valor: `${performance?.average_progress ?? 0}%` },
         { nombre: "Llenado promedio contenedores", valor: `${performance?.average_container_fill ?? 0}%` },
-        { nombre: "Recolecciones confirmadas", valor: `${collectionCounts["Confirmada"] ?? 0}/${safeCollections.length}` }
+        { nombre: "Recolecciones confirmadas", valor: `${collectionCounts["Confirmada"] ?? 0}/${safeCollections.length}` },
       ];
 
   return (
