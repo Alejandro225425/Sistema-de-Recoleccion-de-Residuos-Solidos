@@ -231,7 +231,17 @@ export function App() {
     });
   }, [session]);
 
+  const [isDarkMode, setIsDarkMode] = useState(() => {
+    const saved = localStorage.getItem("eco-dark-mode");
+    return saved ? JSON.parse(saved) : window.matchMedia("(prefers-color-scheme: dark)").matches;
+  });
   const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  useEffect(() => {
+    localStorage.setItem("eco-dark-mode", JSON.stringify(isDarkMode));
+    document.documentElement.dataset.theme = isDarkMode ? "dark" : "light";
+    document.documentElement.style.colorScheme = "light dark";
+  }, [isDarkMode]);
 
   async function loadData() {
     setLoading(true);
@@ -375,6 +385,9 @@ export function App() {
         </nav>
         <div className="sidebar-footer">
           <button type="button" onClick={logout}>Cerrar sesión</button>
+          <button type="button" className="theme-toggle" onClick={() => setIsDarkMode((value: boolean) => !value)}>
+            {isDarkMode ? "☀️ Modo Claro" : "🌙 Modo Oscuro"}
+          </button>
         </div>
       </aside>
 

@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import logging
 import os
-from contextlib import asynccontextmanager
 from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Optional
@@ -252,13 +251,7 @@ def cors_origin_regex() -> Optional[str]:
     return r"https://.*\.vercel\.app|https://.*\.vercel\.sh|http://localhost:5173|http://127\.0\.0\.1:5173"
 
 
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    init_db()
-    yield
-
-
-app = FastAPI(title="SIR Cusco API", version="5.5.3", lifespan=lifespan)
+app = FastAPI(title="SIR Cusco API", version="5.5.3")
 
 app.add_middleware(
     CORSMiddleware,
@@ -336,6 +329,11 @@ def init_db() -> bool:
         DB_CONNECTED = False
         logger.warning("No se pudo inicializar o conectar la base de datos: %s", exc)
         return False
+
+
+@app.on_event("startup")
+def _startup_db_init() -> None:
+    init_db()
 
 
 def memory_payload() -> dict[str, Any]:
