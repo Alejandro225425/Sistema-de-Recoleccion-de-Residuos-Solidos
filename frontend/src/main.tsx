@@ -428,7 +428,7 @@ function Content(props: { data: Bootstrap; monitor: Monitor; session: Session; v
       <Admin data={safeData} session={session} onOperationUpdate={onOperationUpdate} />
     </ErrorBoundary>
   );
-  if (view === "schedules") return <Schedules schedules={Array.isArray(data?.schedules) ? data.schedules : []} />;
+  if (view === "schedules") return <Schedules schedules={Array.isArray(data?.schedules) ? data.schedules : []} citizenZone={session?.zone} />;
   if (view === "reports") return <Reports {...props} data={safeData} />;
   if (view === "waste") return <Waste />;
   if (view === "routes") return <Routes data={safeData} monitor={monitor} session={session} onCreateCollection={onCreateCollection} />;
@@ -556,6 +556,56 @@ export function Dashboard({ data, monitor, session, onConfirmCollection }: { dat
     status: String(alert ?? "").toLowerCase().includes("retraso") ? "pendiente" : "activo"
   })), [monitor.alerts, isCitizen]);
 
+  const citizenAlerts = useMemo(() => {
+    if (!isCitizen) return [];
+    const items: Array<{ id: string | number; icon: string; title: string; description: string; time: string; tone: string }> = [];
+    const unreadNotifications = ((monitor.notifications ?? []) as Array<Record<string, any>>).filter(n => {
+      const message = String(n.message ?? n.title ?? "").toLowerCase();
+      const title = String(n.title ?? "").toLowerCase();
+      const zone = String(session.zone ?? "").toLowerCase();
+      return !zone || message.includes(zone) || title.includes(zone) || message.includes("ciudadano") || message.includes("zona");
+    });
+    if (unreadNotifications.length > 0) {
+      unreadNotifications.slice(0, 3).forEach((notification, index) => {
+        items.push({
+          id: `notification-${index}`,
+          icon: "🔔",
+          title: String(notification.title ?? "Notificación"),
+          description: String(notification.message ?? ""),
+          time: String(notification.created_at ?? "Ahora"),
+          tone: "info"
+        });
+      });
+    }
+    if (pendingCollections.length > 0) {
+      items.push({
+        id: "pending-collections",
+        icon: "✅",
+        title: "Recolecciones pendientes",
+        description: `Tienes ${pendingCollections.length} recolección(es) pendiente(s) de confirmar en tu zona.`,
+        time: "Ahora",
+        tone: "warning"
+      });
+    }
+    if (pendingReports.length >= 3) {
+      items.push({
+        id: "pending-reports",
+        icon: "🚨",
+        title: "Reportes pendientes",
+        description: `Tienes ${pendingReports.length} reportes pendientes. Sigue su estado desde la vista de reportes.`,
+        time: "Ahora",
+        tone: pendingReports.length >= 5 ? "danger" : "warning"
+      });
+    }
+    return items;
+  }, [isCitizen, monitor.notifications, session.zone, pendingCollections.length, pendingReports.length]);
+
+  const recommendation = useMemo(() => {
+    if (pendingCollections.length > 0) return "Confirma tus recolecciones pendientes para mantener actualizado el estado del servicio en tu zona.";
+    if (pendingReports.length > 0) return "Tus reportes están siendo atendidos. Puedes consultar su estado en la sección 'Mis reportes'.";
+    return "Todo en orden en tu zona. Sigue reportando incidencias para mejorar el servicio municipal.";
+  }, [pendingCollections.length, pendingReports.length]);
+
   if (isCitizen) {
     return (
       <>
@@ -613,7 +663,7 @@ export function Dashboard({ data, monitor, session, onConfirmCollection }: { dat
               </div>
               <div className="citizen-info-card">
                 <strong>Próximos pasos</strong>
-                <p>Revisa tus reportes y confirma las recolecciones cuando el servicio esté completado.</p>
+                <p>{recommendation}</p>
               </div>
             </div>
           </section>
@@ -638,13 +688,11 @@ export function Dashboard({ data, monitor, session, onConfirmCollection }: { dat
             </div>
           </section>
 
-          <section className="panel">
-            <h2>✅ Recolecciones pendientes</h2>
-            <div className="list">
-              {pendingCollections.length === 0 ? (
-                <p className="empty-state">No hay recolecciones pendientes por confirmar.</p>
-              ) : (
-                pendingCollections.map(collection => (
+          {pendingCollections.length > 0 && (
+            <section className="panel">
+              <h2>✅ Recolecciones pendientes</h2>
+              <div className="list">
+                {pendingCollections.map(collection => (
                   <article className="item" key={collection.id}>
                     <div className="item-row">
                       <strong>{collection.zone}</strong>
@@ -660,10 +708,10 @@ export function Dashboard({ data, monitor, session, onConfirmCollection }: { dat
                       </div>
                     )}
                   </article>
-                ))
-              )}
-            </div>
-          </section>
+                ))}
+              </div>
+            </section>
+          )}
 
           <section className="panel">
             <h2>📋 Mis recolecciones</h2>
@@ -684,6 +732,24 @@ export function Dashboard({ data, monitor, session, onConfirmCollection }: { dat
               )}
             </div>
           </section>
+
+          {citizenAlerts.length > 0 && (
+            <section className="panel">
+              <h2>🔔 Alertas y notificaciones</h2>
+              <div className="alerts-list">
+                {citizenAlerts.map(alert => (
+                  <div className={`alert-item alert-${alert.tone === "danger" ? "activo" : alert.tone === "warning" ? "pendiente" : "resuelto"}`} key={alert.id}>
+                    <div className="alert-icon" aria-hidden="true">{alert.icon}</div>
+                    <div className="alert-content">
+                      <h4>{alert.title}</h4>
+                      <p>{alert.description}</p>
+                      <span className="alert-time">{alert.time}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
 
           <section className="panel">
             <h2>💡 Recomendaciones del sistema</h2>
@@ -800,7 +866,7 @@ export function Dashboard({ data, monitor, session, onConfirmCollection }: { dat
   );
 }
 
-function Schedules({ schedules }: { schedules: Schedule[] }) {
+function Schedules({ schedules, citizenZone }: { schedules: Schedule[]; citizenZone?: string }) {
   const [search, setSearch] = useState("");
   const [selectedDay, setSelectedDay] = useState("Todos");
   const [sortBy, setSortBy] = useState<"zone" | "day" | "time" | "waste">("zone");
@@ -825,6 +891,12 @@ function Schedules({ schedules }: { schedules: Schedule[] }) {
 
   const days = useMemo(() => ["Todos", ...new Set(schedules.map(s => s.day))], [schedules]);
 
+  const citizenSchedule = useMemo(() => {
+    if (!citizenZone) return null;
+    const zone = String(citizenZone).toLowerCase();
+    return schedules.find(s => String(s.zone ?? "").toLowerCase() === zone) ?? null;
+  }, [schedules, citizenZone]);
+
   function handleSort(field: "zone" | "day" | "time" | "waste") {
     if (sortBy === field) {
       setSortDir(prev => prev === "asc" ? "desc" : "asc");
@@ -838,6 +910,15 @@ function Schedules({ schedules }: { schedules: Schedule[] }) {
 
   return (
     <section className="panel">
+      {citizenSchedule && (
+        <div className="citizen-schedule-banner">
+          <span className="citizen-schedule-icon">📅</span>
+          <div className="citizen-schedule-content">
+            <strong>Próxima recolección en tu zona</strong>
+            <p>{citizenSchedule.zone} · {citizenSchedule.day} · {citizenSchedule.time} · {citizenSchedule.waste}</p>
+          </div>
+        </div>
+      )}
       <div className="panel-header">
         <h2>Consulta por zona</h2>
         <div className="panel-actions">
@@ -1019,9 +1100,38 @@ export function Reports({ data, session, onCreateReport, onResolveReport }: { da
 function Waste() {
   return (
     <div className="grid waste-grid">
-      <article className="card organic"><h2>Organicos</h2><p>Restos de comida, cascaras, hojas y residuos biodegradables.</p><span className="tag">Compostaje</span></article>
-      <article className="card recycle"><h2>Reciclables</h2><p>Papel, carton, plastico limpio, vidrio y metales separados.</p><span className="tag blue">Reciclaje</span></article>
-      <article className="card reject"><h2>No reciclables</h2><p>Papel higienico, tecnopor contaminado, colillas y residuos sanitarios.</p><span className="tag red">Disposicion final</span></article>
+      <article className="card organic">
+        <h2>Organicos</h2>
+        <p>Restos de comida, cascaras, hojas y residuos biodegradables.</p>
+        <span className="tag">Compostaje</span>
+        <ul className="waste-tips">
+          <li>Restos de frutas y verduras</li>
+          <li>Cascaras de huevo trituradas</li>
+          <li>Hojas secas y ramas pequenas</li>
+        </ul>
+      </article>
+      <article className="card recycle">
+        <h2>Reciclables</h2>
+        <p>Papel, carton, plastico limpio, vidrio y metales separados.</p>
+        <span className="tag blue">Reciclaje</span>
+        <ul className="waste-tips">
+          <li>Papel y carton limpios</li>
+          <li>Botellas de plastico enjuagadas</li>
+          <li>Vidrio transparente y de color</li>
+          <li>Latas y envases metalicos</li>
+        </ul>
+      </article>
+      <article className="card reject">
+        <h2>No reciclables</h2>
+        <p>Papel higienico, tecnopor contaminado, colillas y residuos sanitarios.</p>
+        <span className="tag red">Disposicion final</span>
+        <ul className="waste-tips">
+          <li>Papel higienico y toallas usadas</li>
+          <li>Tecnopor contaminado con comida</li>
+          <li>Colillas de cigarro</li>
+          <li>Residuos sanitarios y medicamentos</li>
+        </ul>
+      </article>
     </div>
   );
 }

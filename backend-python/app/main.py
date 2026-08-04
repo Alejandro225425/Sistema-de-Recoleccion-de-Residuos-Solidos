@@ -1212,7 +1212,6 @@ def get_bootstrap(current_user: dict[str, Any] | None = Depends(get_current_user
     if role != "admin":
         data.pop("users", None)
         data.pop("maintenance", None)
-        data.pop("notifications", None)
     if role == "ciudadano" and current_user is not None:
         citizen_zone = str(current_user.get("zone", "")).strip().lower()
         filtered_collections = [
@@ -1220,6 +1219,15 @@ def get_bootstrap(current_user: dict[str, Any] | None = Depends(get_current_user
             if not citizen_zone or str(col.get("zone", "")).strip().lower() == citizen_zone
         ]
         data["collections"] = filtered_collections
+        citizen_notifications = []
+        for notification in data.get("notifications", []):
+            message = str(notification.get("message", "")).lower()
+            title = str(notification.get("title", "")).lower()
+            if not citizen_zone or citizen_zone in message or citizen_zone in title:
+                citizen_notifications.append(notification)
+        data["notifications"] = citizen_notifications
+    elif role != "admin":
+        data.pop("notifications", None)
     return data
 
 
