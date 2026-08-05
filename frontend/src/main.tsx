@@ -133,12 +133,13 @@ function exportToPDF(title: string, html: string) {
   printWindow.print();
 }
 
-function extractWasteTypes(waste: string): string[] {
+export function extractWasteTypes(waste: string): string[] {
   if (!waste) return [];
   return waste
-    .split(/[,\s]+/)
+    .split(/[,\;]|\s+(?:y|e|&)\s+/i)
     .map(t => t.trim())
-    .filter(t => t && !["y", "e", "y", "e"].includes(t.toLowerCase()));
+    .filter(t => t && !(t === "y" || t === "e" || t === "&" || ["y", "e", "&"].includes(t.toLowerCase())))
+    .map(t => t.charAt(0).toUpperCase() + t.slice(1));
 }
 
 class ErrorBoundary extends React.Component<
@@ -1584,14 +1585,14 @@ export function Waste({ data, monitor, session, onCreateReport }: { data: Bootst
             <input type="text" placeholder="Buscar zona o tipo de residuo..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} aria-label="Buscar clasificacion" />
           </div>
 
-          <div className="filter-bar">
-            <select value={filterWaste} onChange={e => setFilterWaste(e.target.value)} aria-label="Filtrar por tipo de residuo" style={{ width: "auto", minWidth: 160 }}>
-              {wasteTypes.map(t => <option key={t} value={t}>{t}</option>)}
-            </select>
-            <select value={filterZone} onChange={e => setFilterZone(e.target.value)} aria-label="Filtrar por zona" style={{ width: "auto", minWidth: 160 }}>
-              {zones.map(z => <option key={z} value={z}>{z}</option>)}
-            </select>
-          </div>
+           <div className="filter-bar">
+             <select value={filterWaste} onChange={e => setFilterWaste(e.target.value)} aria-label="Filtrar por tipo de residuo" className="waste-filter-select">
+               {wasteTypes.map(t => <option key={t} value={t}>{t}</option>)}
+             </select>
+             <select value={filterZone} onChange={e => setFilterZone(e.target.value)} aria-label="Filtrar por zona" className="waste-filter-select">
+               {zones.map(z => <option key={z} value={z}>{z}</option>)}
+             </select>
+           </div>
 
           {displaySchedules.length === 0 ? (
             <p className="empty-state">No hay horarios de clasificacion que coincidan con los filtros.</p>
@@ -1649,8 +1650,8 @@ export function Waste({ data, monitor, session, onCreateReport }: { data: Bootst
           </div>
         </section>
 
-        <section className="panel">
-          <h2>Guía de disposición</h2>
+         <section className="panel guia-disposicion">
+           <h2>Guía de disposición</h2>
           <div className="list">
             <article className="item">
               <div className="item-row"><strong>🟢 Orgánicos</strong><span className="tag green">Compostaje</span></div>
@@ -1665,18 +1666,13 @@ export function Waste({ data, monitor, session, onCreateReport }: { data: Bootst
               <p>Papel higiénico, tecnopor contaminado, colillas y residuos sanitarios. Depositar en contenedor gris.</p>
             </article>
           </div>
-        </section>
+         </section>
+       </div>
+     </div>
+   );
+ }
 
-        <section className="panel">
-          <h2>Mapa de puntos de clasificacion</h2>
-          <Map zones={safeZones} trucks={safeData.trucks ?? []} routes={safeData.routes ?? []} prioritizedZones={safeData.prioritized_zones ?? []} />
-        </section>
-      </div>
-    </div>
-  );
-}
-
-function Routes({ data, monitor, session, onCreateCollection }: { data: Bootstrap; monitor: Monitor; session?: Session | null; onCreateCollection?: (payload: { truck_id: number; zone_id: number; kg: number }) => Promise<void>; }) {
+ function Routes({ data, monitor, session, onCreateCollection }: { data: Bootstrap; monitor: Monitor; session?: Session | null; onCreateCollection?: (payload: { truck_id: number; zone_id: number; kg: number }) => Promise<void>; }) {
   const [alerts, setAlerts] = useState<string[]>([]);
   const [geoError, setGeoError] = useState(false);
   const [collectionMessage, setCollectionMessage] = useState("");

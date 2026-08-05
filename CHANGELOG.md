@@ -1,5 +1,17 @@
 # Changelog
 
+## 2026-08-05
+
+### Version 5.6 - Corrección del Dashboard de Clasificación y mejora responsive
+
+- **Frontend - main.tsx (`extractWasteTypes`)**: se corrigió el bug por el cual los tipos de residuo compuestos como "No reciclable" se dividían en "No" y "reciclable". La función ahora separa por conectores en español ("y", "e", "&") y comas, manteniendo términos compuestos unidos. También normaliza el casing (primera letra mayúscula) para evitar duplicados como "reciclable" vs "Reciclable".
+- **Frontend - main.tsx**: se eliminó la sección "Mapa de puntos de clasificación" del dashboard de Clasificación, que mostraba un mapa de zonas/duplicado del mapa principal. Se mantienen las demás secciones (Guía de clasificación, Estadísticas, Estado de contenedores, Guía de disposición).
+- **Frontend - main.tsx**: se agregó la clase `guia-disposicion` al panel de "Guía de disposición" para targeteo CSS responsivo. Se migraron los estilos inline de los selects del `filter-bar` a la clase `.waste-filter-select`.
+- **Frontend - styles.css**: se añadieron estilos responsive para `@media (max-width: 768px)` en el dashboard de Clasificación: secciones en 1 columna, padding reducido, selects full-width, items compactos y botones de acción full-width. Se preserva el diseño de escritorio.
+- **Tests - frontend**: se creó `frontend/src/Waste.test.tsx` con 13 tests que verifican el bug de "No reciclable", la ausencia de "No" como tipo independiente, la correcta extracción de tipos compuestos, la normalización de casing, la eliminación del mapa y la integridad de los tags de color.
+- **Verificación**: `tsc --noEmit` sin errores, `npm run build` exitoso, 38/38 frontend tests (25 existentes + 13 nuevos), 30/31 backend tests (1 skip preexistente).
+- **Archivos modificados**: `frontend/src/main.tsx`, `frontend/src/styles.css`, `frontend/src/Waste.test.tsx`, `CHANGELOG.md`, `VERSION.md`.
+
 ## 2026-08-04
 
 ### Version 5.5.10 - Operaciones masivas en panel administrativo
