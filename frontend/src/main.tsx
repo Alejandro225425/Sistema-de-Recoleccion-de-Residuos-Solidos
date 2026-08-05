@@ -135,10 +135,25 @@ function exportToPDF(title: string, html: string) {
 
 function extractWasteTypes(waste: string): string[] {
   if (!waste) return [];
-  return waste
-    .split(/[,\s]+/)
-    .map(t => t.trim())
-    .filter(t => t && !["y", "e", "y", "e"].includes(t.toLowerCase()));
+  const parts = waste.split(/[,\s]+/);
+  const result: string[] = [];
+  let i = 0;
+  while (i < parts.length) {
+    const part = parts[i].trim();
+    if (!part) { i++; continue; }
+    if (part.toLowerCase() === "y" || part.toLowerCase() === "e") { i++; continue; }
+    if (part.toLowerCase() === "no" && i + 1 < parts.length) {
+      const next = parts[i + 1].trim();
+      if (next && next.toLowerCase() !== "y" && next.toLowerCase() !== "e") {
+        result.push(`No ${next}`);
+        i += 2;
+        continue;
+      }
+    }
+    result.push(part);
+    i++;
+  }
+  return result;
 }
 
 class ErrorBoundary extends React.Component<
@@ -1665,13 +1680,8 @@ export function Waste({ data, monitor, session, onCreateReport }: { data: Bootst
               <p>Papel higiénico, tecnopor contaminado, colillas y residuos sanitarios. Depositar en contenedor gris.</p>
             </article>
           </div>
-        </section>
-
-        <section className="panel">
-          <h2>Mapa de puntos de clasificacion</h2>
-          <Map zones={safeZones} trucks={safeData.trucks ?? []} routes={safeData.routes ?? []} prioritizedZones={safeData.prioritized_zones ?? []} />
-        </section>
-      </div>
+</section>
+       </div>
     </div>
   );
 }
