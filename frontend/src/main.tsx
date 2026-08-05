@@ -14,6 +14,7 @@ import Admin from "./components/Admin";
 import { AuthView } from "./components/AuthView";
 import Item, { Metric } from "./components/Item";
 import { request } from "./api";
+import { filterCitizenNotifications } from "./notifications";
 import { shouldAutoLoginAsAdmin } from "./demoAuth";
 import {
   Bootstrap,
@@ -333,6 +334,19 @@ async function loadData() {
     setView('dashboard');
   }
 
+  async function updateMe(patch: { proximity_alerts?: boolean; name?: string; zone?: string; email?: string }) {
+    try {
+      const updated = await request<Session>('/auth/me', { method: 'PATCH', body: JSON.stringify(patch) });
+      localStorage.setItem('sir-session', JSON.stringify(updated));
+      setSession(updated);
+      setMessage('Preferencias actualizadas.');
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : 'No se pudo actualizar perfil';
+      setMessage(msg);
+      throw error;
+    }
+  }
+
   async function createReport(report: Omit<Report, "id" | "status">) {
     await request<Report>("/reports", { method: "POST", body: JSON.stringify(report) });
     setMessage("Reporte registrado. El equipo municipal ya puede revisarlo.");
@@ -404,6 +418,10 @@ async function loadData() {
           ))}
         </nav>
         <div className="sidebar-footer">
+          <label style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <input type="checkbox" checked={session?.proximity_alerts ?? true} onChange={e => { void updateMe({ proximity_alerts: e.currentTarget.checked }); }} />
+            <span>Recibir avisos de proximidad</span>
+          </label>
           <button type="button" onClick={logout}>Cerrar sesión</button>
         </div>
       </aside>
@@ -685,12 +703,7 @@ export function Dashboard({ data, monitor, session, onConfirmCollection, health,
   const citizenAlerts = useMemo(() => {
     if (!isCitizen) return [];
     const items: Array<{ id: string | number; icon: string; title: string; description: string; time: string; tone: string }> = [];
-    const unreadNotifications = ((data.notifications ?? []) as Array<Record<string, any>>).filter(n => {
-      const message = String(n.message ?? n.title ?? "").toLowerCase();
-      const title = String(n.title ?? "").toLowerCase();
-      const zone = String(session.zone ?? "").toLowerCase();
-      return !zone || message.includes(zone) || title.includes(zone) || message.includes("ciudadano") || message.includes("zona");
-    });
+    const unreadNotifications = filterCitizenNotifications((effectiveData.notifications ?? []) as Array<Record<string, any>>, session);
     if (unreadNotifications.length > 0) {
       unreadNotifications.slice(0, 3).forEach((notification, index) => {
         items.push({
@@ -1713,8 +1726,10 @@ export function Waste({ data, monitor, session, onCreateReport }: { data: Bootst
   const [selectedTruck, setSelectedTruck] = useState<number | "">(myTruck?.id ?? safeTrucks[0]?.id ?? "");
   const [selectedZone, setSelectedZone] = useState<number | "">(conductorZone?.id ?? safeZones[0]?.id ?? "");
   const [submittingCollection, setSubmittingCollection] = useState(false);
+  const [proximityMessage, setProximityMessage] = useState("");
+  const [proximityError, setProximityError] = useState(false);
 
-useEffect(() => {
+  useEffect(() => {
      const fetchAlerts = () => {
        fetch(`${geoBase}/alerts`).then(response => {
          if (!response.ok) throw new Error("Geo service unavailable");
@@ -1725,6 +1740,42 @@ useEffect(() => {
      const interval = window.setInterval(fetchAlerts, 30000);
      return () => window.clearInterval(interval);
    }, []);
+
+  useEffect(() => {
+    if (!isConductor || !myTruck || visibleRoutes.length === 0) {
+      return;
+    }
+
+    const route = visibleRoutes[0];
+    const locationPayload = {
+      truck_id: myTruck.id,
+      latitude: Number(route.latitude ?? myTruck.latitude ?? 0),
+      longitude: Number(route.longitude ?? myTruck.longitude ?? 0),
+    };
+
+    const sendLocation = async () => {
+      try {
+        const response = await request<{ ok: boolean; message: string }>('/operations/track-location', {
+          method: 'POST',
+          body: JSON.stringify(locationPayload),
+        });
+        if (response.ok) {
+          setProximityMessage(response.message ?? "Ubicación enviada correctamente.");
+          setProximityError(false);
+        } else {
+          setProximityMessage("No se pudo procesar la ubicación.");
+          setProximityError(true);
+        }
+      } catch (error) {
+        setProximityMessage(error instanceof Error ? error.message : "Error al enviar ubicación.");
+        setProximityError(true);
+      }
+    };
+
+    sendLocation();
+    const interval = window.setInterval(sendLocation, 10000);
+    return () => window.clearInterval(interval);
+  }, [isConductor, myTruck, visibleRoutes]);
 
   useEffect(() => {
     setSelectedTruck(myTruck?.id ?? safeTrucks[0]?.id ?? "");
