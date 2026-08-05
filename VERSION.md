@@ -1,4 +1,12 @@
-# Sistema de Recolección de Residuos Sólidos - Versión 5.5.10
+# Sistema de Recolección de Residuos Sólidos - Versión 5.5.11
+
+## Versión 5.5.11 - Corrección del dashboard de Clasificación y mejoras responsivas
+
+### Cambios destacados
+
+- **Frontend - Waste/Clasificación**: corregido el error donde "No Orgánicos" aparecía como "No" en la extracción de tipos de residuo. La función `extractWasteTypes()` ahora combina correctamente "No" con la palabra siguiente (e.g., "No reciclable", "No orgánico").
+- **Frontend - Waste/Clasificación**: eliminada la sección "Mapa de puntos de clasificación" del dashboard.
+- **Frontend - Waste/Clasificación**: mejorada la distribución y el diseño de los bloques para que la vista sea correcta y responsiva en dispositivos móviles, sin afectar la versión de escritorio.
 
 ## Versión 5.5.10 - Operaciones masivas en panel administrativo
 

@@ -1,8 +1,19 @@
 # Changelog
 
-## 2026-08-04
+## 2026-08-05
 
-### Version 5.5.10 - Operaciones masivas en panel administrativo
+### Version 5.5.11 - Corrección del dashboard de Clasificación y mejoras responsivas
+
+- **Frontend - Waste/Clasificación**: corregido el error donde "No Orgánicos" aparecía como "No" en la extracción de tipos de residuo. La función `extractWasteTypes()` ahora combina correctamente "No" con la palabra siguiente (e.g., "No reciclable", "No orgánico").
+- **Frontend - Waste/Clasificación**: eliminada la sección "Mapa de puntos de clasificación" del dashboard.
+- **Frontend - Waste/Clasificación**: mejorada la distribución y el diseño de los bloques para que la vista sea correcta y responsiva en dispositivos móviles, sin afectar la versión de escritorio.
+- **Frontend - Admin.test.tsx**: corregidas pruebas que fallaban por el mock de `window.confirm`.
+
+### Archivos modificados
+- `frontend/src/main.tsx` — Fix extractWasteTypes, eliminación de sección mapa Waste
+- `frontend/src/styles.css` — Estilos responsivos para mobile
+- `frontend/src/components/Admin.test.tsx` — Remoción de mock global de confirm
+- `CHANGELOG.md` — Entrada para versión 5.5.11
 
 - **Backend - POST /api/admin/bulk-action**: se agregó un endpoint para operaciones masivas que permite eliminar múltiples registros (usuarios, zonas, horarios, camiones, mantenimiento) en una sola petición. Soporta modo memoria y PostgreSQL. Requiere rol `admin`.
 - **Backend - MemoryStore**: se añadió la función `bulk_delete()` con fallback a memoria cuando PostgreSQL no está disponible.
