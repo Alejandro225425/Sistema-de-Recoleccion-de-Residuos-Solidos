@@ -847,12 +847,22 @@ textarea { min-height: 100px; resize: vertical; font-family: inherit; }
 }
 
 @media (max-width: 640px) {
-  button { width: 100%; }
-  .sidebar { width: 260px; padding: 16px 12px; }
+  .auth-panel button,
+  .form-grid button,
+  .form-actions button,
+  .admin-list-actions button,
+  .sidebar-footer button,
+  .filter-btn,
+  .export-btn,
+  .report-action-btn {
+    width: 100%;
+  }
+
+  .sidebar { width: min(260px, 100%); padding: 16px 12px; }
   .sidebar-brand { padding: 4px 8px 12px; }
   .sidebar-brand .brand-icon { width: 36px; height: 36px; font-size: 1.2rem; }
   .sidebar-brand .brand-text h1 { font-size: 1rem; }
-  .sidebar-nav button { padding: 9px 12px; font-size: 0.84rem; }
+  .sidebar-nav button { padding: 9px 12px; font-size: 0.84rem; white-space: normal; justify-content: flex-start; }
   .sidebar-footer button { padding: 8px 12px; font-size: 0.8rem; }
   .auth-image-section { min-height: 180px; padding: 16px; }
   .auth-overlay { padding: 16px; }
