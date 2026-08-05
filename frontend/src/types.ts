@@ -33,3 +33,23 @@ export type OperationUpdatePayload = {
   status?: string;
   note?: string;
 };
+
+export type ProximityTone = "cercano" | "muy_cercano";
+export type ProximityAlert = {
+  id: string | number;
+  truck_code?: string;
+  driver?: string;
+  zone: string;
+  distance_m: number;
+  eta: string;
+  status?: string;
+  tone: ProximityTone;
+};
+export type ProximityCheckRequest = {
+  latitude: number;
+  longitude: number;
+  radius_m?: number;
+};
+export type ProximityCheckResponse = {
+  nearby: ProximityAlert[];
+};

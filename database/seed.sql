@@ -59,7 +59,9 @@ on conflict (id) do update set name = excluded.name, email = excluded.email, rol
 
 insert into notifications (id, user_id, title, message, type, is_read, created_at) values
   (1, 1, 'Ruta ajustada', 'Se priorizará la zona de Santiago por retrasos', 'info', false, '2026-06-10 09:00:00'),
-  (2, 1, 'Evento operativo', 'Contenedor Centro actualizado, llenado 88%, estado Lleno.', 'event', false, '2026-06-10 09:00:00')
+  (2, 1, 'Evento operativo', 'Contenedor Centro actualizado, llenado 88%, estado Lleno.', 'event', false, '2026-06-10 09:00:00'),
+  (3, 2, 'Camión cercano', 'El camión C-02 (Rosa Ccahuana) está a 450m de Centro Historico. ETA: 12 min.', 'proximity', false, '2026-06-10 09:00:00'),
+  (4, 4, 'Zona cercana', 'Estás a 320m de la zona Centro Historico.', 'proximity', false, '2026-06-10 09:00:00')
 on conflict (id) do update set user_id = excluded.user_id, title = excluded.title, message = excluded.message, type = excluded.type, is_read = excluded.is_read, created_at = excluded.created_at;
 
 select setval('zones_id_seq', (select max(id) from zones));

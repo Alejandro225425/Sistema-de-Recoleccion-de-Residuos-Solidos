@@ -8,7 +8,7 @@ Sistema inteligente para la recoleccion de residuos solidos segregados en la ciu
 - **Rama:** `main` y `version-5.7`
 - **Repositorio:** `Alejandro225425/Sistema-de-Recoleccion-de-Residuos-Solidos`
 - **Estado:** Dashboard ciudadano revisado y adaptado al rol, con paneles personalizados, permisos por rol, filtrado seguro de recolecciones por zona y mejoras de diseño en la experiencia de usuario. Backend en Render (`render.yaml`). Frontend en Vercel (dashboard). Ver `docs/DESPLIEGUE.md` y `DEPLOYMENT.md`.
-- **Responsive v5.6:** corregido overflow en Analytics en móvil, mejorada accesibilidad del menú off-canvas (Escape + foco automático), optimizadas alturas de mapa en pantallas pequeñas y ajuste de formularios, paneles y listados para celular sin afectar escritorio. Corrección del dashboard de Clasificación: tipos de residuo compuestos ("No reciclable") ya no se separan en "No", eliminada sección de mapa duplicado, mejora responsive completa.
+- **Responsive v5.6:** corregido overflow en Analytics en móvil, mejorada accesibilidad del menú off-canvas (Escape + foco automático), optimizadas alturas de mapa en pantallas pequeñas y ajuste de formularios, paneles y listados para celular sin afectar escritorio. Corrección del dashboard de Clasificación: tipos de residuo compuestos ("No reciclable") ya no se separan en "No", eliminada sección de mapa duplicado, mejora responsive completa. **Nueva funcionalidad: simulación de alerta de proximidad Ciudadano ↔ Conductor** con cálculo Haversine, endpoint `/api/proximity/check`, notificaciones push automáticas cada 10s, círculo de radio en el mapa y sección "Camiones cercanos" en el dashboard ciudadano.
 
 ## Estado
 

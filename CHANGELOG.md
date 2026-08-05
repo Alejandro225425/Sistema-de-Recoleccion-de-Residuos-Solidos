@@ -2,15 +2,34 @@
 
 ## 2026-08-05
 
-### Version 5.6 - Corrección del Dashboard de Clasificación y mejora responsive
+### Version 5.6 - Simulación de alerta de proximidad Ciudadano ↔ Conductor
 
-- **Frontend - main.tsx (`extractWasteTypes`)**: se corrigió el bug por el cual los tipos de residuo compuestos como "No reciclable" se dividían en "No" y "reciclable". La función ahora separa por conectores en español ("y", "e", "&") y comas, manteniendo términos compuestos unidos. También normaliza el casing (primera letra mayúscula) para evitar duplicados como "reciclable" vs "Reciclable".
-- **Frontend - main.tsx**: se eliminó la sección "Mapa de puntos de clasificación" del dashboard de Clasificación, que mostraba un mapa de zonas duplicado del mapa principal. Se mantienen las demás secciones (Guía de clasificación, Estadísticas, Estado de contenedores, Guía de disposición).
-- **Frontend - main.tsx**: se agregó la clase `guia-disposicion` al panel de "Guía de disposición" para targeteo CSS responsivo. Se migraron los estilos inline de los selects del `filter-bar` a la clase `.waste-filter-select`, evitando desbordamiento horizontal en pantallas pequeñas.
-- **Frontend - styles.css**: se añadieron estilos responsive para `@media (max-width: 768px)` en el dashboard de Clasificación: secciones en 1 columna, padding reducido, selects full-width con bordes y estilos de tema, items compactos y botón de acción full-width. Se corrigió el selector `.filter-bar button` (inexistente) reemplazándolo por `.filter-bar select`. Se preserva el diseño de escritorio.
-- **Tests - frontend**: se creó `frontend/src/Waste.test.tsx` con 13 tests que verifican el bug de "No reciclable", la ausencia de "No" como tipo independiente, la correcta extracción de tipos compuestos ("No Orgánicos"), la normalización de casing, la eliminación del mapa y la integridad de los tags de color.
-- **Verificación**: `tsc --noEmit` sin errores, `npx vite build` exitoso, 38/38 frontend tests (25 existentes + 13 nuevos), backend tests 30 pass / 1 skip.
-- **Archivos modificados**: `frontend/src/main.tsx`, `frontend/src/styles.css`, `frontend/src/Waste.test.tsx`, `CHANGELOG.md`, `VERSION.md`, `README.md`, `AGENTS.md`, `DEPLOYMENT.md`.
+- **Backend - Haversine**: se agregó `haversine_distance_m()` para cálculo de distancia geodésica en metros entre coordenadas. Sin dependencias externas, usa fórmula manual.
+- **Backend - POST /api/proximity/check**: nuevo endpoint para consulta explícita de proximidad. Acepta `{ latitude, longitude, radius_m }` y retorna camiones activos dentro del radio con distancia, ETA y estado. Requiere autenticación JWT.
+- **Backend - build_proximity_alerts()**: genera notificaciones automáticas de proximidad integradas en el sistema de notificaciones existente (`type = "proximity"`). Se ejecuta en cada llamada a `/api/operations/monitor` y `/api/alerts`.
+  - Ciudadano: recibe alerta cuando un camión `En ruta` está a ≤500m de su zona asignada.
+  - Conductor: recibe alerta cuando su camión está a ≤500m de una zona.
+  - Operador/Admin: ven todas las proximidades camión-zona del sistema.
+- **Backend - build_monitor() y get_alerts()**: extendidos para incluir alertas de proximidad en el payload del monitor y en la lista de alerts.
+- **Backend - seed.sql**: se agregaron 2 notificaciones de proximidad demo (ciudadano y conductor) para reflejar la nueva funcionalidad.
+- **Frontend - types.ts**: se agregaron `ProximityAlert`, `ProximityCheckRequest`, `ProximityCheckResponse`, `ProximityTone`.
+- **Frontend - api.ts**: se agregó `proximityCheck()` para llamar al endpoint `/api/proximity/check`.
+- **Frontend - Dashboard**: los ciudadanos ven una sección "🚛 Camiones cercanos" con tarjetas de proximidad (distancia, ETA, tono cercano/muy cercano). Se actualiza cada 10s junto con el monitor.
+- **Frontend - Routes**: conductores, operadores y administradores ven alertas de proximidad en el seguimiento GPS. Se muestra distancia y ETA de zonas/camiones cercanos.
+- **Frontend - Map**: el mapa operativo ahora dibuja un círculo de radio de 500m alrededor de la zona del ciudadano cuando hay alertas de proximidad, y resalta los marcadores de camiones cercanos en rojo.
+- **Tests - backend**: se creó `tests/test_proximity.py` con 8 tests que cubren Haversine, alertas de proximidad por rol, endpoint `/api/proximity/check`, monitor y alerts con proximidad.
+- **Verificación**: `tsc --noEmit` sin errores, `npm run build` exitoso, `pytest` 38/38 pasados, `vitest` 38/38 pasados.
+
+### Archivos modificados
+- `backend-python/app/main.py` — Haversine, modelos, endpoint `/api/proximity/check`, `build_proximity_alerts()`, extensiones de `build_monitor()` y `get_alerts()`, versión 5.6
+- `backend-python/tests/test_proximity.py` — 8 tests nuevos de proximidad
+- `backend-python/tests/test_operational_logic.py` — actualización de versión a 5.6
+- `database/seed.sql` — notificaciones de proximidad demo
+- `frontend/src/types.ts` — tipos ProximityAlert, ProximityCheckRequest, ProximityCheckResponse
+- `frontend/src/api.ts` — función `proximityCheck()`
+- `frontend/src/main.tsx` — Dashboard (cards ciudadano), Routes (alertas conductor), Map (radio + resaltado), polling de proximidad
+- `frontend/src/Reports.test.tsx` — prop `proximityAlerts` agregada a Dashboard en test
+- `CHANGELOG.md`, `VERSION.md`, `README.md` — documentación actualizada
 
 ## 2026-08-04
 

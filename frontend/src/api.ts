@@ -1,3 +1,5 @@
+import type { ProximityCheckRequest, ProximityCheckResponse } from "./types";
+
 export function getApiBase(): string {
   const configured = import.meta.env.VITE_API_URL?.trim();
   if (configured) return configured;
@@ -34,4 +36,15 @@ export async function request<T>(path: string, options: RequestInit = {}): Promi
     }
     throw error;
   }
+}
+
+export async function proximityCheck(payload: { latitude: number; longitude: number; radius_m?: number }): Promise<ProximityCheckResponse> {
+  return request<ProximityCheckResponse>("/proximity/check", {
+    method: "POST",
+    body: JSON.stringify({
+      latitude: payload.latitude,
+      longitude: payload.longitude,
+      radius_m: payload.radius_m ?? 500,
+    }),
+  });
 }

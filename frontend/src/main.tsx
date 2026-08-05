@@ -13,13 +13,15 @@ import "./styles.css";
 import Admin from "./components/Admin";
 import { AuthView } from "./components/AuthView";
 import Item, { Metric } from "./components/Item";
-import { request } from "./api";
+import { request, proximityCheck } from "./api";
 import { shouldAutoLoginAsAdmin } from "./demoAuth";
 import {
   Bootstrap,
   Collection,
   Monitor,
   OperationUpdatePayload,
+  ProximityAlert,
+  ProximityCheckResponse,
   Report,
   ReportStatus,
   Route,
@@ -252,6 +254,20 @@ export function App() {
 
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
+  const [proximityAlerts, setProximityAlerts] = useState<ProximityAlert[]>([]);
+
+  async function loadProximity() {
+    try {
+      const citizenZone = session?.zone;
+      const zone = (data.zones ?? []).find(z => String(z.name).toLowerCase() === String(citizenZone ?? "").toLowerCase());
+      if (!zone) return;
+      const response = await proximityCheck({ latitude: zone.latitude, longitude: zone.longitude, radius_m: 500 });
+      setProximityAlerts(response.nearby ?? []);
+    } catch {
+      setProximityAlerts([]);
+    }
+  }
+
 async function loadData() {
      setLoading(true);
      try {
@@ -296,14 +312,16 @@ async function loadData() {
   }, [session, view]);
 
    useEffect(() => {
-     loadData().catch(() => setMessage("No se pudo conectar con FastAPI. Verifica que el backend este ejecutandose."));
-     loadMonitor().catch(() => {});
-     loadHealth().catch(() => {});
-     const monitorInterval = window.setInterval(() => {
+      loadData().catch(() => setMessage("No se pudo conectar con FastAPI. Verifica que el backend este ejecutandose."));
       loadMonitor().catch(() => {});
-    }, 10000);
-    return () => window.clearInterval(monitorInterval);
-  }, []);
+      loadHealth().catch(() => {});
+      loadProximity().catch(() => {});
+      const monitorInterval = window.setInterval(() => {
+       loadMonitor().catch(() => {});
+       loadProximity().catch(() => {});
+     }, 10000);
+     return () => window.clearInterval(monitorInterval);
+   }, []);
 
   async function login(email: string, password: string) {
     try {
@@ -432,6 +450,7 @@ async function loadData() {
                 health={health}
                 lastSync={lastSync}
                 onRefresh={loadData}
+                proximityAlerts={proximityAlerts}
               />
           )}
         </ErrorBoundary>
@@ -440,10 +459,10 @@ async function loadData() {
   );
 }
 
-function Content(props: { data: Bootstrap; monitor: Monitor; session: Session; view: View; setView: (v: View) => void; onCreateReport: (report: Omit<Report, "id" | "status">) => Promise<void>; onResolveReport: (id: number) => Promise<void>; onOperationUpdate: (payload: OperationUpdatePayload) => Promise<void>; onCreateCollection: (payload: { truck_id: number; zone_id: number; kg: number }) => Promise<void>; onConfirmCollection: (collectionId: number) => Promise<void>; health: { mode: string; connected: boolean; database: string } | null; lastSync: string; onRefresh: () => Promise<void>; }) {
-  const { data, monitor, session, view, setView, onCreateReport, onOperationUpdate, onResolveReport, onCreateCollection, onConfirmCollection, health, lastSync, onRefresh } = props;
+function Content(props: { data: Bootstrap; monitor: Monitor; session: Session; view: View; setView: (v: View) => void; onCreateReport: (report: Omit<Report, "id" | "status">) => Promise<void>; onResolveReport: (id: number) => Promise<void>; onOperationUpdate: (payload: OperationUpdatePayload) => Promise<void>; onCreateCollection: (payload: { truck_id: number; zone_id: number; kg: number }) => Promise<void>; onConfirmCollection: (collectionId: number) => Promise<void>; health: { mode: string; connected: boolean; database: string } | null; lastSync: string; onRefresh: () => Promise<void>; proximityAlerts: ProximityAlert[]; }) {
+  const { data, monitor, session, view, setView, onCreateReport, onOperationUpdate, onResolveReport, onCreateCollection, onConfirmCollection, health, lastSync, onRefresh, proximityAlerts } = props;
   const safeData = data ?? emptyBootstrap;
-  if (view === "dashboard") return <Dashboard data={safeData} monitor={monitor} session={session} onConfirmCollection={onConfirmCollection} health={health} lastSync={lastSync} view={view} setView={setView} />;
+  if (view === "dashboard") return <Dashboard data={safeData} monitor={monitor} session={session} onConfirmCollection={onConfirmCollection} health={health} lastSync={lastSync} view={view} setView={setView} proximityAlerts={proximityAlerts} />;
   if (view === "admin") return (
     <ErrorBoundary fallback={<div className="panel" style={{ margin: 32 }}><h2>Error en Administración</h2><p className="hint error">El panel de administración encontró un error al cargar. Reintenta desde el menú lateral.</p><button type="button" onClick={() => window.location.reload()}>Recargar página</button></div>}>
       <Admin data={safeData} session={session} onOperationUpdate={onOperationUpdate} onRefresh={onRefresh} />
@@ -452,11 +471,11 @@ function Content(props: { data: Bootstrap; monitor: Monitor; session: Session; v
   if (view === "schedules") return <Schedules schedules={Array.isArray(data?.schedules) ? data.schedules : []} citizenZone={session?.zone} />;
   if (view === "reports") return <Reports {...props} data={safeData} />;
   if (view === "waste") return <Waste data={safeData} monitor={monitor} session={session} onCreateReport={onCreateReport} />;
-  if (view === "routes") return <Routes data={safeData} monitor={monitor} session={session} onCreateCollection={onCreateCollection} />;
+  if (view === "routes") return <Routes data={safeData} monitor={monitor} session={session} onCreateCollection={onCreateCollection} proximityAlerts={proximityAlerts} />;
   return <Analytics data={safeData} session={session} onConfirmCollection={onConfirmCollection} />;
 }
 
-export function Dashboard({ data, monitor, session, onConfirmCollection, health, lastSync, view, setView }: { data: Bootstrap; monitor: Monitor; session: Session; onConfirmCollection?: (collectionId: number) => Promise<void>; health: { mode: string; connected: boolean; database: string } | null; lastSync: string; view: View; setView: (v: View) => void; }) {
+export function Dashboard({ data, monitor, session, onConfirmCollection, health, lastSync, view, setView, proximityAlerts }: { data: Bootstrap; monitor: Monitor; session: Session; onConfirmCollection?: (collectionId: number) => Promise<void>; health: { mode: string; connected: boolean; database: string } | null; lastSync: string; view: View; setView: (v: View) => void; proximityAlerts: ProximityAlert[]; }) {
   const [tick, setTick] = useState(0);
   const tickRef = useRef(0);
   const intervalRef = useRef<number | null>(null);
@@ -897,6 +916,24 @@ export function Dashboard({ data, monitor, session, onConfirmCollection, health,
               </div>
             </div>
           </section>
+
+          {proximityAlerts.length > 0 && (
+            <section className="panel">
+              <h2>🚛 Camiones cercanos</h2>
+              <div className="alerts-list">
+                {proximityAlerts.map(alert => (
+                  <div className={`alert-item alert-${alert.tone === "muy_cercano" ? "activo" : "pendiente"}`} key={`${alert.truck_code}-${alert.distance_m}`}>
+                    <div className="alert-icon" aria-hidden="true">{alert.tone === "muy_cercano" ? "🔴" : "🟡"}</div>
+                    <div className="alert-content">
+                      <h4>{alert.truck_code} · {alert.driver}</h4>
+                      <p>A {Math.round(alert.distance_m)}m de tu zona · ETA {alert.eta}</p>
+                      <span className="alert-time">{alert.tone === "muy_cercano" ? "Muy cercano" : "Cercano"}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
         </div>
       </>
     );
@@ -1672,7 +1709,7 @@ export function Waste({ data, monitor, session, onCreateReport }: { data: Bootst
   );
 }
 
-function Routes({ data, monitor, session, onCreateCollection }: { data: Bootstrap; monitor: Monitor; session?: Session | null; onCreateCollection?: (payload: { truck_id: number; zone_id: number; kg: number }) => Promise<void>; }) {
+function Routes({ data, monitor, session, onCreateCollection, proximityAlerts }: { data: Bootstrap; monitor: Monitor; session?: Session | null; onCreateCollection?: (payload: { truck_id: number; zone_id: number; kg: number }) => Promise<void>; proximityAlerts?: ProximityAlert[]; }) {
   const [alerts, setAlerts] = useState<string[]>([]);
   const [geoError, setGeoError] = useState(false);
   const [collectionMessage, setCollectionMessage] = useState("");
@@ -1772,24 +1809,32 @@ useEffect(() => {
   }
 
   return (
-<>
+    <>
        <div className="two-col">
-         <section className="panel"><h2>Mapa operativo OpenStreetMap</h2><Map zones={data.zones ?? []} trucks={safeTrucks} routes={routes} prioritizedZones={prioritizedZones} /></section>
-         <section className="panel">
-           <h2>Seguimiento GPS</h2>
-           {geoError && <p className="hint error">El servicio de alertas geo no está disponible. Los datos pueden estar desactualizados.</p>}
-           {isConductor && myTruck && (
-             <p className="hint" style={{ marginBottom: 8 }}>📍 Viendo rutas de tu camión: <strong>{myTruck.code}</strong> ({myTruck.driver})</p>
-           )}
-           <div className="list">
-             {visibleRoutes.map(route => <Item key={route.id} title={`${route.truck} - ${route.zone}`} detail={`Avance ${route.progress}% | ETA ${route.eta} | ${route.delay} | ${(route as any).waypoints?.length ?? 0} puntos`} color={String(route.delay ?? "").toLowerCase().includes("retraso") ? "yellow" : "blue"} />)}
-             {isConductor && myTruck && visibleRoutes.length === 0 && (
-               <p className="empty-state">No hay rutas activas para tu camión.</p>
-             )}
-             {alerts.map(alert => <Item key={alert} title="Microservicio TS" detail={alert} color="blue" />)}
-           </div>
-         </section>
-       </div>
+          <section className="panel"><h2>Mapa operativo OpenStreetMap</h2><Map zones={data.zones ?? []} trucks={safeTrucks} routes={routes} prioritizedZones={prioritizedZones} citizenProximity={proximityAlerts} /></section>
+          <section className="panel">
+            <h2>Seguimiento GPS</h2>
+            {geoError && <p className="hint error">El servicio de alertas geo no está disponible. Los datos pueden estar desactualizados.</p>}
+            {isConductor && myTruck && (
+              <p className="hint" style={{ marginBottom: 8 }}>📍 Viendo rutas de tu camión: <strong>{myTruck.code}</strong> ({myTruck.driver})</p>
+            )}
+            <div className="list">
+              {visibleRoutes.map(route => <Item key={route.id} title={`${route.truck} - ${route.zone}`} detail={`Avance ${route.progress}% | ETA ${route.eta} | ${route.delay} | ${(route as any).waypoints?.length ?? 0} puntos`} color={String(route.delay ?? "").toLowerCase().includes("retraso") ? "yellow" : "blue"} />)}
+              {isConductor && myTruck && visibleRoutes.length === 0 && (
+                <p className="empty-state">No hay rutas activas para tu camión.</p>
+              )}
+              {alerts.map(alert => <Item key={alert} title="Microservicio TS" detail={alert} color="blue" />)}
+              {(proximityAlerts ?? []).length > 0 && (
+                <>
+                  <p className="hint" style={{ marginTop: 8 }}>🚛 Alertas de proximidad:</p>
+                  {(proximityAlerts ?? []).map(alert => (
+                    <Item key={`${alert.truck_code}-${alert.distance_m}`} title={alert.truck_code ? `${alert.truck_code} · ${alert.zone}` : alert.zone} detail={`A ${Math.round(alert.distance_m)}m · ETA ${alert.eta}`} color={alert.tone === "muy_cercano" ? "red" : "yellow"} />
+                  ))}
+                </>
+              )}
+            </div>
+          </section>
+        </div>
         {collectionMessage && <div role="alert" className="app-alert success">{collectionMessage}</div>}
         {collectionError && <div role="alert" className="app-alert error">{collectionError}</div>}
        {canRegisterCollection && (
@@ -2246,7 +2291,7 @@ function Analytics({ data, session, onConfirmCollection }: { data: Bootstrap; se
    );
  }
 
-function Map({ zones, trucks, routes, prioritizedZones }: { zones: Zone[]; trucks: Truck[]; routes: Route[]; prioritizedZones: Array<{ id: number; name: string; priority_score: number; criticality: string; latitude?: number; longitude?: number }> }) {
+function Map({ zones, trucks, routes, prioritizedZones, citizenProximity }: { zones: Zone[]; trucks: Truck[]; routes: Route[]; prioritizedZones: Array<{ id: number; name: string; priority_score: number; criticality: string; latitude?: number; longitude?: number }>; citizenProximity?: ProximityAlert[]; }) {
   const ref = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<L.Map | null>(null);
   const layerRef = useRef<L.LayerGroup | null>(null);
@@ -2282,7 +2327,10 @@ function Map({ zones, trucks, routes, prioritizedZones }: { zones: Zone[]; truck
         L.circleMarker([lat, lon], { radius: 12, color: zone.priority_score >= 5 ? "#c94735" : "#f5b942", fillColor: zone.priority_score >= 5 ? "#c94735" : "#f5b942", fillOpacity: 0.9, weight: 3 }).bindPopup(`${zone.name} · Prioridad ${zone.priority_score}`).addTo(layer);
       }
     });
-    trucks.forEach(truck => L.circleMarker([truck.latitude, truck.longitude], { radius: 8, color: "#f5b942", fillOpacity: 0.9 }).bindPopup(`${truck.code} - ${truck.status}`).addTo(layer));
+    trucks.forEach(truck => {
+      const isNear = (citizenProximity ?? []).some(alert => String(alert.truck_code ?? "").toLowerCase() === String(truck.code ?? "").toLowerCase());
+      L.circleMarker([truck.latitude, truck.longitude], { radius: isNear ? 12 : 8, color: isNear ? "#c94735" : "#f5b942", fillOpacity: 0.9 }).bindPopup(`${truck.code} - ${truck.status}${isNear ? " (cercano)" : ""}`).addTo(layer);
+    });
     routes.forEach(route => {
        L.circle([route.latitude, route.longitude], { radius: 450, color: String(route.delay ?? "").toLowerCase().includes("retraso") ? "#c94735" : "#0f8b8d" }).bindPopup(`${route.truck}: ${route.eta}`).addTo(layer);
        const waypoints = (route as any).waypoints;
@@ -2291,8 +2339,15 @@ function Map({ zones, trucks, routes, prioritizedZones }: { zones: Zone[]; truck
          L.polyline(points, { color: "#0f8b8d", weight: 3, opacity: 0.7 }).addTo(layer);
        }
      });
+    if (citizenProximity && citizenProximity.length > 0) {
+      const first = citizenProximity[0];
+      const zone = zones.find(z => String(z.name).toLowerCase() === String(first.zone).toLowerCase());
+      if (zone) {
+        L.circle([zone.latitude, zone.longitude], { radius: 500, color: "#3b82f6", fillColor: "#3b82f6", fillOpacity: 0.15, weight: 2, dashArray: "6 4" }).bindPopup("Radio de proximidad (500m)").addTo(layer);
+      }
+    }
     mapRef.current.invalidateSize();
-  }, [signature, zones, trucks, routes, prioritizedZones]);
+  }, [signature, zones, trucks, routes, prioritizedZones, citizenProximity]);
 
   useEffect(() => {
     return () => {

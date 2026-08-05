@@ -49,7 +49,7 @@ describe('Reports view', () => {
   it('muestra un resumen personalizado para ciudadanos en el dashboard', () => {
     const citizenSession: Session = { id: 10, name: 'Ana', email: 'ana@example.com', role: 'ciudadano', zone: 'Centro Historico' };
 
-    render(<Dashboard data={baseData} monitor={{}} session={citizenSession} health={null} lastSync="" view="dashboard" setView={() => {}} />);
+    render(<Dashboard data={baseData} monitor={{}} session={citizenSession} health={null} lastSync="" view="dashboard" setView={() => {}} proximityAlerts={[]} />);
 
     expect(screen.getAllByText(/mis reportes/i).length).toBeGreaterThan(0);
     expect(screen.getAllByText(/recolecciones pendientes/i).length).toBeGreaterThan(0);

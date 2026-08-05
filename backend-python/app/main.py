@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import math
 import os
 from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
@@ -173,6 +174,12 @@ class CollectionCreate(BaseModel):
     status: str = Field(default="Confirmada", min_length=2, max_length=60)
 
 
+class ProximityCheckRequest(BaseModel):
+    latitude: float
+    longitude: float
+    radius_m: int = Field(default=500, ge=10, le=5000)
+
+
 class MemoryStore:
     def __init__(self) -> None:
         self.zones = [
@@ -302,7 +309,7 @@ def cors_origin_regex() -> Optional[str]:
     return r"https://.*\.vercel\.app|https://.*\.vercel\.sh|http://localhost:5173|http://127\.0\.0\.1:5173"
 
 
-app = FastAPI(title="SIR Cusco API", version="5.5.4")
+app = FastAPI(title="SIR Cusco API", version="5.6")
 
 app.add_middleware(
     CORSMiddleware,
@@ -606,6 +613,119 @@ def build_performance_metrics(routes: list[dict[str, Any]], reports: list[dict[s
         "average_container_fill": average_fill,
         "compliance_estimate": compliance_estimate,
     }
+
+
+def haversine_distance_m(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
+    radius_m = 6_371_000
+    phi1 = math.radians(lat1)
+    phi2 = math.radians(lat2)
+    dphi = math.radians(lat2 - lat1)
+    dlambda = math.radians(lon2 - lon1)
+    a = math.sin(dphi / 2) ** 2 + math.cos(phi1) * math.cos(phi2) * math.sin(dlambda / 2) ** 2
+    c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
+    return round(radius_m * c, 1)
+
+
+def build_proximity_alerts(
+    current_user: dict[str, Any] | None,
+    trucks: list[dict[str, Any]],
+    zones: list[dict[str, Any]],
+    routes: list[dict[str, Any]],
+    notifications: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    role = normalize_role(str(current_user.get("role", "ciudadano"))) if current_user else "ciudadano"
+    user_zone = str(current_user.get("zone", "")).strip().lower() if current_user else ""
+    proximity_notifications: list[dict[str, Any]] = []
+    now = datetime.now(timezone.utc).isoformat()
+
+    active_trucks = [
+        truck for truck in trucks
+        if str(truck.get("status", "")).strip().lower() == "en ruta"
+    ]
+
+    if role == "ciudadano" and user_zone and active_trucks:
+        citizen_zone = next((zone for zone in zones if str(zone.get("name", "")).strip().lower() == user_zone), None)
+        if citizen_zone:
+            cz_lat = float(citizen_zone.get("latitude", 0) or 0)
+            cz_lon = float(citizen_zone.get("longitude", 0) or 0)
+            for truck in active_trucks:
+                t_lat = float(truck.get("latitude", 0) or 0)
+                t_lon = float(truck.get("longitude", 0) or 0)
+                distance = haversine_distance_m(cz_lat, cz_lon, t_lat, t_lon)
+                if distance <= 500:
+                    route = next((r for r in routes if str(r.get("truck", "")).lower() == str(truck.get("code", "")).lower()), None)
+                    eta = route.get("eta", "N/A") if route else "N/A"
+                    tone = "muy_cercano" if distance <= 200 else "cercano"
+                    proximity_notifications.append({
+                        "id": len(notifications) + len(proximity_notifications) + 1,
+                        "user_id": current_user.get("id") if current_user else None,
+                        "title": "Camión cercano" if tone == "cercano" else "Camión muy cercano",
+                        "message": f"El camión {truck.get('code')} ({truck.get('driver')}) está a {int(distance)}m de {citizen_zone.get('name')}. ETA: {eta}.",
+                        "type": "proximity",
+                        "is_read": False,
+                        "created_at": now,
+                        "tone": tone,
+                        "truck_code": truck.get("code"),
+                        "driver": truck.get("driver"),
+                        "zone": citizen_zone.get("name"),
+                        "distance_m": distance,
+                        "eta": eta,
+                    })
+
+    if role == "conductor" and active_trucks:
+        my_truck = next((truck for truck in active_trucks if str(truck.get("driver", "")).strip().lower() == str(current_user.get("name", "")).strip().lower()), None)
+        if my_truck:
+            mt_lat = float(my_truck.get("latitude", 0) or 0)
+            mt_lon = float(my_truck.get("longitude", 0) or 0)
+            for zone in zones:
+                z_lat = float(zone.get("latitude", 0) or 0)
+                z_lon = float(zone.get("longitude", 0) or 0)
+                distance = haversine_distance_m(mt_lat, mt_lon, z_lat, z_lon)
+                if distance <= 500:
+                    tone = "muy_cercano" if distance <= 200 else "cercano"
+                    proximity_notifications.append({
+                        "id": len(notifications) + len(proximity_notifications) + 1,
+                        "user_id": current_user.get("id") if current_user else None,
+                        "title": "Zona cercana" if tone == "cercano" else "Zona muy cercana",
+                        "message": f"Estás a {int(distance)}m de la zona {zone.get('name')}.",
+                        "type": "proximity",
+                        "is_read": False,
+                        "created_at": now,
+                        "tone": tone,
+                        "truck_code": my_truck.get("code"),
+                        "driver": my_truck.get("driver"),
+                        "zone": zone.get("name"),
+                        "distance_m": distance,
+                        "eta": "N/A",
+                    })
+
+    if role in {"admin", "operador"} and active_trucks:
+        for truck in active_trucks:
+            t_lat = float(truck.get("latitude", 0) or 0)
+            t_lon = float(truck.get("longitude", 0) or 0)
+            for zone in zones:
+                z_lat = float(zone.get("latitude", 0) or 0)
+                z_lon = float(zone.get("longitude", 0) or 0)
+                distance = haversine_distance_m(t_lat, t_lon, z_lat, z_lon)
+                if distance <= 500:
+                    tone = "muy_cercano" if distance <= 200 else "cercano"
+                    proximity_notifications.append({
+                        "id": len(notifications) + len(proximity_notifications) + 1,
+                        "user_id": current_user.get("id") if current_user else None,
+                        "title": f"{truck.get('code')} cerca de {zone.get('name')}",
+                        "message": f"El camión {truck.get('code')} ({truck.get('driver')}) está a {int(distance)}m de la zona {zone.get('name')}.",
+                        "type": "proximity",
+                        "is_read": False,
+                        "created_at": now,
+                        "tone": tone,
+                        "truck_code": truck.get("code"),
+                        "driver": truck.get("driver"),
+                        "zone": zone.get("name"),
+                        "distance_m": distance,
+                        "eta": "N/A",
+                    })
+
+    return proximity_notifications
 
 
 def simulate_route_progress(routes: list[dict[str, Any]]) -> list[dict[str, Any]]:
@@ -1271,7 +1391,7 @@ def get_current_user_optional(authorization: str | None = Header(default=None)) 
 def root() -> dict[str, Any]:
     return {
         "service": "SIR Cusco API",
-        "version": "5.5.4",
+        "version": "5.6",
         "status": "ok",
         "endpoints": {
             "health": "/api/health",
@@ -1282,6 +1402,7 @@ def root() -> dict[str, Any]:
             "reports": "/api/reports",
             "collections": "/api/collections",
             "analytics": "/api/analytics/summary",
+            "proximity": "/api/proximity/check",
         },
     }
 
@@ -1293,7 +1414,7 @@ def health() -> dict[str, Any]:
         "status": "ok" if DB_CONNECTED or db_status == "memory" else "degraded",
         "database": db_status,
         "connected": DB_CONNECTED,
-        "version": "5.5.4",
+        "version": "5.6",
         "mode": "production" if DB_CONNECTED else "demo",
     }
 
@@ -1523,7 +1644,7 @@ def get_routes() -> list[dict[str, Any]]:
     return bootstrap()["routes"]
 
 
-def build_monitor(simulate: bool = True) -> dict[str, Any]:
+def build_monitor(simulate: bool = True, current_user: dict[str, Any] | None = None) -> dict[str, Any]:
     data = bootstrap()
     if simulate:
         data["routes"] = simulate_route_progress(data.get("routes", []))
@@ -1540,12 +1661,21 @@ def build_monitor(simulate: bool = True) -> dict[str, Any]:
     optimized_routes = optimize_routes(data.get("routes", []), [zone["name"] for zone in prioritized_zones])
     assignments = suggest_truck_assignments(data.get("trucks", []), optimized_routes)
     intervention_plan = build_intervention_plan(prioritized_zones, optimized_routes)
+    notifications = data.get("notifications", [])
+    proximity_alerts = build_proximity_alerts(
+        current_user=current_user,
+        trucks=data.get("trucks", []),
+        zones=data.get("zones", []),
+        routes=data.get("routes", []),
+        notifications=notifications,
+    )
+    all_notifications = notifications + proximity_alerts
     return {
         "trucks": simulate_truck_positions(data.get("routes", []), data.get("trucks", [])),
         "alerts": build_alerts(routes=data.get("routes", []), containers=data.get("containers", [])),
         "containers": data.get("containers", []),
         "maintenance": data.get("maintenance", []),
-        "notifications": data.get("notifications", []),
+        "notifications": all_notifications,
         "prioritized_zones": prioritized_zones,
         "optimized_routes": optimized_routes,
         "truck_assignments": assignments,
@@ -1556,7 +1686,7 @@ def build_monitor(simulate: bool = True) -> dict[str, Any]:
 
 @app.get("/api/operations/monitor")
 def get_monitor(current_user: dict[str, Any] | None = Depends(get_current_user_optional)) -> dict[str, Any]:
-    monitor_data = build_monitor()
+    monitor_data = build_monitor(current_user=current_user)
     role = normalize_role(str(current_user.get("role", "ciudadano"))) if current_user else "ciudadano"
     if role == "ciudadano" and current_user is not None:
         citizen_zone = str(current_user.get("zone", "")).strip().lower()
@@ -1674,7 +1804,7 @@ def update_operation(payload: OperationUpdateRequest, current_user: dict[str, An
         memory.notifications.insert(0, notification)
         data["notifications"] = memory.notifications
 
-    return build_monitor(simulate=False)
+    return build_monitor(simulate=False, current_user=current_user)
 
 
 @app.get("/alerts")
@@ -1691,7 +1821,44 @@ def get_alerts(current_user: dict[str, Any] | None = Depends(get_current_user_op
             if not citizen_zone or str(route.get("zone", "")).strip().lower() == citizen_zone
         ]
         routes = filtered_routes
-    return {"alerts": build_alerts(routes=routes, containers=containers)}
+    alerts = build_alerts(routes=routes, containers=containers)
+    proximity_alerts = build_proximity_alerts(
+        current_user=current_user,
+        trucks=data.get("trucks", []),
+        zones=data.get("zones", []),
+        routes=routes,
+        notifications=data.get("notifications", []),
+    )
+    for pa in proximity_alerts:
+        alerts.append(f"[Proximidad] {pa['message']}")
+    return {"alerts": alerts}
+
+
+@app.post("/api/proximity/check")
+def proximity_check(payload: ProximityCheckRequest, current_user: dict[str, Any] = Depends(require_current_user)) -> dict[str, Any]:
+    data = bootstrap()
+    trucks = data.get("trucks", [])
+    zones = data.get("zones", [])
+    nearby: list[dict[str, Any]] = []
+    for truck in trucks:
+        if str(truck.get("status", "")).strip().lower() != "en ruta":
+            continue
+        t_lat = float(truck.get("latitude", 0) or 0)
+        t_lon = float(truck.get("longitude", 0) or 0)
+        distance = haversine_distance_m(payload.latitude, payload.longitude, t_lat, t_lon)
+        if distance <= payload.radius_m:
+            route = next((r for r in data.get("routes", []) if str(r.get("truck", "")).lower() == str(truck.get("code", "")).lower()), None)
+            nearby.append({
+                "truck_code": truck.get("code"),
+                "driver": truck.get("driver"),
+                "zone": truck.get("zone"),
+                "distance_m": distance,
+                "eta": route.get("eta", "N/A") if route else "N/A",
+                "status": truck.get("status"),
+                "tone": "muy_cercano" if distance <= 200 else "cercano",
+            })
+    nearby.sort(key=lambda item: item["distance_m"])
+    return {"nearby": nearby}
 
 
 @app.get("/eta")
