@@ -1,6 +1,6 @@
 {
   "name": "sir-cusco",
-  "version": "5.5.8",
+  "version": "5.5.0",
   "description": "Sistema inteligente de recoleccion de residuos solidos segregados para Cusco.",
   "private": true,
   "scripts": {
