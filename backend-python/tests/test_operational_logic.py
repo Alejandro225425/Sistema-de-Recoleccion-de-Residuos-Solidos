@@ -256,3 +256,79 @@ def test_login_password_with_spaces_not_stripped():
     admin_password = "admin123"
     response = client.post("/api/auth/login", json={"email": "admin@ecocusco.pe", "password": f" {admin_password} "})
     assert response.status_code == 401
+
+
+def test_bulk_action_deletes_zones_schedules_and_maintenance_as_admin():
+    """Operaciones masivas: elimina múltiples zonas, horarios y mantenimientos en una sola petición."""
+    from app.main import memory
+
+    client = TestClient(app)
+    login = client.post("/api/auth/login", json={"email": "admin@ecocusco.pe", "password": "admin123"})
+    token = login.json()["token"]
+    headers = {"Authorization": f"Bearer {token}"}
+
+    zone_response = client.post("/api/zones", json={"name": "Zona Bulk 1", "latitude": -13.52, "longitude": -71.97, "criticality": "Media"}, headers=headers)
+    zone_a = zone_response.json()
+    zone_response2 = client.post("/api/zones", json={"name": "Zona Bulk 2", "latitude": -13.53, "longitude": -71.98, "criticality": "Baja"}, headers=headers)
+    zone_b = zone_response2.json()
+
+    truck_response = client.post("/api/trucks", json={"code": "C-BULK", "driver": "Test Driver", "status": "En ruta", "zone_id": zone_a["id"], "latitude": -13.52, "longitude": -71.97}, headers=headers)
+    truck = truck_response.json()
+
+    schedule_response = client.post("/api/schedules", json={"zone_id": zone_a["id"], "day": "Lunes", "time": "08:00", "waste": "Orgánico"}, headers=headers)
+    schedule = schedule_response.json()
+
+    maintenance_response = client.post("/api/maintenance", json={"truck_id": truck["id"], "description": "Filtro de aceite", "status": "Pendiente"}, headers=headers)
+    maintenance = maintenance_response.json()
+
+    ids_zones = [zone_a["id"], zone_b["id"]]
+    response = client.post("/api/admin/bulk-action", json={"resource": "zones", "action": "delete", "ids": ids_zones}, headers=headers)
+    assert response.status_code == 200
+    result = response.json()
+    assert result["count"] == 2
+    assert set(result["deleted"]) == set(ids_zones)
+    remaining_zone_ids = [z["id"] for z in memory.zones]
+    for zid in ids_zones:
+        assert zid not in remaining_zone_ids
+
+    response = client.post("/api/admin/bulk-action", json={"resource": "schedules", "action": "delete", "ids": [schedule["id"]]}, headers=headers)
+    assert response.status_code == 200
+    assert response.json()["count"] == 1
+
+    response = client.post("/api/admin/bulk-action", json={"resource": "maintenance", "action": "delete", "ids": [maintenance["id"]]}, headers=headers)
+    assert response.status_code == 200
+    assert response.json()["count"] == 1
+
+
+def test_bulk_action_empty_ids_returns_400():
+    """Operaciones masivas: enviar lista vacía de IDs debe retornar error 400."""
+    client = TestClient(app)
+    login = client.post("/api/auth/login", json={"email": "admin@ecocusco.pe", "password": "admin123"})
+    token = login.json()["token"]
+    headers = {"Authorization": f"Bearer {token}"}
+
+    response = client.post("/api/admin/bulk-action", json={"resource": "zones", "action": "delete", "ids": []}, headers=headers)
+    assert response.status_code == 400
+
+
+def test_bulk_action_unsupported_resource_returns_400():
+    """Operaciones masivas: recurso no soportado debe retornar error 400."""
+    client = TestClient(app)
+    login = client.post("/api/auth/login", json={"email": "admin@ecocusco.pe", "password": "admin123"})
+    token = login.json()["token"]
+    headers = {"Authorization": f"Bearer {token}"}
+
+    response = client.post("/api/admin/bulk-action", json={"resource": "unknown", "action": "delete", "ids": [1, 2]}, headers=headers)
+    assert response.status_code == 400
+
+
+def test_bulk_action_requires_admin_role():
+    """Operaciones masivas: ciudadano no autorizado debe recibir 403."""
+    client = TestClient(app)
+    login = client.post("/api/auth/login", json={"email": "ciudadano@ecocusco.pe", "password": "Test12345!"})
+    assert login.status_code == 200
+    token = login.json()["token"]
+    headers = {"Authorization": f"Bearer {token}"}
+
+    response = client.post("/api/admin/bulk-action", json={"resource": "zones", "action": "delete", "ids": [1]}, headers=headers)
+    assert response.status_code == 403

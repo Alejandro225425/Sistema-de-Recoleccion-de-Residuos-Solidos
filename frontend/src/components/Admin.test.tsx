@@ -3,6 +3,13 @@ import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import Admin from './Admin';
 import type { Bootstrap, Session } from '../types';
+import * as api from '../api';
+
+vi.mock('../api', () => ({
+  request: vi.fn(),
+}));
+
+const confirmSpy = vi.spyOn(window, 'confirm');
 
 const baseData: Bootstrap = {
   zones: [{ id: 1, name: 'Centro Historico', latitude: 0, longitude: 0, criticality: 'Media' }],
@@ -26,6 +33,11 @@ const adminSession: Session = { id: 1, name: 'Admin', email: 'admin@ecocusco.pe'
 const noop = vi.fn().mockResolvedValue(undefined);
 
 describe('Admin dashboard', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    confirmSpy.mockReturnValue(true);
+  });
+
   it('aplica estilos de tema seguros para que el contenido sea visible', () => {
     render(
       <Admin
@@ -130,6 +142,129 @@ render(
 
     expect(screen.getByLabelText(/Objetivo/i)).toHaveValue("");
     expect(screen.getByText(/Selecciona una ruta|Selecciona un contenedor/i)).toBeInTheDocument();
+  });
+
+  it('muestra checkboxes de selección en la lista de mantenimiento', () => {
+    const dataWithMaintenance: Bootstrap = {
+      ...baseData,
+      trucks: [{ id: 1, code: 'C-01', driver: 'Test', status: 'En ruta', zone: 'Centro', zone_id: 1, latitude: 0, longitude: 0 }],
+      maintenance: [
+        { id: 1, truck_id: 1, description: 'Frenos', status: 'Pendiente', created_at: '2026-01-01' },
+        { id: 2, truck_id: 1, description: 'Aceite', status: 'Completado', created_at: '2026-01-02' },
+      ],
+    };
+
+    render(
+      <Admin
+        data={dataWithMaintenance}
+        session={adminSession}
+        onOperationUpdate={noop}
+      />
+    );
+
+    const checkboxes = screen.getAllByRole('checkbox');
+    const maintenanceCheckboxes = checkboxes.filter(cb => cb.getAttribute('aria-label')?.includes('Seleccionar mantenimiento'));
+    expect(maintenanceCheckboxes.length).toBe(2);
+  });
+
+  it('muestra la barra de acción masiva al seleccionar elementos de mantenimiento', async () => {
+    const user = userEvent.setup();
+    const dataWithMaintenance: Bootstrap = {
+      ...baseData,
+      trucks: [{ id: 1, code: 'C-01', driver: 'Test', status: 'En ruta', zone: 'Centro', zone_id: 1, latitude: 0, longitude: 0 }],
+      maintenance: [
+        { id: 1, truck_id: 1, description: 'Frenos', status: 'Pendiente', created_at: '2026-01-01' },
+        { id: 2, truck_id: 1, description: 'Aceite', status: 'Completado', created_at: '2026-01-02' },
+      ],
+    };
+
+    render(
+      <Admin
+        data={dataWithMaintenance}
+        session={adminSession}
+        onOperationUpdate={noop}
+      />
+    );
+
+    expect(screen.queryByText(/seleccionado/s)).not.toBeInTheDocument();
+
+    const checkbox = screen.getByLabelText('Seleccionar mantenimiento #1');
+    await user.click(checkbox);
+
+    expect(screen.getByText(/1 seleccionado/)).toBeInTheDocument();
+    expect(screen.getByText('Eliminar seleccionados')).toBeInTheDocument();
+  });
+
+  it('llama a la API de bulk-action al eliminar elementos seleccionados', async () => {
+    const user = userEvent.setup();
+    vi.mocked(api.request).mockResolvedValue({ deleted: [1, 2], count: 2, resource: 'maintenance' });
+    const onRefresh = vi.fn().mockResolvedValue(undefined);
+
+    const dataWithMaintenance: Bootstrap = {
+      ...baseData,
+      trucks: [{ id: 1, code: 'C-01', driver: 'Test', status: 'En ruta', zone: 'Centro', zone_id: 1, latitude: 0, longitude: 0 }],
+      maintenance: [
+        { id: 1, truck_id: 1, description: 'Frenos', status: 'Pendiente', created_at: '2026-01-01' },
+        { id: 2, truck_id: 1, description: 'Aceite', status: 'Pendiente', created_at: '2026-01-02' },
+      ],
+    };
+
+    render(
+      <Admin
+        data={dataWithMaintenance}
+        session={adminSession}
+        onOperationUpdate={noop}
+        onRefresh={onRefresh}
+      />
+    );
+
+    const checkbox1 = screen.getByLabelText('Seleccionar mantenimiento #1');
+    const checkbox2 = screen.getByLabelText('Seleccionar mantenimiento #2');
+    await user.click(checkbox1);
+    await user.click(checkbox2);
+
+    expect(screen.getByText(/2 seleccionado/)).toBeInTheDocument();
+
+    await user.click(screen.getByText('Eliminar seleccionados'));
+
+    expect(confirmSpy).toHaveBeenCalledWith(expect.stringContaining('2'));
+    expect(api.request).toHaveBeenCalledWith('/admin/bulk-action', expect.objectContaining({
+      method: 'POST',
+      body: JSON.stringify({ resource: 'maintenance', action: 'delete', ids: [1, 2] }),
+    }));
+  });
+
+  it('cancela la eliminación masiva si el usuario cancela el confirm', async () => {
+    const user = userEvent.setup();
+    vi.mocked(api.request).mockResolvedValue({ deleted: [], count: 0, resource: 'maintenance' });
+
+    const dataWithMaintenance: Bootstrap = {
+      ...baseData,
+      trucks: [{ id: 1, code: 'C-01', driver: 'Test', status: 'En ruta', zone: 'Centro', zone_id: 1, latitude: 0, longitude: 0 }],
+      maintenance: [
+        { id: 1, truck_id: 1, description: 'Frenos', status: 'Pendiente', created_at: '2026-01-01' },
+      ],
+    };
+
+    render(
+      <Admin
+        data={dataWithMaintenance}
+        session={adminSession}
+        onOperationUpdate={noop}
+      />
+    );
+
+    const checkbox = screen.getByLabelText('Seleccionar mantenimiento #1');
+    await user.click(checkbox);
+
+    confirmSpy.mockReturnValue(false);
+
+    await user.click(screen.getByText('Eliminar seleccionados'));
+
+    expect(api.request).not.toHaveBeenCalled();
+    expect(screen.getByText(/1 seleccionado/)).toBeInTheDocument();
+
+    confirmSpy.mockReturnValue(true);
   });
 });
 

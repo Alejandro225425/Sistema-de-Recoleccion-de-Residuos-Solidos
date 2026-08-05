@@ -135,19 +135,10 @@ function exportToPDF(title: string, html: string) {
 
 function extractWasteTypes(waste: string): string[] {
   if (!waste) return [];
-  const tokens = waste.split(/[,\s]+/).map(t => t.trim()).filter(Boolean);
-  const result: string[] = [];
-  for (let i = 0; i < tokens.length; i++) {
-    const t = tokens[i];
-    if (["y", "e", "y", "e"].includes(t.toLowerCase())) continue;
-    if (t.toLowerCase() === "no" && i + 1 < tokens.length) {
-      result.push(`No ${tokens[i + 1]}`);
-      i++;
-      continue;
-    }
-    result.push(t);
-  }
-  return result;
+  return waste
+    .split(/[,\s]+/)
+    .map(t => t.trim())
+    .filter(t => t && !["y", "e", "y", "e"].includes(t.toLowerCase()));
 }
 
 class ErrorBoundary extends React.Component<
@@ -259,29 +250,6 @@ export function App() {
   }, []);
 
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const sidebarRef = useRef<HTMLElement | null>(null);
-
-  useEffect(() => {
-    if (!sidebarOpen) return;
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
-        setSidebarOpen(false);
-      }
-    };
-    document.addEventListener("keydown", handleKeyDown);
-    document.body.style.overflow = "hidden";
-    return () => {
-      document.removeEventListener("keydown", handleKeyDown);
-      document.body.style.overflow = "";
-    };
-  }, [sidebarOpen]);
-
-  useEffect(() => {
-    if (sidebarOpen && sidebarRef.current) {
-      const firstButton = sidebarRef.current.querySelector<HTMLButtonElement>("button");
-      firstButton?.focus();
-    }
-  }, [sidebarOpen]);
 
 async function loadData() {
      setLoading(true);
@@ -412,9 +380,9 @@ async function loadData() {
   return (
     <main className="app-shell">
       <a href="#main-content" className="skip-link">Saltar al contenido principal</a>
-      <button className="hamburger" type="button" onClick={() => setSidebarOpen(true)} aria-label="Abrir menú" aria-expanded={sidebarOpen} aria-controls="sidebar">☰</button>
-      <div className={`sidebar-overlay ${sidebarOpen ? "active" : ""}`} onClick={() => setSidebarOpen(false)} aria-hidden="true" />
-      <aside id="sidebar" ref={sidebarRef} className={`sidebar ${sidebarOpen ? "open" : ""}`}>
+      <button className="hamburger" type="button" onClick={() => setSidebarOpen(true)} aria-label="Abrir menú">☰</button>
+      <div className={`sidebar-overlay ${sidebarOpen ? "active" : ""}`} onClick={() => setSidebarOpen(false)} />
+      <aside className={`sidebar ${sidebarOpen ? "open" : ""}`}>
         <div className="sidebar-brand">
           <div className="brand-icon">E</div>
           <div className="brand-text">
@@ -1617,10 +1585,10 @@ export function Waste({ data, monitor, session, onCreateReport }: { data: Bootst
           </div>
 
           <div className="filter-bar">
-            <select value={filterWaste} onChange={e => setFilterWaste(e.target.value)} aria-label="Filtrar por tipo de residuo" className="waste-filter-select">
+            <select value={filterWaste} onChange={e => setFilterWaste(e.target.value)} aria-label="Filtrar por tipo de residuo" style={{ width: "auto", minWidth: 160 }}>
               {wasteTypes.map(t => <option key={t} value={t}>{t}</option>)}
             </select>
-            <select value={filterZone} onChange={e => setFilterZone(e.target.value)} aria-label="Filtrar por zona" className="waste-filter-select">
+            <select value={filterZone} onChange={e => setFilterZone(e.target.value)} aria-label="Filtrar por zona" style={{ width: "auto", minWidth: 160 }}>
               {zones.map(z => <option key={z} value={z}>{z}</option>)}
             </select>
           </div>
@@ -2172,49 +2140,49 @@ function Analytics({ data, session, onConfirmCollection }: { data: Bootstrap; se
         )}
       </div>
       <section className="panel">
-        <div className="analytics-header">
-          <h2>{isConductor ? "Historial de recolecciones de mi zona" : "Historial de recolecciones"}</h2>
-          <div className="analytics-controls">
-            <label htmlFor="date-range">Últimos</label>
-            <select id="date-range" value={dateRange} onChange={e => setDateRange(e.target.value)}>
-              <option value="7">7 días</option>
-              <option value="30">30 días</option>
-              <option value="90">90 días</option>
-              <option value="365">Todo el año</option>
-            </select>
-          </div>
-        </div>
-        <div className="panel-analytics-grid">
-          <section className="panel">
-            <h3>{isConductor ? "Incidencias en mi zona" : "Resumen de reportes"}</h3>
-            <ul className="analytics-summary-list">
-              <li>Pendientes: <strong>{reportCounts.Pendiente}</strong></li>
-              <li>En revisión: <strong>{reportCounts["En revision"]}</strong></li>
-              <li>Resueltos: <strong>{reportCounts.Resuelto}</strong></li>
-            </ul>
-          </section>
-          <section className="panel">
-            <h3>Estado de recolecciones</h3>
-            <ul className="analytics-summary-list">
-              {Object.entries(collectionCounts).map(([status, count]) => (
-                <li key={status}>{status}: <strong>{count}</strong></li>
-              ))}
-            </ul>
-          </section>
-        </div>
-        {Object.keys(wasteBreakdown).length > 0 && (
-          <section className="panel" style={{ marginBottom: "24px" }}>
-            <h2>Desglose por tipo de residuo</h2>
-            <div className="analytics-waste-grid">
-              {Object.entries(wasteBreakdown).map(([type, count]) => (
-                <div key={type} className="analytics-waste-item">
-                  <strong>{count}</strong>
-                  <span>{type}</span>
-                </div>
-              ))}
-            </div>
-          </section>
-        )}
+<div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "16px", flexWrap: "wrap", gap: "8px" }}>
+           <h2>{isConductor ? "Historial de recolecciones de mi zona" : "Historial de recolecciones"}</h2>
+           <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+             <label htmlFor="date-range" style={{ fontSize: "0.85rem", color: "var(--muted)" }}>Últimos</label>
+             <select id="date-range" value={dateRange} onChange={e => setDateRange(e.target.value)} style={{ width: "auto", minWidth: 80, padding: "6px 10px", border: "1px solid var(--line)", borderRadius: "8px", background: "var(--panel)", color: "var(--ink)", fontSize: "0.85rem" }}>
+               <option value="7">7 días</option>
+               <option value="30">30 días</option>
+               <option value="90">90 días</option>
+               <option value="365">Todo el año</option>
+             </select>
+           </div>
+         </div>
+         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px", marginBottom: "24px" }}>
+           <section className="panel" style={{ padding: "16px" }}>
+             <h3>{isConductor ? "Incidencias en mi zona" : "Resumen de reportes"}</h3>
+             <ul style={{ listStyle: "none", padding: 0, margin: 0, lineHeight: 1.8 }}>
+               <li>Pendientes: <strong>{reportCounts.Pendiente}</strong></li>
+               <li>En revisión: <strong>{reportCounts["En revision"]}</strong></li>
+               <li>Resueltos: <strong>{reportCounts.Resuelto}</strong></li>
+             </ul>
+           </section>
+           <section className="panel" style={{ padding: "16px" }}>
+             <h3>Estado de recolecciones</h3>
+             <ul style={{ listStyle: "none", padding: 0, margin: 0, lineHeight: 1.8 }}>
+               {Object.entries(collectionCounts).map(([status, count]) => (
+                 <li key={status}>{status}: <strong>{count}</strong></li>
+               ))}
+             </ul>
+           </section>
+         </div>
+         {Object.keys(wasteBreakdown).length > 0 && (
+           <section className="panel" style={{ marginBottom: "24px" }}>
+             <h2>Desglose por tipo de residuo</h2>
+             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: "12px" }}>
+               {Object.entries(wasteBreakdown).map(([type, count]) => (
+                 <div key={type} style={{ padding: "12px", border: "1px solid var(--line)", borderRadius: "8px", textAlign: "center" }}>
+                   <strong style={{ fontSize: "1.5rem", color: "var(--eco-primary)" }}>{count}</strong>
+                   <span style={{ display: "block", fontSize: "0.82rem", color: "var(--muted)", marginTop: "4px" }}>{type}</span>
+                 </div>
+               ))}
+             </div>
+           </section>
+         )}
          <div className="list">
            {filteredCollections.map(item => (
             <article className="item" key={item.id}>
@@ -2236,52 +2204,46 @@ function Analytics({ data, session, onConfirmCollection }: { data: Bootstrap; se
        {Object.keys(wasteBreakdown).length > 0 && (
          <section className="panel" style={{ marginBottom: "24px" }}>
            <h2>Distribución por tipo de residuo</h2>
-           <div className="analytics-chart">
-             <ResponsiveContainer width="100%" height="100%">
-               <BarChart data={Object.entries(wasteBreakdown).map(([name, value]) => ({ name, value }))}>
-                 <CartesianGrid strokeDasharray="3 3" />
-                 <XAxis dataKey="name" />
-                 <YAxis />
-                 <Tooltip />
-                 <Bar dataKey="value" fill="#0f8b8d" />
-               </BarChart>
-             </ResponsiveContainer>
-           </div>
+           <ResponsiveContainer width="100%" height={300}>
+             <BarChart data={Object.entries(wasteBreakdown).map(([name, value]) => ({ name, value }))}>
+               <CartesianGrid strokeDasharray="3 3" />
+               <XAxis dataKey="name" />
+               <YAxis />
+               <Tooltip />
+               <Bar dataKey="value" fill="#0f8b8d" />
+             </BarChart>
+           </ResponsiveContainer>
          </section>
        )}
 
        {filteredCollections.length > 0 && (
          <section className="panel" style={{ marginBottom: "24px" }}>
            <h2>Recolecciones por día</h2>
-           <div className="analytics-chart">
-             <ResponsiveContainer width="100%" height="100%">
-               <LineChart data={filteredCollections.map(c => ({
-                 fecha: c.date,
-                 kg: Number(c.kg) || 0,
-               })).sort((a, b) => a.fecha.localeCompare(b.fecha))}>
-                 <CartesianGrid strokeDasharray="3 3" />
-                 <XAxis dataKey="fecha" />
-                 <YAxis />
-                 <Tooltip />
-                 <Legend />
-                 <Line type="monotone" dataKey="kg" stroke="#0f8b8d" name="Kg recolectados" />
-               </LineChart>
-             </ResponsiveContainer>
-           </div>
+           <ResponsiveContainer width="100%" height={300}>
+             <LineChart data={filteredCollections.map(c => ({
+               fecha: c.date,
+               kg: Number(c.kg) || 0,
+             })).sort((a, b) => a.fecha.localeCompare(b.fecha))}>
+               <CartesianGrid strokeDasharray="3 3" />
+               <XAxis dataKey="fecha" />
+               <YAxis />
+               <Tooltip />
+               <Legend />
+               <Line type="monotone" dataKey="kg" stroke="#0f8b8d" name="Kg recolectados" />
+             </LineChart>
+           </ResponsiveContainer>
          </section>
        )}
 
        {Object.keys(wasteBreakdown).length > 0 && (
          <section className="panel" style={{ marginBottom: "24px" }}>
            <h2>Distribución por zona</h2>
-           <div className="analytics-chart">
-             <ResponsiveContainer width="100%" height="100%">
-               <PieChart>
-                 <Pie data={Object.entries(zoneBreakdown).map(([name, value]) => ({ name, value }))} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={100} label />
-                 <Tooltip />
-               </PieChart>
-             </ResponsiveContainer>
-           </div>
+           <ResponsiveContainer width="100%" height={300}>
+             <PieChart>
+               <Pie data={Object.entries(zoneBreakdown).map(([name, value]) => ({ name, value }))} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={100} label />
+               <Tooltip />
+             </PieChart>
+           </ResponsiveContainer>
          </section>
        )}
      </>

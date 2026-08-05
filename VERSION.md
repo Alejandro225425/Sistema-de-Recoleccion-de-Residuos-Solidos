@@ -1,4 +1,12 @@
-# Sistema de Recolección de Residuos Sólidos - Versión 5.5.8
+# Sistema de Recolección de Residuos Sólidos - Versión 5.5.10
+
+## Versión 5.5.10 - Operaciones masivas en panel administrativo
+
+### Cambios destacados
+
+- **Backend - POST /api/admin/bulk-action**: endpoint para eliminación masiva de usuarios, zonas, horarios, camiones y registros de mantenimiento en una sola petición. Requiere rol `admin`. Soporta PostgreSQL y modo memoria (demo).
+- **Frontend - Admin**: checkboxes de selección múltiple en todas las listas administrativas. Barra de acciones masivas con "Seleccionar todo" y "Eliminar seleccionados" (confirmación con contador de elementos).
+- **Tests**: 4 tests backend (eliminación masiva, IDs vacíos, recurso no soportado, permisos) + 4 tests frontend (checkbox, barra de acciones, llamada API, cancelación).
 
 ## Versión 5.5.4 - Correcciones críticas y mejoras en dashboards
 

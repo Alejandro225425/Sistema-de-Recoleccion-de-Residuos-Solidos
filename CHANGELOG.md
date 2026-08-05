@@ -2,7 +2,16 @@
 
 ## 2026-08-04
 
-### Version 5.5.9 - Mejoras responsive móvil y correcciones de UI
+### Version 5.5.10 - Operaciones masivas en panel administrativo
+
+- **Backend - POST /api/admin/bulk-action**: se agregó un endpoint para operaciones masivas que permite eliminar múltiples registros (usuarios, zonas, horarios, camiones, mantenimiento) en una sola petición. Soporta modo memoria y PostgreSQL. Requiere rol `admin`.
+- **Backend - MemoryStore**: se añadió la función `bulk_delete()` con fallback a memoria cuando PostgreSQL no está disponible.
+- **Frontend - Admin.tsx**: se implementaron checkboxes de selección múltiple en las listas de usuarios, zonas, horarios, camiones y mantenimiento. Al seleccionar elementos aparece una barra de acciones masivas con botones "Seleccionar todo" y "Eliminar seleccionados" (con confirmación de seguridad).
+- **Frontend - Admin.tsx**: las selecciones se limpian automáticamente al refrescar los datos o al completar una eliminación.
+- **Frontend - styles.css**: se añadieron estilos `.bulk-action-bar` y `.admin-list-actions input[type="checkbox"]` para la interfaz de operaciones masivas.
+- **Tests - backend**: se agregaron 4 tests para el endpoint `POST /api/admin/bulk-action` (eliminación masiva, validación de IDs vacíos, recurso no soportado, permisos de rol).
+- **Tests - frontend**: se agregaron 4 tests en `Admin.test.tsx` para selección de checkboxes, visualización de la barra de acciones, llamada a la API y cancelación por el usuario.
+- **Verificación**: 30/31 backend tests (1 skip preexistente), 25/25 frontend tests.
 
 - **Frontend - styles.css**: corregido selector CSS roto en media query `@media (max-width: 768px)` que impedía el colapso a 1 columna en móviles. Se reemplazó el selector inválido `.panel [style*=" grid-template-columns\]` por la clase `.panel-analytics-grid` con regla explícita `grid-template-columns: 1fr !important` en móvil.
 - **Frontend - main.tsx**: se eliminaron estilos inline del dashboard de Analytics (`gridTemplateColumns: "1fr 1fr"`, `padding`, `marginBottom`, `listStyle`, controles de fecha) y se migraron a clases CSS (`panel-analytics-grid`, `analytics-header`, `analytics-controls`, `analytics-summary-list`, `analytics-waste-grid`, `analytics-waste-item`). Ahora Analytics responde correctamente a media queries.

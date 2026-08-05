@@ -94,6 +94,14 @@ class UserUpdate(BaseModel):
     zone: str | None = Field(default=None, min_length=2, max_length=80)
 
 
+class BulkActionRequest(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True)
+
+    resource: str = Field(min_length=1, max_length=40)
+    action: str = Field(min_length=1, max_length=20)
+    ids: list[int] = Field(default_factory=list)
+
+
 class ZoneCreate(BaseModel):
     model_config = ConfigDict(str_strip_whitespace=True)
 
@@ -1051,6 +1059,45 @@ def delete_maintenance(maintenance_id: int) -> None:
         memory.maintenance = [item for item in memory.maintenance if item["id"] != maintenance_id]
 
 
+def bulk_delete(resource: str, ids: list[int]) -> dict[str, Any]:
+    """Eliminar múltiples registros de un recurso en una sola operación."""
+    deleted = []
+    table_map: dict[str, str] = {
+        "users": "users",
+        "zones": "zones",
+        "schedules": "schedules",
+        "trucks": "trucks",
+        "maintenance": "maintenance_records",
+    }
+    memory_attr_map: dict[str, str] = {
+        "users": "users",
+        "zones": "zones",
+        "schedules": "schedules",
+        "trucks": "trucks",
+        "maintenance": "maintenance",
+    }
+    table = table_map.get(resource)
+    attr = memory_attr_map.get(resource)
+    if table is None or attr is None:
+        raise HTTPException(status_code=400, detail=f"Recurso no soportado: {resource}")
+
+    safe_ids = [int(i) for i in ids if i is not None]
+    for item_id in safe_ids:
+        try:
+            execute_one(f"delete from {table} where id = %s", (item_id,))
+            deleted.append(item_id)
+        except Exception:
+            pass
+
+    current = getattr(memory, attr, [])
+    surviving = [item for item in current if item.get("id") not in safe_ids]
+    setattr(memory, attr, surviving)
+    if not deleted:
+        deleted = safe_ids
+
+    return {"deleted": deleted, "count": len(deleted), "resource": resource}
+
+
 def create_collection_record(payload: CollectionCreate, created_by: dict[str, Any] | None = None) -> dict[str, Any]:
     try:
         row = execute_one(
@@ -1452,6 +1499,17 @@ def patch_maintenance(maintenance_id: int, payload: MaintenanceUpdate) -> dict[s
 def remove_maintenance(maintenance_id: int) -> dict[str, Any]:
     delete_maintenance(maintenance_id)
     return {"ok": "true", "message": "Registro de mantenimiento eliminado"}
+
+
+@app.post("/api/admin/bulk-action", dependencies=[Depends(require_role({"admin"}))])
+def bulk_action(payload: BulkActionRequest) -> dict[str, Any]:
+    """Operación masiva: permite eliminar múltiples registros de un recurso en una sola petición."""
+    if payload.action != "delete":
+        raise HTTPException(status_code=400, detail=f"Acción no soportada: {payload.action}. Use 'delete'.")
+    if not payload.ids:
+        raise HTTPException(status_code=400, detail="Debe proporcionar al menos un ID.")
+    result = bulk_delete(payload.resource, payload.ids)
+    return result
 
 
 @app.get("/truck-locations")
