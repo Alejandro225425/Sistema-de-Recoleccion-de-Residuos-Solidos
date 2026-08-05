@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import math
 import os
 from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
@@ -87,11 +88,54 @@ class OperationUpdateRequest(BaseModel):
     note: str | None = None
 
 
+class ProximityTrackRequest(BaseModel):
+    latitude: float
+    longitude: float
+    truck_id: int | None = None
+
+
+class MeUpdate(BaseModel):
+    name: str | None = Field(default=None, min_length=2, max_length=120)
+    email: EmailStr | None = None
+    zone: str | None = Field(default=None, min_length=2, max_length=80)
+    proximity_alerts: bool | None = None
+
+
+PROXIMITY_THRESHOLD_METERS = int(os.getenv("PROXIMITY_THRESHOLD_METERS", "150"))
+PROXIMITY_DEDUP_MINUTES = int(os.getenv("PROXIMITY_DEDUP_MINUTES", "10"))
+
+
+def haversine_distance(lat1: float, lng1: float, lat2: float, lng2: float) -> float:
+    radius = 6371000.0
+    phi1 = math.radians(lat1)
+    phi2 = math.radians(lat2)
+    delta_phi = math.radians(lat2 - lat1)
+    delta_lambda = math.radians(lng2 - lng1)
+    a = math.sin(delta_phi / 2) ** 2 + math.cos(phi1) * math.cos(phi2) * math.sin(delta_lambda / 2) ** 2
+    c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
+    return radius * c
+
+
+def persist_notification(notification: dict[str, Any]) -> None:
+    try:
+        if database_mode() == "postgresql":
+            execute_one(
+                "insert into notifications (user_id, title, message, type, is_read, created_at) values (%s, %s, %s, %s, %s, %s) returning id",
+                (notification["user_id"], notification["title"], notification["message"], notification["type"], notification["is_read"], notification["created_at"]),
+            )
+    except Exception:
+        pass
+
+    if database_mode() == "memory":
+        memory.notifications.insert(0, notification)
+
+
 class UserUpdate(BaseModel):
     name: str | None = Field(default=None, min_length=2, max_length=120)
     email: EmailStr | None = None
     role: str | None = None
     zone: str | None = Field(default=None, min_length=2, max_length=80)
+    proximity_alerts: bool | None = None
 
 
 class BulkActionRequest(BaseModel):
@@ -204,6 +248,7 @@ class MemoryStore:
             {"id": 1, "zone_id": 1, "name": "Contenedor Centro", "fill_level": 88, "status": "Lleno", "updated_at": datetime.now(timezone.utc).isoformat()},
             {"id": 2, "zone_id": 2, "name": "Contenedor Wanchaq", "fill_level": 64, "status": "Operativo", "updated_at": datetime.now(timezone.utc).isoformat()},
         ]
+        self.proximity_alerts = []
         self.reports = [
             {"id": 1, "citizen": "Ana Quispe", "zone": "Wanchaq", "type": "Acumulacion de basura", "detail": "Contenedor lleno cerca al mercado.", "status": "En revision"},
             {"id": 2, "citizen": "Jose Huaman", "zone": "Santiago", "type": "Retraso", "detail": "No paso el camion en el horario indicado.", "status": "Pendiente"},
@@ -230,6 +275,7 @@ class MemoryStore:
                 "role": "admin",
                 "zone": "Centro Historico",
                 "password_hash": hash_password("admin123"),
+                "proximity_alerts": True,
                 "created_at": datetime.now(timezone.utc).isoformat(),
             },
             {
@@ -239,6 +285,7 @@ class MemoryStore:
                 "role": "ciudadano",
                 "zone": "Centro Historico",
                 "password_hash": hash_password("Test12345!"),
+                "proximity_alerts": True,
                 "created_at": datetime.now(timezone.utc).isoformat(),
             },
             {
@@ -248,6 +295,7 @@ class MemoryStore:
                 "role": "operador",
                 "zone": "Wanchaq",
                 "password_hash": hash_password("Test12345!"),
+                "proximity_alerts": True,
                 "created_at": datetime.now(timezone.utc).isoformat(),
             },
             {
@@ -257,6 +305,7 @@ class MemoryStore:
                 "role": "conductor",
                 "zone": "Santiago",
                 "password_hash": hash_password("Test12345!"),
+                "proximity_alerts": True,
                 "created_at": datetime.now(timezone.utc).isoformat(),
             },
             {
@@ -266,6 +315,7 @@ class MemoryStore:
                 "role": "admin",
                 "zone": "San Sebastian",
                 "password_hash": hash_password("Test12345!"),
+                "proximity_alerts": True,
                 "created_at": datetime.now(timezone.utc).isoformat(),
             },
         ]
@@ -672,6 +722,7 @@ def build_user_payload(user: dict[str, Any]) -> dict[str, Any]:
         "role": normalize_role(str(user.get("role", "ciudadano"))),
         "zone": user.get("zone", "Centro Historico"),
         "created_at": user.get("created_at"),
+        "proximity_alerts": bool(user.get("proximity_alerts", True)),
     }
 
 
@@ -694,7 +745,7 @@ def decode_token(token: str) -> dict[str, Any]:
 def get_user_record_by_email(email: str) -> Optional[dict[str, Any]]:
     try:
         row = execute_one(
-            "select id, name, email, role, zone, password_hash, created_at from users where email = %s",
+            "select id, name, email, role, zone, password_hash, created_at, proximity_alerts from users where email = %s",
             (email,),
         )
         return row
@@ -716,8 +767,8 @@ def create_user_record(payload: RegisterRequest) -> dict[str, Any]:
     hashed = hash_password(payload.password)
     try:
         row = execute_one(
-            "insert into users (name, email, role, zone, password_hash) values (%s, %s, %s, %s, %s) returning id, name, email, role, zone, created_at",
-            (payload.name, payload.email, normalize_role(payload.role), payload.zone, hashed),
+            "insert into users (name, email, role, zone, password_hash, proximity_alerts) values (%s, %s, %s, %s, %s, %s) returning id, name, email, role, zone, created_at, proximity_alerts",
+            (payload.name, payload.email, normalize_role(payload.role), payload.zone, hashed, True),
         )
         user = build_user_payload({**row, "password_hash": hashed})
         return user
@@ -741,7 +792,7 @@ def create_user_record(payload: RegisterRequest) -> dict[str, Any]:
 
 def list_users() -> list[dict[str, Any]]:
     try:
-        rows = fetch_all("select id, name, email, role, zone, created_at from users order by id")
+        rows = fetch_all("select id, name, email, role, zone, created_at, proximity_alerts from users order by id")
         return [build_user_payload(row) for row in rows]
     except Exception:
         return [build_user_payload(user) for user in memory.users]
@@ -757,7 +808,9 @@ def update_user(user_id: int, payload: UserUpdate) -> dict[str, Any]:
             execute_one("update users set role = %s where id = %s", (normalize_role(payload.role), user_id))
         if payload.zone is not None:
             execute_one("update users set zone = %s where id = %s", (payload.zone, user_id))
-        row = execute_one("select id, name, email, role, zone, created_at from users where id = %s", (user_id,))
+        if getattr(payload, "proximity_alerts", None) is not None:
+            execute_one("update users set proximity_alerts = %s where id = %s", (payload.proximity_alerts, user_id))
+        row = execute_one("select id, name, email, role, zone, created_at, proximity_alerts from users where id = %s", (user_id,))
         return build_user_payload(row)
     except Exception:
         for user in memory.users:
@@ -770,6 +823,8 @@ def update_user(user_id: int, payload: UserUpdate) -> dict[str, Any]:
                     user["role"] = normalize_role(payload.role)
                 if payload.zone is not None:
                     user["zone"] = payload.zone
+                if getattr(payload, "proximity_alerts", None) is not None:
+                    user["proximity_alerts"] = bool(payload.proximity_alerts)
                 return build_user_payload(user)
         raise HTTPException(status_code=404, detail="Usuario no encontrado")
 
@@ -1354,6 +1409,35 @@ def get_me(current_user: dict[str, Any] = Depends(require_current_user)) -> dict
     return current_user
 
 
+@app.patch("/api/auth/me")
+def patch_me(payload: MeUpdate, current_user: dict[str, Any] = Depends(require_current_user)) -> dict[str, Any]:
+    user_id = int(current_user.get("id"))
+    try:
+        if payload.name is not None:
+            execute_one("update users set name = %s where id = %s", (payload.name, user_id))
+        if payload.email is not None:
+            execute_one("update users set email = %s where id = %s", (str(payload.email), user_id))
+        if payload.zone is not None:
+            execute_one("update users set zone = %s where id = %s", (payload.zone, user_id))
+        if payload.proximity_alerts is not None:
+            execute_one("update users set proximity_alerts = %s where id = %s", (payload.proximity_alerts, user_id))
+        row = execute_one("select id, name, email, role, zone, created_at, proximity_alerts from users where id = %s", (user_id,))
+        return build_user_payload(row)
+    except Exception:
+        for user in memory.users:
+            if user["id"] == user_id:
+                if payload.name is not None:
+                    user["name"] = payload.name
+                if payload.email is not None:
+                    user["email"] = str(payload.email)
+                if payload.zone is not None:
+                    user["zone"] = payload.zone
+                if payload.proximity_alerts is not None:
+                    user["proximity_alerts"] = bool(payload.proximity_alerts)
+                return build_user_payload(user)
+        raise HTTPException(status_code=404, detail="Usuario no encontrado")
+
+
 @app.post("/api/auth/forgot-password")
 def forgot_password(payload: PasswordResetRequest) -> dict[str, Any]:
     user = get_user_by_email(str(payload.email))
@@ -1671,10 +1755,95 @@ def update_operation(payload: OperationUpdateRequest, current_user: dict[str, An
     if database_mode() == "memory":
         data["routes"] = memory.routes
         data["containers"] = memory.containers
+        # insert notification only if recipients have not opted out will be handled at display layer;
         memory.notifications.insert(0, notification)
         data["notifications"] = memory.notifications
 
     return build_monitor(simulate=False)
+
+
+def _find_truck_for_conductor(current_user: dict[str, Any], data: dict[str, Any]) -> dict[str, Any] | None:
+    user_name = str(current_user.get("name", "")).strip().lower()
+    trucks = data.get("trucks", [])
+    for truck in trucks:
+        if str(truck.get("driver", "")).strip().lower() == user_name:
+            return truck
+    return None
+
+
+def _find_route_for_truck_code(truck_code: str, data: dict[str, Any]) -> dict[str, Any] | None:
+    routes = data.get("routes", [])
+    for route in routes:
+        if str(route.get("truck", "")).strip().lower() == truck_code.strip().lower():
+            return route
+    return None
+
+
+def _should_create_proximity_notification(truck_code: str, zone_name: str, now: datetime) -> bool:
+    notifications = bootstrap().get("notifications", [])
+    truck_code_lower = truck_code.strip().lower()
+    zone_lower = zone_name.strip().lower()
+    for notification in notifications:
+        title = str(notification.get("title", "")).strip().lower()
+        message = str(notification.get("message", "")).strip().lower()
+        if title != "aviso de proximidad":
+            continue
+        if truck_code_lower not in message or zone_lower not in message:
+            continue
+        created_at = notification.get("created_at")
+        try:
+            created = datetime.fromisoformat(str(created_at))
+            if (now - created).total_seconds() < (PROXIMITY_DEDUP_MINUTES * 60):
+                return False
+        except Exception:
+            continue
+    return True
+
+
+@app.post("/api/operations/track-location")
+def track_location(payload: ProximityTrackRequest, current_user: dict[str, Any] = Depends(require_role({"conductor"}))) -> dict[str, Any]:
+    data = bootstrap()
+    truck = None
+    if payload.truck_id is not None:
+        truck = next((t for t in data.get("trucks", []) if int(t.get("id", 0)) == int(payload.truck_id)), None)
+    if truck is None:
+        truck = _find_truck_for_conductor(current_user, data)
+    if truck is None:
+        raise HTTPException(status_code=404, detail="No se encontró el camión asociado al conductor")
+
+    route = _find_route_for_truck_code(str(truck.get("code", "")), data)
+    zone_name = str(route.get("zone", truck.get("zone", ""))).strip() if route else str(truck.get("zone", "")).strip()
+    if not zone_name:
+        raise HTTPException(status_code=400, detail="No se pudo determinar la zona de la ruta")
+
+    zone = next((z for z in data.get("zones", []) if str(z.get("name", "")).strip().lower() == zone_name.lower()), None)
+    reference_lat = float(zone.get("latitude", 0.0)) if zone else float(route.get("latitude", truck.get("latitude", 0.0)))
+    reference_lng = float(zone.get("longitude", 0.0)) if zone else float(route.get("longitude", truck.get("longitude", 0.0)))
+    distance_meters = haversine_distance(payload.latitude, payload.longitude, reference_lat, reference_lng)
+    distance_text = f"{int(round(distance_meters))} m"
+    eta_text = str(route.get("eta", "desconocida")) if route else "desconocida"
+
+    message = f"El camión {truck.get('code')} está a {distance_text} de la zona {zone_name}. Llegará aproximadamente en {eta_text}."
+    notification = {
+        "id": len(data.get("notifications", [])) + 1,
+        "user_id": current_user.get("id"),
+        "title": "Aviso de proximidad",
+        "message": message,
+        "type": "proximity",
+        "is_read": False,
+        "created_at": datetime.now(timezone.utc).isoformat(),
+    }
+
+    if distance_meters <= PROXIMITY_THRESHOLD_METERS and _should_create_proximity_notification(str(truck.get("code", "")), zone_name, datetime.now(timezone.utc)):
+        persist_notification(notification)
+
+    return {
+        "ok": True,
+        "zone": zone_name,
+        "distanceMeters": int(round(distance_meters)),
+        "thresholdMeters": PROXIMITY_THRESHOLD_METERS,
+        "message": message,
+    }
 
 
 @app.get("/alerts")

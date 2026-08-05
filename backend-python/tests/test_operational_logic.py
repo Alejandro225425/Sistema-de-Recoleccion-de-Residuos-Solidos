@@ -73,6 +73,32 @@ def test_update_operation_container_event_requires_auth_and_updates_monitor():
     )
 
 
+def test_conductor_track_location_generates_proximity_notification():
+    client = TestClient(app)
+    login = client.post("/api/auth/login", json={"email": "conductor@ecocusco.pe", "password": "Test12345!"})
+    assert login.status_code == 200
+    token = login.json()["token"]
+
+    response = client.post(
+        "/api/operations/track-location",
+        json={"truck_id": 4, "latitude": -13.5350, "longitude": -71.9847},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["ok"] is True
+    assert payload["thresholdMeters"] == 150
+    assert payload["message"] == "El camión C-04 está a 0 m de la zona Santiago. Llegará aproximadamente en 28 min."
+
+    monitor = client.get("/api/operations/monitor")
+    assert monitor.status_code == 200
+    monitor_payload = monitor.json()
+    assert any(
+        isinstance(note, dict) and note.get("type") == "proximity" and note.get("title") == "Aviso de proximidad"
+        for note in monitor_payload.get("notifications", [])
+    )
+
+
 def test_e2e_route_update_persists_to_routes_and_monitor():
     client = TestClient(app)
     login = client.post("/api/auth/login", json={"email": "admin@ecocusco.pe", "password": "admin123"})

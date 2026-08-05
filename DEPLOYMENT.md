@@ -110,3 +110,25 @@ Si prefieres crear los servicios manualmente:
 - El `render.yaml` incluye una regex de CORS que permite tanto Vercel (`*.vercel.app`) como Netlify (`*.netlify.app`).
 - Para más detalles sobre el despliegue en Netlify, consulta `NETLIFY-DEPLOYMENT.md`.
 - Para más detalles sobre el despliegue en Render + Vercel, consulta `docs/DESPLIEGUE.md`.
+
+## Configuración de alertas de proximidad
+
+El sistema soporta parámetros configurables para ajustar el comportamiento de las alertas de proximidad sin cambiar código.
+
+- `PROXIMITY_THRESHOLD_METERS` (entero): distancia en metros que define cuándo un camión se considera "cercano" a una zona. Valor por defecto: `150`.
+- `PROXIMITY_DEDUP_MINUTES` (entero): ventana en minutos para evitar enviar notificaciones de proximidad duplicadas para el mismo camión y zona. Valor por defecto: `10` (minutos).
+
+Recomendación de despliegue:
+
+- En entornos de prueba/staging utiliza valores más pequeños (ej. `PROXIMITY_THRESHOLD_METERS=100`, `PROXIMITY_DEDUP_MINUTES=5`) para validar comportamiento sin generar muchas notificaciones.
+- En producción mantener 150 metros y 10 minutos como punto de partida y ajustar según feedback de operación.
+
+Cómo establecerlas en Render (Environment → Variables):
+
+```
+PROXIMITY_THRESHOLD_METERS=150
+PROXIMITY_DEDUP_MINUTES=10
+```
+
+Después de cambiar estas variables en el panel de Render, el servicio realizará un redeploy y los nuevos valores se aplicarán.
+
