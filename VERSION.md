@@ -1,4 +1,23 @@
-# Sistema de Recolección de Residuos Sólidos - Versión 5.5.8
+# Sistema de Recolección de Residuos Sólidos - Versión 5.5.10
+
+## Versión 5.5.10 - Operaciones masivas en panel administrativo
+
+### Cambios destacados
+
+- **Backend - POST /api/admin/bulk-action**: endpoint para eliminación masiva de usuarios, zonas, horarios, camiones y registros de mantenimiento en una sola petición. Requiere rol `admin`. Soporta PostgreSQL y modo memoria (demo).
+- **Frontend - Admin**: checkboxes de selección múltiple en todas las listas administrativas. Barra de acciones masivas con "Seleccionar todo" y "Eliminar seleccionados" (confirmación con contador de elementos).
+- **Tests**: 4 tests backend (eliminación masiva, IDs vacíos, recurso no soportado, permisos) + 4 tests frontend (checkbox, barra de acciones, llamada API, cancelación).
+
+## Versión 5.5.4 - Correcciones críticas y mejoras en dashboards
+
+### Cambios destacados
+
+- **Frontend - Dashboard**: métricas ahora son clicables y navegan a la vista correspondiente (reports, routes, analytics, admin). Se agregó cursor pointer para indicar interactividad.
+- **Frontend - Schedules**: el banner de horarios del ciudadano ahora muestra TODAS las recolecciones programadas para su zona (no solo la primera). Se corrigió el filtro de día para cadenas compuestas.
+- **Frontend - Waste**: se agregó la sección "Guía de disposición" con instrucciones por tipo de residuo (orgánicos, reciclables, no reciclables) y el contenedor asignado.
+- **Frontend - Routes**: las alertas geo ahora se refrescan automáticamente cada 30 segundos. Se mejoró el manejo de errores del microservicio geo.
+- **Frontend - Admin**: se agregaron diálogos de confirmación para todas las acciones destructivas (eliminar usuario, zona, horario, camión, mantenimiento). Se corrigió el display de truck_id en mantenimiento para mostrar el código del camión.
+- **Frontend - Analytics**: se agregó desglose por tipo de residuo y filtro de rango de fecha (7/30/90 días/todo el año) para el historial de recolecciones.
 
 ## Versión 5.5.8 - Auditoría integral de dashboards del rol Conductor
 

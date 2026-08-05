@@ -45,6 +45,11 @@ export default function Admin({ data, session, onOperationUpdate, onRefresh }: {
   const [deletingUserIds, setDeletingUserIds] = useState<number[]>([]);
   const [creating, setCreating] = useState(false);
   const [feedback, setFeedback] = useState("");
+  const truckNameById = useMemo(() => {
+    const map: Record<number, string> = {};
+    (safeData.trucks ?? []).forEach(t => { map[t.id] = `${t.code} - ${t.driver}`; });
+    return map;
+  }, [safeData.trucks]);
   const [formValues, setFormValues] = useState(() => ({
     ...initialUserFormValues,
     zone: session?.zone ?? initialUserFormValues.zone,
@@ -95,12 +100,24 @@ export default function Admin({ data, session, onOperationUpdate, onRefresh }: {
   const [savingMaintenanceIds, setSavingMaintenanceIds] = useState<number[]>([]);
   const [deletingMaintenanceIds, setDeletingMaintenanceIds] = useState<number[]>([]);
 
-  useEffect(() => {
+  const [selectedUsers, setSelectedUsers] = useState<Set<number>>(new Set());
+  const [selectedZones, setSelectedZones] = useState<Set<number>>(new Set());
+  const [selectedSchedules, setSelectedSchedules] = useState<Set<number>>(new Set());
+  const [selectedTrucks, setSelectedTrucks] = useState<Set<number>>(new Set());
+  const [selectedMaintenance, setSelectedMaintenance] = useState<Set<number>>(new Set());
+  const [bulkDeleting, setBulkDeleting] = useState(false);
+
+   useEffect(() => {
     setUsers(safeData.users);
     setZones(safeData.zones);
     setSchedules(safeData.schedules);
     setTrucks(safeData.trucks);
     setMaintenance(safeData.maintenance);
+    setSelectedUsers(new Set());
+    setSelectedZones(new Set());
+    setSelectedSchedules(new Set());
+    setSelectedTrucks(new Set());
+    setSelectedMaintenance(new Set());
     setNewTruck(prev => ({ ...prev, zone_id: safeData.zones[0]?.id ?? prev.zone_id }));
     setNewMaintenance(prev => ({ ...prev, truck_id: safeData.trucks[0]?.id ?? prev.truck_id }));
     setNewSchedule(prev => ({ ...prev, zone_id: safeData.zones[0]?.id ?? prev.zone_id }));
@@ -164,9 +181,10 @@ export default function Admin({ data, session, onOperationUpdate, onRefresh }: {
     }
   }
 
-  async function deleteUser(user: Session) {
-    if (!user.id) return;
-    setDeletingUserIds(prev => prev.includes(user.id!) ? prev : [...prev, user.id!]);
+async function deleteUser(user: Session) {
+     if (!user.id) return;
+     if (!window.confirm(`¿Estás seguro de eliminar al usuario ${user.name}? Esta acción no se puede deshacer.`)) return;
+     setDeletingUserIds(prev => prev.includes(user.id!) ? prev : [...prev, user.id!]);
     try {
       await request(`/users/${user.id}`, { method: 'DELETE' });
       setUsers(prev => prev.filter(item => item.id !== user.id));
@@ -260,8 +278,10 @@ export default function Admin({ data, session, onOperationUpdate, onRefresh }: {
     }
   }
 
-  async function deleteZone(zoneId: number) {
-    try {
+async function deleteZone(zoneId: number) {
+     const zone = zones.find(z => z.id === zoneId);
+     if (!window.confirm(`¿Estás seguro de eliminar la zona ${zone?.name ?? zoneId}? Esta acción no se puede deshacer.`)) return;
+     try {
       await request(`/zones/${zoneId}`, { method: 'DELETE' });
       setZones(prev => prev.filter(zone => zone.id !== zoneId));
       setFeedback('Zona eliminada');
@@ -313,8 +333,9 @@ export default function Admin({ data, session, onOperationUpdate, onRefresh }: {
     }
   }
 
-  async function deleteSchedule(scheduleId: number) {
-    try {
+async function deleteSchedule(scheduleId: number) {
+     if (!window.confirm('¿Estás seguro de eliminar este horario? Esta acción no se puede deshacer.')) return;
+     try {
       await request(`/schedules/${scheduleId}`, { method: 'DELETE' });
       setSchedules(prev => prev.filter(s => s.id !== scheduleId));
       setFeedback('Horario eliminado');
@@ -369,9 +390,10 @@ export default function Admin({ data, session, onOperationUpdate, onRefresh }: {
     }
   }
 
-  async function deleteTruck(truck: Truck) {
-    if (!truck.id) return;
-    setDeletingTruckIds(prev => prev.includes(truck.id!) ? prev : [...prev, truck.id!]);
+async function deleteTruck(truck: Truck) {
+     if (!truck.id) return;
+     if (!window.confirm(`¿Estás seguro de eliminar el camión ${truck.code} de ${truck.driver}? Esta acción no se puede deshacer.`)) return;
+     setDeletingTruckIds(prev => prev.includes(truck.id!) ? prev : [...prev, truck.id!]);
     try {
       await request(`/trucks/${truck.id}`, { method: 'DELETE' });
       setTrucks(prev => prev.filter(t => t.id !== truck.id));
@@ -395,7 +417,7 @@ export default function Admin({ data, session, onOperationUpdate, onRefresh }: {
       });
       setMaintenance(prev => [...prev, created]);
       setNewMaintenance({ truck_id: safeData.trucks[0]?.id ?? 0, description: '', status: 'Pendiente' });
-      setFeedback(`Mantenimiento creado para camión ${created.truck_id}`);
+      setFeedback(`Mantenimiento creado para camión ${truckNameById[created.truck_id] ?? `#${created.truck_id}`}`);
       await onRefresh?.();
     } catch (error) {
       setFeedback(error instanceof Error ? error.message : 'No se pudo crear el mantenimiento');
@@ -430,9 +452,10 @@ export default function Admin({ data, session, onOperationUpdate, onRefresh }: {
     }
   }
 
-  async function deleteMaintenance(item: MaintenanceRecord) {
-    if (!item.id) return;
-    setDeletingMaintenanceIds(prev => prev.includes(item.id!) ? prev : [...prev, item.id!]);
+async function deleteMaintenance(item: MaintenanceRecord) {
+     if (!item.id) return;
+     if (!window.confirm(`¿Estás seguro de eliminar el mantenimiento #${item.id}? Esta acción no se puede deshacer.`)) return;
+     setDeletingMaintenanceIds(prev => prev.includes(item.id!) ? prev : [...prev, item.id!]);
     try {
       await request(`/maintenance/${item.id}`, { method: 'DELETE' });
       setMaintenance(prev => prev.filter(m => m.id !== item.id));
@@ -477,6 +500,30 @@ export default function Admin({ data, session, onOperationUpdate, onRefresh }: {
     }
   }
 
+  async function bulkDelete(resource: string, ids: number[], label: string) {
+    if (ids.length === 0) return;
+    const count = ids.length;
+    if (!window.confirm(`¿Estás seguro de eliminar ${count} ${label} seleccionado(s)? Esta acción no se puede deshacer.`)) return;
+    setBulkDeleting(true);
+    try {
+      const result = await request<{ deleted: number[]; count: number; resource: string }>(
+        "/admin/bulk-action",
+        { method: "POST", body: JSON.stringify({ resource, action: "delete", ids }) }
+      );
+      setSelectedUsers(new Set());
+      setSelectedZones(new Set());
+      setSelectedSchedules(new Set());
+      setSelectedTrucks(new Set());
+      setSelectedMaintenance(new Set());
+      setFeedback(`Se eliminaron ${result.count} ${label}`);
+      await onRefresh?.();
+    } catch (error) {
+      setFeedback(error instanceof Error ? error.message : 'No se pudieron eliminar los elementos seleccionados');
+    } finally {
+      setBulkDeleting(false);
+    }
+  }
+
   return (
     <div className="admin-grid admin-shell" data-testid="admin-shell">
       <section className="panel">
@@ -511,29 +558,45 @@ export default function Admin({ data, session, onOperationUpdate, onRefresh }: {
           <button type="submit" disabled={creating}>{creating ? "Creando..." : "Crear usuario"}</button>
         </form>
         {feedback && <p className="hint success" role="status" aria-live="polite">{feedback}</p>}
+        {selectedUsers.size > 0 && (
+          <div className="bulk-action-bar">
+            <span>{selectedUsers.size} seleccionado(s)</span>
+            <label><input type="checkbox" checked={selectedUsers.size === users.length} onChange={e => {
+              if (e.target.checked) setSelectedUsers(new Set(users.filter(u => u.id).map(u => u.id!)));
+              else setSelectedUsers(new Set());
+            }} /> Seleccionar todo</label>
+            <button type="button" className="danger" onClick={() => bulkDelete("users", Array.from(selectedUsers), "usuario(s)")} disabled={bulkDeleting}>Eliminar seleccionados</button>
+          </div>
+        )}
         <ul className="list" aria-label="Lista de usuarios">
           {users.length === 0 ? (
             <li className="empty-state">No hay usuarios registrados todavía.</li>
           ) : users.map((user, index) => (
 <li key={`user-${user.id ?? user.email}-${index}`} className="admin-list-item">
-               <div className="admin-list-main">
-                 <strong>{user.name ?? "Sin nombre"}</strong>
-                 <div className="admin-list-meta">{user.email} · {user.zone ?? "Sin zona"}</div>
-               </div>
-               <div className="admin-list-actions">
-                 <select value={userRoleDrafts[user.id ?? 0] ?? user.role} onChange={event => {
-                   const value = event.currentTarget.value as Role;
-                   setUserRoleDrafts(prev => ({ ...prev, [user.id ?? 0]: value }));
-                 }} aria-label={`Rol de ${user.name}`}>
-                   <option value="ciudadano">Ciudadano</option>
-                   <option value="operador">Operador</option>
-                   <option value="admin">Administrador</option>
-                   <option value="conductor">Conductor</option>
-                 </select>
-                 <button type="button" onClick={() => updateUserRole(user)} disabled={!user.id || savingUserIds.includes(user.id)}>{savingUserIds.includes(user.id ?? -1) ? "Guardando..." : "Guardar rol"}</button>
-                 <button type="button" onClick={() => deleteUser(user)} disabled={deletingUserIds.includes(user.id ?? -1)} className="danger">{deletingUserIds.includes(user.id ?? -1) ? "Eliminando..." : "Eliminar"}</button>
-               </div>
-             </li>
+                <div className="admin-list-main">
+                  <strong>{user.name ?? "Sin nombre"}</strong>
+                  <div className="admin-list-meta">{user.email} · {user.zone ?? "Sin zona"}</div>
+                </div>
+                <div className="admin-list-actions">
+                  <input type="checkbox" checked={user.id ? selectedUsers.has(user.id) : false} onChange={e => {
+                    const id = user.id;
+                    if (!id) return;
+                    if (e.target.checked) setSelectedUsers(prev => new Set([...prev, id]));
+                    else setSelectedUsers(prev => { const next = new Set(prev); next.delete(id); return next; });
+                  }} aria-label={`Seleccionar usuario ${user.name}`} />
+                  <select value={userRoleDrafts[user.id ?? 0] ?? user.role} onChange={event => {
+                    const value = event.currentTarget.value as Role;
+                    setUserRoleDrafts(prev => ({ ...prev, [user.id ?? 0]: value }));
+                  }} aria-label={`Rol de ${user.name}`}>
+                    <option value="ciudadano">Ciudadano</option>
+                    <option value="operador">Operador</option>
+                    <option value="admin">Administrador</option>
+                    <option value="conductor">Conductor</option>
+                  </select>
+                  <button type="button" onClick={() => updateUserRole(user)} disabled={!user.id || savingUserIds.includes(user.id)}>{savingUserIds.includes(user.id ?? -1) ? "Guardando..." : "Guardar rol"}</button>
+                  <button type="button" onClick={() => deleteUser(user)} disabled={deletingUserIds.includes(user.id ?? -1)} className="danger">{deletingUserIds.includes(user.id ?? -1) ? "Eliminando..." : "Eliminar"}</button>
+                </div>
+              </li>
           ))}
         </ul>
       </section>
@@ -568,7 +631,17 @@ export default function Admin({ data, session, onOperationUpdate, onRefresh }: {
               const value = event.currentTarget.value;
               setZoneSearch(value);
             }} aria-label="Filtrar zonas" />
-        </div>
+         </div>
+        {selectedZones.size > 0 && (
+          <div className="bulk-action-bar">
+            <span>{selectedZones.size} seleccionado(s)</span>
+            <label><input type="checkbox" checked={selectedZones.size === filteredZones.length} onChange={e => {
+              if (e.target.checked) setSelectedZones(new Set(filteredZones.filter(z => z.id).map(z => z.id!)));
+              else setSelectedZones(new Set());
+            }} /> Seleccionar todo</label>
+            <button type="button" className="danger" onClick={() => bulkDelete("zones", Array.from(selectedZones), "zona(s)")} disabled={bulkDeleting}>Eliminar seleccionados</button>
+          </div>
+        )}
         <ul className="list" aria-label="Lista de zonas">
           {filteredZones.length === 0 ? (
             <li className="empty-state">No se encontraron zonas que coincidan con el filtro.</li>
@@ -579,6 +652,10 @@ export default function Admin({ data, session, onOperationUpdate, onRefresh }: {
                 <div className="admin-list-meta">Criticidad {zone.criticality ?? "Sin datos"}</div>
               </div>
               <div className="admin-list-actions">
+                <input type="checkbox" checked={selectedZones.has(zone.id)} onChange={e => {
+                  if (e.target.checked) setSelectedZones(prev => new Set([...prev, zone.id]));
+                  else setSelectedZones(prev => { const next = new Set(prev); next.delete(zone.id); return next; });
+                }} aria-label={`Seleccionar zona ${zone.name}`} />
                 <button type="button" onClick={() => startEditZone(zone)}>Editar zona</button>
                 <button type="button" onClick={() => deleteZone(zone.id)}>Eliminar zona</button>
               </div>
@@ -631,6 +708,16 @@ export default function Admin({ data, session, onOperationUpdate, onRefresh }: {
             <button type="submit">Guardar cambios</button>
             <button type="button" onClick={() => { setEditingScheduleId(null); setEditingSchedule({ zone_id: 1, day: 'Lunes', time: '08:00', waste: 'Orgánicos' }); }}>Cancelar</button>
           </form>
+         )}
+        {selectedSchedules.size > 0 && (
+          <div className="bulk-action-bar">
+            <span>{selectedSchedules.size} seleccionado(s)</span>
+            <label><input type="checkbox" checked={selectedSchedules.size === schedules.length} onChange={e => {
+              if (e.target.checked) setSelectedSchedules(new Set(schedules.filter(s => s.id).map(s => s.id!)));
+              else setSelectedSchedules(new Set());
+            }} /> Seleccionar todo</label>
+            <button type="button" className="danger" onClick={() => bulkDelete("schedules", Array.from(selectedSchedules), "horario(s)")} disabled={bulkDeleting}>Eliminar seleccionados</button>
+          </div>
         )}
         <ul className="list" aria-label="Lista de horarios">
           {schedules.length === 0 ? (
@@ -642,6 +729,10 @@ export default function Admin({ data, session, onOperationUpdate, onRefresh }: {
                 <div className="admin-list-meta">{schedule.day} · {schedule.time} · {schedule.waste}</div>
               </div>
               <div className="admin-list-actions">
+                <input type="checkbox" checked={selectedSchedules.has(schedule.id)} onChange={e => {
+                  if (e.target.checked) setSelectedSchedules(prev => new Set([...prev, schedule.id]));
+                  else setSelectedSchedules(prev => { const next = new Set(prev); next.delete(schedule.id); return next; });
+                }} aria-label={`Seleccionar horario ${schedule.zone}`} />
                 <button type="button" onClick={() => startEditSchedule(schedule)}>Editar</button>
                 <button type="button" onClick={() => deleteSchedule(schedule.id)}>Eliminar</button>
               </div>
@@ -681,7 +772,17 @@ export default function Admin({ data, session, onOperationUpdate, onRefresh }: {
             }}>{safeData.zones.map((zone, index) => <option key={`zone-${zone.id}-${index}`} value={zone.id}>{zone.name}</option>)}</select></label>
           <button type="submit" disabled={creating}>{creating ? "Creando..." : "Crear camión"}</button>
         </form>
-<ul className="list" aria-label="Lista de camiones">
+        {selectedTrucks.size > 0 && (
+          <div className="bulk-action-bar">
+            <span>{selectedTrucks.size} seleccionado(s)</span>
+            <label><input type="checkbox" checked={selectedTrucks.size === filteredTrucks.length} onChange={e => {
+              if (e.target.checked) setSelectedTrucks(new Set(filteredTrucks.filter(t => t.id).map(t => t.id!)));
+              else setSelectedTrucks(new Set());
+            }} /> Seleccionar todo</label>
+            <button type="button" className="danger" onClick={() => bulkDelete("trucks", Array.from(selectedTrucks), "camión(es)")} disabled={bulkDeleting}>Eliminar seleccionados</button>
+          </div>
+        )}
+        <ul className="list" aria-label="Lista de camiones">
            {filteredTrucks.length === 0 ? (
              <li className="empty-state">No hay camiones que coincidan con el filtro actual.</li>
            ) : filteredTrucks.map((truck, index) => (
@@ -712,6 +813,10 @@ export default function Admin({ data, session, onOperationUpdate, onRefresh }: {
                )}
                {editingTruckId !== truck.id && (
                  <div className="admin-list-actions">
+                   <input type="checkbox" checked={selectedTrucks.has(truck.id)} onChange={e => {
+                     if (e.target.checked) setSelectedTrucks(prev => new Set([...prev, truck.id]));
+                     else setSelectedTrucks(prev => { const next = new Set(prev); next.delete(truck.id); return next; });
+                   }} aria-label={`Seleccionar camión ${truck.code}`} />
                    <button type="button" onClick={() => startEditTruck(truck)}>Editar camión</button>
                    <button type="button" onClick={() => deleteTruck(truck)} disabled={deletingTruckIds.includes(truck.id ?? -1)} className="danger">{deletingTruckIds.includes(truck.id ?? -1) ? "Eliminando..." : "Eliminar"}</button>
                  </div>
@@ -745,8 +850,18 @@ export default function Admin({ data, session, onOperationUpdate, onRefresh }: {
               setNewMaintenance(prev => ({ ...prev, status: value }));
             }}><option>Pendiente</option><option>Completado</option></select></label>
           <button type="submit" disabled={creating}>{creating ? "Creando..." : "Crear mantenimiento"}</button>
-        </form>
-<ul className="list" aria-label="Lista de mantenimiento">
+         </form>
+        {selectedMaintenance.size > 0 && (
+          <div className="bulk-action-bar">
+            <span>{selectedMaintenance.size} seleccionado(s)</span>
+            <label><input type="checkbox" checked={selectedMaintenance.size === filteredMaintenance.length} onChange={e => {
+              if (e.target.checked) setSelectedMaintenance(new Set(filteredMaintenance.filter(m => m.id).map(m => m.id!)));
+              else setSelectedMaintenance(new Set());
+            }} /> Seleccionar todo</label>
+            <button type="button" className="danger" onClick={() => bulkDelete("maintenance", Array.from(selectedMaintenance), "registro(s) de mantenimiento")} disabled={bulkDeleting}>Eliminar seleccionados</button>
+          </div>
+        )}
+        <ul className="list" aria-label="Lista de mantenimiento">
            {filteredMaintenance.length === 0 ? (
              <li className="empty-state">No hay registros de mantenimiento para el filtro seleccionado.</li>
            ) : filteredMaintenance.map(item => (
@@ -771,23 +886,57 @@ export default function Admin({ data, session, onOperationUpdate, onRefresh }: {
                    <button type="button" onClick={() => { setEditingMaintenanceId(null); setEditingMaintenance({ truck_id: safeData.trucks[0]?.id ?? 0, description: '', status: 'Pendiente' }); }}>Cancelar</button>
                  </form>
                ) : (
-                 <Item title={`Mantenimiento #${item.id}`} detail={`${item.description} · ${item.status}`} color={item.status === 'Pendiente' ? 'yellow' : 'blue'} />
+                 <Item title={`Mantenimiento #${item.id}`} detail={`${truckNameById[item.truck_id] ?? `Camión #${item.truck_id}`} · ${item.description} · ${item.status}`} color={item.status === 'Pendiente' ? 'yellow' : 'blue'} />
                )}
                {editingMaintenanceId !== item.id && (
                  <div className="admin-list-actions">
+                   <input type="checkbox" checked={selectedMaintenance.has(item.id)} onChange={e => {
+                     if (e.target.checked) setSelectedMaintenance(prev => new Set([...prev, item.id]));
+                     else setSelectedMaintenance(prev => { const next = new Set(prev); next.delete(item.id); return next; });
+                   }} aria-label={`Seleccionar mantenimiento #${item.id}`} />
                    <button type="button" onClick={() => startEditMaintenance(item)}>Editar</button>
                    <button type="button" onClick={() => deleteMaintenance(item)} disabled={deletingMaintenanceIds.includes(item.id ?? -1)} className="danger">{deletingMaintenanceIds.includes(item.id ?? -1) ? "Eliminando..." : "Eliminar"}</button>
                  </div>
                )}
              </li>
            ))}
-         </ul>
+        </ul>
       </section>
 
-      <section className="panel">
-        <h2>Eventos operativos</h2>
-        <p>Envía actualizaciones de ruta y contenedor desde el panel administrativo.</p>
-        <form className="form-grid" onSubmit={submitEventUpdate}>
+       <section className="panel">
+         <h2>Flota</h2>
+         <div className="list">
+           {(safeData.trucks ?? []).map(truck => (
+             <Item key={truck.id} title={`${truck.code} - ${truck.driver}`} detail={`${truck.status} · Zona: ${truck.zone}`} color={truck.status === "Activo" ? "blue" : "yellow"} />
+           ))}
+         </div>
+       </section>
+
+       <section className="panel">
+         <h2>Gestión de recolecciones</h2>
+         <div className="list">
+           {(safeData.collections ?? []).map(collection => (
+             <Item key={collection.id} title={`${collection.date} - ${collection.zone}`} detail={`${collection.truck} · ${collection.kg} kg · ${collection.status}`} color={collection.status === "Confirmada" ? "blue" : "yellow"} />
+           ))}
+         </div>
+       </section>
+
+       <section className="panel">
+         <h2>Registro de auditoría</h2>
+         <div className="list">
+           <Item title="Usuarios" detail={`${safeData.users?.length ?? 0} registrados`} color="blue" />
+           <Item title="Zonas" detail={`${safeData.zones?.length ?? 0} activas`} color="blue" />
+           <Item title="Camiones" detail={`${safeData.trucks?.length ?? 0} registrados`} color="blue" />
+           <Item title="Reportes" detail={`${safeData.reports?.length ?? 0} totales`} color="blue" />
+           <Item title="Recolecciones" detail={`${safeData.collections?.length ?? 0} registradas`} color="blue" />
+           <Item title="Mantenimiento" detail={`${safeData.maintenance?.length ?? 0} registros`} color="blue" />
+         </div>
+       </section>
+
+       <section className="panel">
+         <h2>Eventos operativos</h2>
+         <p>Envía actualizaciones de ruta y contenedor desde el panel administrativo.</p>
+         <form className="form-grid" onSubmit={submitEventUpdate}>
           <label htmlFor="event-type">Tipo de evento<select id="event-type" value={eventType} onChange={event => setEventType(event.currentTarget.value as "route_update" | "container_update") }>
             <option value="route_update">Actualización de ruta</option>
             <option value="container_update">Actualización de contenedor</option>

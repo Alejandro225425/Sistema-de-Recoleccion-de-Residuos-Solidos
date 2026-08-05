@@ -2,6 +2,31 @@
 
 ## 2026-08-04
 
+### Version 5.5.10 - Operaciones masivas en panel administrativo
+
+- **Backend - POST /api/admin/bulk-action**: se agregó un endpoint para operaciones masivas que permite eliminar múltiples registros (usuarios, zonas, horarios, camiones, mantenimiento) en una sola petición. Soporta modo memoria y PostgreSQL. Requiere rol `admin`.
+- **Backend - MemoryStore**: se añadió la función `bulk_delete()` con fallback a memoria cuando PostgreSQL no está disponible.
+- **Frontend - Admin.tsx**: se implementaron checkboxes de selección múltiple en las listas de usuarios, zonas, horarios, camiones y mantenimiento. Al seleccionar elementos aparece una barra de acciones masivas con botones "Seleccionar todo" y "Eliminar seleccionados" (con confirmación de seguridad).
+- **Frontend - Admin.tsx**: las selecciones se limpian automáticamente al refrescar los datos o al completar una eliminación.
+- **Frontend - styles.css**: se añadieron estilos `.bulk-action-bar` y `.admin-list-actions input[type="checkbox"]` para la interfaz de operaciones masivas.
+- **Tests - backend**: se agregaron 4 tests para el endpoint `POST /api/admin/bulk-action` (eliminación masiva, validación de IDs vacíos, recurso no soportado, permisos de rol).
+- **Tests - frontend**: se agregaron 4 tests en `Admin.test.tsx` para selección de checkboxes, visualización de la barra de acciones, llamada a la API y cancelación por el usuario.
+- **Verificación**: 30/31 backend tests (1 skip preexistente), 25/25 frontend tests.
+
+- **Frontend - styles.css**: corregido selector CSS roto en media query `@media (max-width: 768px)` que impedía el colapso a 1 columna en móviles. Se reemplazó el selector inválido `.panel [style*=" grid-template-columns\]` por la clase `.panel-analytics-grid` con regla explícita `grid-template-columns: 1fr !important` en móvil.
+- **Frontend - main.tsx**: se eliminaron estilos inline del dashboard de Analytics (`gridTemplateColumns: "1fr 1fr"`, `padding`, `marginBottom`, `listStyle`, controles de fecha) y se migraron a clases CSS (`panel-analytics-grid`, `analytics-header`, `analytics-controls`, `analytics-summary-list`, `analytics-waste-grid`, `analytics-waste-item`). Ahora Analytics responde correctamente a media queries.
+- **Frontend - main.tsx**: mejorada accesibilidad del menú off-canvas en móvil. Se añadieron `aria-expanded` y `aria-controls` al botón hamburguesa, `ref` en la sidebar para gestión de foco, `useEffect` para cerrar con tecla `Escape` y `useEffect` para enfocar el primer botón al abrir el menú.
+- **Frontend - styles.css**: bloqueado scroll del body cuando la sidebar off-canvas está abierta en móvil (`overflow: hidden`) para evitar desplazamiento de fondo.
+- **Frontend - styles.css**: reducida altura de gráficos Recharts en móvil con clase `.analytics-chart` (220px desktop, 200px tablet, 180px móvil) para mejorar legibilidad.
+- **Frontend - main.tsx**: migrados selects inline de la vista Waste a clase responsiva `.waste-filter-select`, evitando desbordamiento horizontal en pantallas pequeñas.
+- **Frontend - styles.css**: añadido `safe-area-inset` en hamburguesa y sidebar para notch/barras de iOS.
+- **Frontend - styles.css**: prevenido zoom automático en inputs móviles estableciendo `font-size: 16px` en media query `@media (max-width: 768px)`.
+- **Tests**: aumentado timeout en test de edición de zonas para evitar fallo por lentitud de entorno (`App.test.tsx`).
+- **Verificación**: `tsc --noEmit` sin errores, `npm run build` exitoso, 21/21 tests frontend.
+- **Archivos modificados**: `frontend/src/styles.css`, `frontend/src/main.tsx`, `frontend/src/App.test.tsx`, `CHANGELOG.md`, `README.md`.
+
+## 2026-08-04
+
 ### Version 5.5.8 - Auditoría integral de dashboards del rol Conductor y correcciones de seguridad
 
 - **Backend - POST /api/collections**: se agregó validación de propiedad de camión para el rol `conductor`. Un conductor solo puede registrar recolecciones para su camión asignado (donde `driver` coincide con su nombre). Intentar registrar para un camión ajeno retorna `403 Forbidden`. El rol `operador` mantiene acceso sin restricción.
@@ -16,6 +41,25 @@
 - **Tests**: se agregaron 5 tests de backend para validación de permisos de conductor en `/api/collections` y filtrado de analíticas.
 - **Compilación**: `tsc --noEmit` sin errores, `npm run build` exitoso.
 - **Tests**: 26/26 backend (21 originales + 5 nuevos), 21/21 frontend.
+
+### Version 5.5.4 - Correcciones críticas y mejoras en dashboards
+
+- **Frontend - Dashboard**: métricas ahora son clicables y navegan a la vista correspondiente (reports, routes, analytics, admin). Se agregó cursor pointer para indicar interactividad.
+- **Frontend - Schedules**: el banner de horarios del ciudadano ahora muestra TODAS las recolecciones programadas para su zona (no solo la primera). Se corrigió el filtro de día para cadenas compuestas (e.g. "Lunes, miercoles y viernes").
+- **Frontend - Waste**: se agregó la sección "Guía de disposición" con instrucciones por tipo de residuo (orgánicos, reciclables, no reciclables) y el contenedor asignado.
+- **Frontend - Routes**: las alertas geo ahora se refrescan automáticamente cada 30 segundos. Se mejoró el manejo de errores del microservicio geo.
+- **Frontend - Admin**: se agregaron diálogos de confirmación (`window.confirm`) para todas las acciones destructivas (eliminar usuario, zona, horario, camión, mantenimiento). Se corrigió el display de `truck_id` en mantenimiento para mostrar el código del camión en lugar del ID numérico.
+- **Frontend - Analytics**: se agregó desglose por tipo de residuo y filtro de rango de fecha (7/30/90 días/todo el año) para el historial de recolecciones.
+- **Compilación**: `tsc --noEmit` sin errores, `npm run build` exitoso.
+- **Tests**: 21/21 frontend, 26/26 backend.
+
+### Archivos modificados
+- `frontend/src/main.tsx` — Dashboard métricas clicables, Schedules banner ciudadano con todas las recolecciones, Waste guía de disposición, Routes refresh geo cada 30s, Analytics desglose por tipo y filtro de fecha
+- `frontend/src/components/Admin.tsx` — Confirmaciones de eliminación, display de código de camión en mantenimiento
+- `frontend/src/styles.css` — Cursor pointer en metric-card
+- `frontend/src/App.test.tsx` — Mock de window.confirm para tests
+- `frontend/src/Reports.test.tsx` — Props view/setView agregadas a Dashboard en test
+- `CHANGELOG.md` — Entrada para versión 5.5.4
 
 ### Archivos modificados
 - `backend-python/app/main.py` — Validación de camión en POST /api/collections, MemoryStore completado con C-04 y usuarios demo, nombre del conductor corregido

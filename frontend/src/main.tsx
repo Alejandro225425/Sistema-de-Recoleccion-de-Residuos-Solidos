@@ -2,6 +2,7 @@ import React, { FormEvent, useCallback, useEffect, useMemo, useRef, useState } f
 import { createRoot } from "react-dom/client";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line, Legend } from "recharts";
 import iconRetinaUrl from "leaflet/dist/images/marker-icon-2x.png";
 import iconUrl from "leaflet/dist/images/marker-icon.png";
 import shadowUrl from "leaflet/dist/images/marker-shadow.png";
@@ -250,23 +251,23 @@ export function App() {
 
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
-   async function loadData() {
-    setLoading(true);
-    try {
-      const bootstrap = await request<Bootstrap>("/bootstrap");
-      setData(bootstrap);
-    } catch (error) {
-      const msg = error instanceof Error ? error.message : "";
-      // Si el backend rechaza el token (401/expirado), limpiar sesión para evitar estado inconsistente
-      if (msg.includes("401") || msg.toLowerCase().includes("token") || msg.toLowerCase().includes("no autorizado")) {
-        localStorage.removeItem("sir-session");
-        localStorage.removeItem("sir-token");
-        setSession(null);
-      }
-    } finally {
-      setLoading(false);
-    }
-  }
+async function loadData() {
+     setLoading(true);
+     try {
+       const bootstrap = await request<Bootstrap>("/bootstrap");
+       setData(bootstrap);
+     } catch (error) {
+       const msg = error instanceof Error ? error.message : "";
+       // Si el backend rechaza el token (401/expirado), limpiar sesión para evitar estado inconsistente
+       if (msg.includes("401") || msg.toLowerCase().includes("token") || msg.toLowerCase().includes("no autorizado")) {
+         localStorage.removeItem("sir-session");
+         localStorage.removeItem("sir-token");
+         setSession(null);
+       }
+     } finally {
+       setLoading(false);
+     }
+   }
 
   async function loadMonitor() {
     try {
@@ -416,20 +417,21 @@ export function App() {
           {loading ? (
             <div className="loading">Cargando datos...</div>
           ) : (
-             <Content
-               data={effectiveData}
-               monitor={monitor}
-               session={session}
-               view={view}
-               onCreateReport={createReport}
-               onResolveReport={resolveReport}
-               onOperationUpdate={updateOperation}
-               onCreateCollection={createCollection}
-               onConfirmCollection={confirmCollection}
-               health={health}
-               lastSync={lastSync}
-               onRefresh={loadData}
-             />
+<Content
+                data={effectiveData}
+                monitor={monitor}
+                session={session}
+                view={view}
+                setView={setView}
+                onCreateReport={createReport}
+                onResolveReport={resolveReport}
+                onOperationUpdate={updateOperation}
+                onCreateCollection={createCollection}
+                onConfirmCollection={confirmCollection}
+                health={health}
+                lastSync={lastSync}
+                onRefresh={loadData}
+              />
           )}
         </ErrorBoundary>
       </section>
@@ -437,10 +439,10 @@ export function App() {
   );
 }
 
-function Content(props: { data: Bootstrap; monitor: Monitor; session: Session; view: View; onCreateReport: (report: Omit<Report, "id" | "status">) => Promise<void>; onResolveReport: (id: number) => Promise<void>; onOperationUpdate: (payload: OperationUpdatePayload) => Promise<void>; onCreateCollection: (payload: { truck_id: number; zone_id: number; kg: number }) => Promise<void>; onConfirmCollection: (collectionId: number) => Promise<void>; health: { mode: string; connected: boolean; database: string } | null; lastSync: string; onRefresh: () => Promise<void>; }) {
-  const { data, monitor, session, view, onCreateReport, onOperationUpdate, onResolveReport, onCreateCollection, onConfirmCollection, health, lastSync, onRefresh } = props;
+function Content(props: { data: Bootstrap; monitor: Monitor; session: Session; view: View; setView: (v: View) => void; onCreateReport: (report: Omit<Report, "id" | "status">) => Promise<void>; onResolveReport: (id: number) => Promise<void>; onOperationUpdate: (payload: OperationUpdatePayload) => Promise<void>; onCreateCollection: (payload: { truck_id: number; zone_id: number; kg: number }) => Promise<void>; onConfirmCollection: (collectionId: number) => Promise<void>; health: { mode: string; connected: boolean; database: string } | null; lastSync: string; onRefresh: () => Promise<void>; }) {
+  const { data, monitor, session, view, setView, onCreateReport, onOperationUpdate, onResolveReport, onCreateCollection, onConfirmCollection, health, lastSync, onRefresh } = props;
   const safeData = data ?? emptyBootstrap;
-  if (view === "dashboard") return <Dashboard data={safeData} monitor={monitor} session={session} onConfirmCollection={onConfirmCollection} health={health} lastSync={lastSync} />;
+  if (view === "dashboard") return <Dashboard data={safeData} monitor={monitor} session={session} onConfirmCollection={onConfirmCollection} health={health} lastSync={lastSync} view={view} setView={setView} />;
   if (view === "admin") return (
     <ErrorBoundary fallback={<div className="panel" style={{ margin: 32 }}><h2>Error en Administración</h2><p className="hint error">El panel de administración encontró un error al cargar. Reintenta desde el menú lateral.</p><button type="button" onClick={() => window.location.reload()}>Recargar página</button></div>}>
       <Admin data={safeData} session={session} onOperationUpdate={onOperationUpdate} onRefresh={onRefresh} />
@@ -453,7 +455,7 @@ function Content(props: { data: Bootstrap; monitor: Monitor; session: Session; v
   return <Analytics data={safeData} session={session} onConfirmCollection={onConfirmCollection} />;
 }
 
-export function Dashboard({ data, monitor, session, onConfirmCollection, health, lastSync }: { data: Bootstrap; monitor: Monitor; session: Session; onConfirmCollection?: (collectionId: number) => Promise<void>; health: { mode: string; connected: boolean; database: string } | null; lastSync: string; }) {
+export function Dashboard({ data, monitor, session, onConfirmCollection, health, lastSync, view, setView }: { data: Bootstrap; monitor: Monitor; session: Session; onConfirmCollection?: (collectionId: number) => Promise<void>; health: { mode: string; connected: boolean; database: string } | null; lastSync: string; view: View; setView: (v: View) => void; }) {
   const [tick, setTick] = useState(0);
   const tickRef = useRef(0);
   const intervalRef = useRef<number | null>(null);
@@ -740,28 +742,35 @@ export function Dashboard({ data, monitor, session, onConfirmCollection, health,
               <span className="metric-label">Ciudadano · {zoneSummary}</span>
             </div>
           </div>
-          <div className="metric-card">
+          <div className="metric-card" role="button" tabIndex={0} onClick={() => handleMetricClick("Reportes pendientes")} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') handleMetricClick("Reportes pendientes"); }}>
             <span className="metric-icon" aria-hidden="true">🧾</span>
             <div className="metric-content">
               <strong className="metric-value">{pendingReports.length}</strong>
               <span className="metric-label">Reportes pendientes</span>
             </div>
           </div>
-          <div className="metric-card">
+          <div className="metric-card" role="button" tabIndex={0} onClick={() => handleMetricClick("Recolecciones pendientes")} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') handleMetricClick("Recolecciones pendientes"); }}>
             <span className="metric-icon" aria-hidden="true">✅</span>
             <div className="metric-content">
               <strong className="metric-value">{pendingCollections.length}</strong>
               <span className="metric-label">Recolecciones pendientes</span>
             </div>
           </div>
-          <div className="metric-card">
+          <div className="metric-card" role="button" tabIndex={0} onClick={() => handleMetricClick("Reportes resueltos")} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') handleMetricClick("Reportes resueltos"); }}>
+            <span className="metric-icon" aria-hidden="true">👍</span>
+            <div className="metric-content">
+              <strong className="metric-value">{myReports.filter(r => String(r.status ?? "").toLowerCase().includes("resuelto")).length}</strong>
+              <span className="metric-label">Reportes resueltos</span>
+            </div>
+          </div>
+          <div className="metric-card" role="button" tabIndex={0} onClick={() => handleMetricClick("Recolecciones en mi zona")} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') handleMetricClick("Recolecciones en mi zona"); }}>
             <span className="metric-icon" aria-hidden="true">📍</span>
             <div className="metric-content">
               <strong className="metric-value">{zoneSummary}</strong>
               <span className="metric-label">Mi zona</span>
             </div>
           </div>
-          <div className="metric-card">
+          <div className="metric-card" role="button" tabIndex={0} onClick={() => handleMetricClick("Mis reportes")} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') handleMetricClick("Mis reportes"); }}>
             <span className="metric-icon" aria-hidden="true">🧮</span>
             <div className="metric-content">
               <strong className="metric-value">{myReports.length}</strong>
@@ -892,11 +901,35 @@ export function Dashboard({ data, monitor, session, onConfirmCollection, health,
     );
   }
 
+  const metricViewMap: Record<string, View> = {
+    "Reportes pendientes": "reports",
+    "Recolecciones pendientes": "dashboard",
+    "Reportes resueltos": "reports",
+    "Recolecciones en mi zona": "dashboard",
+    "Mis reportes": "reports",
+    "Zonas Activas": "dashboard",
+    "Camiones en Ruta": "routes",
+    "Alertas Pendientes": "reports",
+    "Recolecciones": "routes",
+    "Rutas con retraso": "routes",
+    "Progreso medio": "dashboard",
+    "Índice de cumplimiento": "analytics",
+    "Usuarios registrados": "admin",
+    "Camiones en mantenimiento": "admin",
+  };
+
+  const handleMetricClick = useCallback((label: string) => {
+    const targetView = metricViewMap[label];
+    if (targetView && targetView !== view) {
+      setView(targetView);
+    }
+  }, [view]);
+
   return (
     <>
       <div className="metrics-grid">
         {metrics.map(([value, label, icon]) => (
-          <div className="metric-card" key={label}>
+          <div className="metric-card" key={label as string} role="button" tabIndex={0} onClick={() => handleMetricClick(label as string)} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') handleMetricClick(label as string); }}>
             <span className="metric-icon" aria-hidden="true">{icon}</span>
             <div className="metric-content">
               <strong className="metric-value">{value}</strong>
@@ -1051,17 +1084,18 @@ export function Dashboard({ data, monitor, session, onConfirmCollection, health,
 
 function Schedules({ schedules, citizenZone }: { schedules: Schedule[]; citizenZone?: string }) {
   const [search, setSearch] = useState("");
-  const [selectedDay, setSelectedDay] = useState("Todos");
+  const [selectedDays, setSelectedDays] = useState<string[]>(["Todos"]);
   const [sortBy, setSortBy] = useState<"zone" | "day" | "time" | "waste">("zone");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
+  const [countdown, setCountdown] = useState<string>("");
 
   const filtered = useMemo(() => {
     return schedules.filter(s => {
       const matchSearch = String(s.zone ?? "").toLowerCase().includes(String(search ?? "").toLowerCase());
-      const matchDay = selectedDay === "Todos" || s.day.toLowerCase().includes(selectedDay.toLowerCase());
+      const matchDay = selectedDays.includes("Todos") || selectedDays.some(d => s.day.toLowerCase().includes(d.toLowerCase()));
       return matchSearch && matchDay;
     });
-  }, [schedules, search, selectedDay]);
+  }, [schedules, search, selectedDays]);
 
   const sorted = useMemo(() => {
     return [...filtered].sort((a, b) => {
@@ -1072,12 +1106,38 @@ function Schedules({ schedules, citizenZone }: { schedules: Schedule[]; citizenZ
     });
   }, [filtered, sortBy, sortDir]);
 
+  useEffect(() => {
+    const computeCountdown = () => {
+      if (!citizenZone) { setCountdown(""); return; }
+      const zone = String(citizenZone).toLowerCase();
+      const now = new Date();
+      const dayNames = ["domingo", "lunes", "martes", "miércoles", "jueves", "viernes", "sábado"];
+      const today = dayNames[now.getDay()];
+      const matching = schedules.filter(s =>
+        String(s.zone ?? "").toLowerCase() === zone && s.day.toLowerCase().includes(today)
+      );
+      if (matching.length === 0) { setCountdown(""); return; }
+      const [hours, minutes] = matching[0].time.split(":").map(Number);
+      const target = new Date(now);
+      target.setHours(hours, minutes, 0, 0);
+      if (target <= now) target.setDate(target.getDate() + 1);
+      const diff = target.getTime() - now.getTime();
+      const h = Math.floor(diff / 3600000);
+      const m = Math.floor((diff % 3600000) / 60000);
+      const s = Math.floor((diff % 60000) / 1000);
+      setCountdown(`${h}h ${m}m ${s}s`);
+    };
+    computeCountdown();
+    const interval = window.setInterval(computeCountdown, 1000);
+    return () => window.clearInterval(interval);
+  }, [schedules, citizenZone]);
+
   const days = useMemo(() => ["Todos", ...new Set(schedules.map(s => s.day))], [schedules]);
 
-  const citizenSchedule = useMemo(() => {
-    if (!citizenZone) return null;
+  const citizenSchedules = useMemo(() => {
+    if (!citizenZone) return [];
     const zone = String(citizenZone).toLowerCase();
-    return schedules.find(s => String(s.zone ?? "").toLowerCase() === zone) ?? null;
+    return schedules.filter(s => String(s.zone ?? "").toLowerCase() === zone);
   }, [schedules, citizenZone]);
 
   function handleSort(field: "zone" | "day" | "time" | "waste") {
@@ -1093,12 +1153,15 @@ function Schedules({ schedules, citizenZone }: { schedules: Schedule[]; citizenZ
 
   return (
     <section className="panel">
-      {citizenSchedule && (
+      {citizenSchedules.length > 0 && (
         <div className="citizen-schedule-banner">
           <span className="citizen-schedule-icon">📅</span>
           <div className="citizen-schedule-content">
-            <strong>Próxima recolección en tu zona</strong>
-            <p>{citizenSchedule.zone} · {citizenSchedule.day} · {citizenSchedule.time} · {citizenSchedule.waste}</p>
+            <strong>Recolecciones en tu zona</strong>
+            {countdown && <p className="countdown">⏰ Próxima recolección en: {countdown}</p>}
+            {citizenSchedules.map(s => (
+              <p key={s.id}>{s.day} · {s.time} · {s.waste}</p>
+            ))}
           </div>
         </div>
       )}
@@ -1125,18 +1188,27 @@ function Schedules({ schedules, citizenZone }: { schedules: Schedule[]; citizenZ
         />
       </div>
 
-      <div className="filter-bar">
-        {days.map(day => (
-          <button
-            key={day}
-            className={`filter-btn ${selectedDay === day ? "active" : ""}`}
-            onClick={() => setSelectedDay(day)}
-            aria-pressed={selectedDay === day}
-          >
-            {day}
-          </button>
-        ))}
-      </div>
+<div className="filter-bar">
+         {days.map(day => (
+           <button
+             key={day}
+             className={`filter-btn ${selectedDays.includes(day) ? "active" : ""}`}
+             onClick={() => {
+               if (day === "Todos") {
+                 setSelectedDays(["Todos"]);
+               } else {
+                 setSelectedDays(prev => {
+                   const next = prev.filter(d => d !== "Todos");
+                   return next.includes(day) ? next.filter(d => d !== day) : [...next, day];
+                 });
+               }
+             }}
+             aria-pressed={selectedDays.includes(day)}
+           >
+             {day}
+           </button>
+         ))}
+       </div>
 
       <div className="list" role="list" aria-label="Lista de horarios">
         {sorted.length === 0 ? (
@@ -1165,6 +1237,10 @@ export function Reports({ data, session, onCreateReport, onResolveReport }: { da
   const [filterStatus, setFilterStatus] = useState("Todos");
   const [searchQuery, setSearchQuery] = useState("");
   const [formError, setFormError] = useState("");
+  const [selectedReport, setSelectedReport] = useState<Report | null>(null);
+  const [showDetail, setShowDetail] = useState(false);
+  const [priority, setPriority] = useState("Media");
+  const [assignedTruck, setAssignedTruck] = useState<number | "">("");
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -1174,15 +1250,28 @@ export function Reports({ data, session, onCreateReport, onResolveReport }: { da
       return;
     }
 
-    setSubmitting(true);
-    setFormError("");
-    try {
-      await onCreateReport({
-        citizen: session.name,
-        zone: formZone,
-        type: formType,
-        detail: trimmedDetail
-      });
+setSubmitting(true);
+      setFormError("");
+      const isDuplicate = safeReports.some(r =>
+        String(r.citizen ?? "").toLowerCase() === String(session.name ?? "").toLowerCase() &&
+        String(r.zone ?? "").toLowerCase() === String(formZone).toLowerCase() &&
+        String(r.type ?? "").toLowerCase() === String(formType).toLowerCase() &&
+        !String(r.status ?? "").toLowerCase().includes("resuelto")
+      );
+      if (isDuplicate) {
+        setFormError("Ya existe un reporte similar pendiente o en revisión para esta zona y tipo. Verifica antes de enviar otro.");
+        setSubmitting(false);
+        return;
+      }
+      try {
+        await onCreateReport({
+          citizen: session.name,
+          zone: formZone,
+          type: formType,
+          detail: trimmedDetail,
+          priority,
+          assigned_truck: assignedTruck !== "" ? assignedTruck : undefined
+        } as Omit<Report, "id" | "status">);
       setFormZone(String(session.zone ?? "").trim());
       setFormType("");
       setFormDetail("");
@@ -1266,10 +1355,22 @@ export function Reports({ data, session, onCreateReport, onResolveReport }: { da
                <option value="">Seleccionar tipo</option>
                {reportTypes.map(t => <option key={t} value={t}>{t}</option>)}
              </select>
-             <label className="wide" htmlFor="report-detail">Detalle</label>
-             <textarea id="report-detail" name="detail" required minLength={8} maxLength={600} placeholder="Describe el problema encontrado" value={formDetail} onChange={e => setFormDetail(e.target.value)} />
-             {formError && <p className="hint error wide" role="alert">{formError}</p>}
-             <button type="submit" disabled={submitting}>{submitting ? "Enviando..." : "Enviar reporte"}</button>
+<label className="wide" htmlFor="report-detail">Detalle</label>
+              <textarea id="report-detail" name="detail" required minLength={8} maxLength={600} placeholder="Describe el problema encontrado" value={formDetail} onChange={e => setFormDetail(e.target.value)} />
+              <label htmlFor="report-priority">Prioridad</label>
+              <select id="report-priority" name="priority" value={priority} onChange={e => setPriority(e.target.value)}>
+                <option value="Baja">Baja</option>
+                <option value="Media">Media</option>
+                <option value="Alta">Alta</option>
+                <option value="Urgente">Urgente</option>
+              </select>
+              <label htmlFor="report-truck">Asignar camión</label>
+              <select id="report-truck" name="truck" value={assignedTruck} onChange={e => setAssignedTruck(e.target.value ? Number(e.target.value) : "")}>
+                <option value="">Sin asignar</option>
+                {safeTrucks.map(t => <option key={t.id} value={t.id}>{`${t.code} - ${t.driver}`}</option>)}
+              </select>
+              {formError && <p className="hint error wide" role="alert">{formError}</p>}
+              <button type="submit" disabled={submitting}>{submitting ? "Enviando..." : "Enviar reporte"}</button>
            </form>
          ) : (
            <p className="hint">Solo los ciudadanos pueden registrar incidencias. Los operadores y administradores pueden resolverlas desde la lista de seguimiento.</p>
@@ -1297,11 +1398,32 @@ export function Reports({ data, session, onCreateReport, onResolveReport }: { da
             <button key={status} type="button" className={`filter-btn ${filterStatus === status ? "active" : ""}`} onClick={() => setFilterStatus(status)} aria-pressed={filterStatus === status}>{status}</button>
           ))}
         </div>
-        <ReportList reports={filteredReports} trucks={safeTrucks} showDriverFilter={!isCitizen} showResolve={canResolve} onResolveReport={onResolveReport} />
-      </section>
-    </div>
-  );
-}
+<ReportList reports={filteredReports} trucks={safeTrucks} showDriverFilter={!isCitizen} showResolve={canResolve} onResolveReport={onResolveReport} onViewDetail={setSelectedReport} />
+       </section>
+
+       {showDetail && selectedReport && (
+         <div className="modal-overlay" onClick={() => { setShowDetail(false); setSelectedReport(null); }}>
+           <div className="modal" onClick={e => e.stopPropagation()}>
+             <div className="modal-header">
+               <h2>Detalle del reporte #{selectedReport.id}</h2>
+               <button type="button" className="modal-close" onClick={() => { setShowDetail(false); setSelectedReport(null); }}>✕</button>
+             </div>
+             <div className="modal-body">
+               <p><strong>Tipo:</strong> {selectedReport.type ?? "Sin tipo"}</p>
+               <p><strong>Zona:</strong> {selectedReport.zone ?? "Sin zona"}</p>
+               <p><strong>Ciudadano:</strong> {selectedReport.citizen ?? "Sin ciudadano"}</p>
+               <p><strong>Estado:</strong> <span className={`tag ${statusTone(selectedReport.status)}`}>{selectedReport.status ?? "Sin estado"}</span></p>
+               <p><strong>Prioridad:</strong> {(selectedReport as any).priority ?? "Media"}</p>
+               {(selectedReport as any).assigned_truck && <p><strong>Camión asignado:</strong> {(selectedReport as any).assigned_truck}</p>}
+               <p><strong>Detalle:</strong> {selectedReport.detail ?? "Sin detalle"}</p>
+               {(selectedReport as any).resolved_at && <p><strong>Resuelto el:</strong> {new Date((selectedReport as any).resolved_at).toLocaleString("es-PE")}</p>}
+             </div>
+           </div>
+         </div>
+       )}
+     </div>
+   );
+ }
 
 export function Waste({ data, monitor, session, onCreateReport }: { data: Bootstrap; monitor: Monitor; session?: Session | null; onCreateReport?: (report: Omit<Report, "id" | "status">) => Promise<void>; }) {
   const safeData = data ?? emptyBootstrap;
@@ -1528,6 +1650,24 @@ export function Waste({ data, monitor, session, onCreateReport }: { data: Bootst
         </section>
 
         <section className="panel">
+          <h2>Guía de disposición</h2>
+          <div className="list">
+            <article className="item">
+              <div className="item-row"><strong>🟢 Orgánicos</strong><span className="tag green">Compostaje</span></div>
+              <p>Restos de comida, cascaras, hojas y residuos biodegradables. Depositar en contenedor verde.</p>
+            </article>
+            <article className="item">
+              <div className="item-row"><strong>🔵 Reciclables</strong><span className="tag blue">Reciclaje</span></div>
+              <p>Papel, cartón, plástico limpio, vidrio y metales separados. Depositar en contenedor azul.</p>
+            </article>
+            <article className="item">
+              <div className="item-row"><strong>🔴 No reciclables</strong><span className="tag red">Disposición final</span></div>
+              <p>Papel higiénico, tecnopor contaminado, colillas y residuos sanitarios. Depositar en contenedor gris.</p>
+            </article>
+          </div>
+        </section>
+
+        <section className="panel">
           <h2>Mapa de puntos de clasificacion</h2>
           <Map zones={safeZones} trucks={safeData.trucks ?? []} routes={safeData.routes ?? []} prioritizedZones={safeData.prioritized_zones ?? []} />
         </section>
@@ -1578,12 +1718,17 @@ function Routes({ data, monitor, session, onCreateCollection }: { data: Bootstra
   const [selectedZone, setSelectedZone] = useState<number | "">(conductorZone?.id ?? safeZones[0]?.id ?? "");
   const [submittingCollection, setSubmittingCollection] = useState(false);
 
-  useEffect(() => {
-    fetch(`${geoBase}/alerts`).then(response => {
-      if (!response.ok) throw new Error("Geo service unavailable");
-      return response.json();
-    }).then(payload => { setAlerts(payload.alerts ?? []); setGeoError(false); }).catch(() => { setAlerts([]); setGeoError(true); });
-  }, []);
+useEffect(() => {
+     const fetchAlerts = () => {
+       fetch(`${geoBase}/alerts`).then(response => {
+         if (!response.ok) throw new Error("Geo service unavailable");
+         return response.json();
+       }).then(payload => { setAlerts(payload.alerts ?? []); setGeoError(false); }).catch(() => { setAlerts([]); setGeoError(true); });
+     };
+     fetchAlerts();
+     const interval = window.setInterval(fetchAlerts, 30000);
+     return () => window.clearInterval(interval);
+   }, []);
 
   useEffect(() => {
     setSelectedTruck(myTruck?.id ?? safeTrucks[0]?.id ?? "");
@@ -1641,7 +1786,7 @@ function Routes({ data, monitor, session, onCreateCollection }: { data: Bootstra
              <p className="hint" style={{ marginBottom: 8 }}>📍 Viendo rutas de tu camión: <strong>{myTruck.code}</strong> ({myTruck.driver})</p>
            )}
            <div className="list">
-             {visibleRoutes.map(route => <Item key={route.id} title={`${route.truck} - ${route.zone}`} detail={`Avance ${route.progress}% | ETA ${route.eta} | ${route.delay}`} color={String(route.delay ?? "").toLowerCase().includes("retraso") ? "yellow" : "blue"} />)}
+             {visibleRoutes.map(route => <Item key={route.id} title={`${route.truck} - ${route.zone}`} detail={`Avance ${route.progress}% | ETA ${route.eta} | ${route.delay} | ${(route as any).waypoints?.length ?? 0} puntos`} color={String(route.delay ?? "").toLowerCase().includes("retraso") ? "yellow" : "blue"} />)}
              {isConductor && myTruck && visibleRoutes.length === 0 && (
                <p className="empty-state">No hay rutas activas para tu camión.</p>
              )}
@@ -1838,6 +1983,8 @@ function Analytics({ data, session, onConfirmCollection }: { data: Bootstrap; se
   const isConductor = session?.role === "conductor";
   const conductorZone = isConductor ? String(session?.zone ?? "").toLowerCase() : null;
 
+  const [dateRange, setDateRange] = useState("30");
+
   const safeReports = useMemo(() => {
     const reports = Array.isArray(data.reports) ? data.reports : [];
     if (isCitizen && session) {
@@ -1860,6 +2007,36 @@ function Analytics({ data, session, onConfirmCollection }: { data: Bootstrap; se
     }
     return collections;
   }, [data.collections, isCitizen, isConductor, conductorZone, session?.zone]);
+
+  const wasteBreakdown = useMemo(() => {
+    const breakdown: Record<string, number> = {};
+    const schedules = Array.isArray(data.schedules) ? data.schedules : [];
+    schedules.forEach(s => {
+      extractWasteTypes(s.waste).forEach(t => {
+        breakdown[t] = (breakdown[t] ?? 0) + 1;
+      });
+    });
+    return breakdown;
+  }, [data.schedules]);
+
+  const zoneBreakdown = useMemo(() => {
+    const breakdown: Record<string, number> = {};
+    safeCollections.forEach(c => {
+      const zone = String(c.zone ?? "Sin zona");
+      breakdown[zone] = (breakdown[zone] ?? 0) + 1;
+    });
+    return breakdown;
+  }, [safeCollections]);
+
+  const filteredCollections = useMemo(() => {
+    const days = Number(dateRange);
+    const cutoff = new Date();
+    cutoff.setDate(cutoff.getDate() - days);
+    return safeCollections.filter(c => {
+      const cDate = new Date(c.date);
+      return cDate >= cutoff;
+    });
+  }, [safeCollections, dateRange]);
 
   const myZoneCollections = safeCollections;
   const reportCounts = safeReports.reduce((acc, report) => {
@@ -1963,37 +2140,51 @@ function Analytics({ data, session, onConfirmCollection }: { data: Bootstrap; se
         )}
       </div>
       <section className="panel">
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-          <h2>{isConductor ? "Historial de recolecciones de mi zona" : "Historial de recolecciones"}</h2>
-          <div style={{ display: "flex", gap: 8 }}>
-            <button type="button" className="export-btn" onClick={() => exportToCSV("metricas", metricsCSV)}>
-              📥 Exportar métricas CSV
-            </button>
-            <button type="button" className="export-btn" onClick={() => exportToPDF("Metricas", `<table><thead><tr><th>Métrica</th><th>Valor</th></tr></thead><tbody>${metricsCSV.map(item => `<tr><td>${item.nombre}</td><td>${item.valor}</td></tr>`).join("")}</tbody></table>`) }>
-              📄 Exportar métricas PDF
-            </button>
-          </div>
-        </div>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px", marginBottom: "24px" }}>
-          <section className="panel" style={{ padding: "16px" }}>
-            <h3>{isConductor ? "Incidencias en mi zona" : "Resumen de reportes"}</h3>
-            <ul style={{ listStyle: "none", padding: 0, margin: 0, lineHeight: 1.8 }}>
-              <li>Pendientes: <strong>{reportCounts.Pendiente}</strong></li>
-              <li>En revisión: <strong>{reportCounts["En revision"]}</strong></li>
-              <li>Resueltos: <strong>{reportCounts.Resuelto}</strong></li>
-            </ul>
-          </section>
-          <section className="panel" style={{ padding: "16px" }}>
-            <h3>Estado de recolecciones</h3>
-            <ul style={{ listStyle: "none", padding: 0, margin: 0, lineHeight: 1.8 }}>
-              {Object.entries(collectionCounts).map(([status, count]) => (
-                <li key={status}>{status}: <strong>{count}</strong></li>
-              ))}
-            </ul>
-          </section>
-        </div>
-        <div className="list">
-          {safeCollections.map(item => (
+<div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "16px", flexWrap: "wrap", gap: "8px" }}>
+           <h2>{isConductor ? "Historial de recolecciones de mi zona" : "Historial de recolecciones"}</h2>
+           <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+             <label htmlFor="date-range" style={{ fontSize: "0.85rem", color: "var(--muted)" }}>Últimos</label>
+             <select id="date-range" value={dateRange} onChange={e => setDateRange(e.target.value)} style={{ width: "auto", minWidth: 80, padding: "6px 10px", border: "1px solid var(--line)", borderRadius: "8px", background: "var(--panel)", color: "var(--ink)", fontSize: "0.85rem" }}>
+               <option value="7">7 días</option>
+               <option value="30">30 días</option>
+               <option value="90">90 días</option>
+               <option value="365">Todo el año</option>
+             </select>
+           </div>
+         </div>
+         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px", marginBottom: "24px" }}>
+           <section className="panel" style={{ padding: "16px" }}>
+             <h3>{isConductor ? "Incidencias en mi zona" : "Resumen de reportes"}</h3>
+             <ul style={{ listStyle: "none", padding: 0, margin: 0, lineHeight: 1.8 }}>
+               <li>Pendientes: <strong>{reportCounts.Pendiente}</strong></li>
+               <li>En revisión: <strong>{reportCounts["En revision"]}</strong></li>
+               <li>Resueltos: <strong>{reportCounts.Resuelto}</strong></li>
+             </ul>
+           </section>
+           <section className="panel" style={{ padding: "16px" }}>
+             <h3>Estado de recolecciones</h3>
+             <ul style={{ listStyle: "none", padding: 0, margin: 0, lineHeight: 1.8 }}>
+               {Object.entries(collectionCounts).map(([status, count]) => (
+                 <li key={status}>{status}: <strong>{count}</strong></li>
+               ))}
+             </ul>
+           </section>
+         </div>
+         {Object.keys(wasteBreakdown).length > 0 && (
+           <section className="panel" style={{ marginBottom: "24px" }}>
+             <h2>Desglose por tipo de residuo</h2>
+             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: "12px" }}>
+               {Object.entries(wasteBreakdown).map(([type, count]) => (
+                 <div key={type} style={{ padding: "12px", border: "1px solid var(--line)", borderRadius: "8px", textAlign: "center" }}>
+                   <strong style={{ fontSize: "1.5rem", color: "var(--eco-primary)" }}>{count}</strong>
+                   <span style={{ display: "block", fontSize: "0.82rem", color: "var(--muted)", marginTop: "4px" }}>{type}</span>
+                 </div>
+               ))}
+             </div>
+           </section>
+         )}
+         <div className="list">
+           {filteredCollections.map(item => (
             <article className="item" key={item.id}>
               <div className="item-row">
                 <strong>{`${item.date} - ${item.zone}`}</strong>
@@ -2008,10 +2199,56 @@ function Analytics({ data, session, onConfirmCollection }: { data: Bootstrap; se
             </article>
           ))}
         </div>
-      </section>
-    </>
-  );
-}
+</section>
+
+       {Object.keys(wasteBreakdown).length > 0 && (
+         <section className="panel" style={{ marginBottom: "24px" }}>
+           <h2>Distribución por tipo de residuo</h2>
+           <ResponsiveContainer width="100%" height={300}>
+             <BarChart data={Object.entries(wasteBreakdown).map(([name, value]) => ({ name, value }))}>
+               <CartesianGrid strokeDasharray="3 3" />
+               <XAxis dataKey="name" />
+               <YAxis />
+               <Tooltip />
+               <Bar dataKey="value" fill="#0f8b8d" />
+             </BarChart>
+           </ResponsiveContainer>
+         </section>
+       )}
+
+       {filteredCollections.length > 0 && (
+         <section className="panel" style={{ marginBottom: "24px" }}>
+           <h2>Recolecciones por día</h2>
+           <ResponsiveContainer width="100%" height={300}>
+             <LineChart data={filteredCollections.map(c => ({
+               fecha: c.date,
+               kg: Number(c.kg) || 0,
+             })).sort((a, b) => a.fecha.localeCompare(b.fecha))}>
+               <CartesianGrid strokeDasharray="3 3" />
+               <XAxis dataKey="fecha" />
+               <YAxis />
+               <Tooltip />
+               <Legend />
+               <Line type="monotone" dataKey="kg" stroke="#0f8b8d" name="Kg recolectados" />
+             </LineChart>
+           </ResponsiveContainer>
+         </section>
+       )}
+
+       {Object.keys(wasteBreakdown).length > 0 && (
+         <section className="panel" style={{ marginBottom: "24px" }}>
+           <h2>Distribución por zona</h2>
+           <ResponsiveContainer width="100%" height={300}>
+             <PieChart>
+               <Pie data={Object.entries(zoneBreakdown).map(([name, value]) => ({ name, value }))} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={100} label />
+               <Tooltip />
+             </PieChart>
+           </ResponsiveContainer>
+         </section>
+       )}
+     </>
+   );
+ }
 
 function Map({ zones, trucks, routes, prioritizedZones }: { zones: Zone[]; trucks: Truck[]; routes: Route[]; prioritizedZones: Array<{ id: number; name: string; priority_score: number; criticality: string; latitude?: number; longitude?: number }> }) {
   const ref = useRef<HTMLDivElement | null>(null);
@@ -2050,7 +2287,14 @@ function Map({ zones, trucks, routes, prioritizedZones }: { zones: Zone[]; truck
       }
     });
     trucks.forEach(truck => L.circleMarker([truck.latitude, truck.longitude], { radius: 8, color: "#f5b942", fillOpacity: 0.9 }).bindPopup(`${truck.code} - ${truck.status}`).addTo(layer));
-    routes.forEach(route => L.circle([route.latitude, route.longitude], { radius: 450, color: String(route.delay ?? "").toLowerCase().includes("retraso") ? "#c94735" : "#0f8b8d" }).bindPopup(`${route.truck}: ${route.eta}`).addTo(layer));
+    routes.forEach(route => {
+       L.circle([route.latitude, route.longitude], { radius: 450, color: String(route.delay ?? "").toLowerCase().includes("retraso") ? "#c94735" : "#0f8b8d" }).bindPopup(`${route.truck}: ${route.eta}`).addTo(layer);
+       const waypoints = (route as any).waypoints;
+       if (waypoints && waypoints.length > 1) {
+         const points = waypoints.map((w: any) => [w.latitude ?? route.latitude, w.longitude ?? route.longitude] as [number, number]);
+         L.polyline(points, { color: "#0f8b8d", weight: 3, opacity: 0.7 }).addTo(layer);
+       }
+     });
     mapRef.current.invalidateSize();
   }, [signature, zones, trucks, routes, prioritizedZones]);
 
@@ -2067,7 +2311,7 @@ function Map({ zones, trucks, routes, prioritizedZones }: { zones: Zone[]; truck
   return <div className="map" ref={ref} />;
 }
 
-export function ReportList({ reports, trucks = [], showDriverFilter = false, showResolve = false, onResolveReport }: { reports: Report[]; trucks?: Truck[]; showDriverFilter?: boolean; showResolve?: boolean; onResolveReport?: (id: number) => Promise<void>; }) {
+export function ReportList({ reports, trucks = [], showDriverFilter = false, showResolve = false, onResolveReport, onViewDetail }: { reports: Report[]; trucks?: Truck[]; showDriverFilter?: boolean; showResolve?: boolean; onResolveReport?: (id: number) => Promise<void>; onViewDetail?: (report: Report) => void; }) {
   const [driverSearch, setDriverSearch] = useState("");
   const [resolvingId, setResolvingId] = useState<number | null>(null);
   const safeReports = useMemo(() => (Array.isArray(reports) ? reports : []), [reports]);
@@ -2124,32 +2368,38 @@ export function ReportList({ reports, trucks = [], showDriverFilter = false, sho
         <p className="empty-state">No hay reportes que coincidan con tu búsqueda</p>
       ) : (
         <div className="list" role="list" aria-label="Lista de reportes">
-          {filtered.map(report => {
-            const zoneKey = String(report.zone ?? "").toLowerCase();
-            const reportDriver = driverByZone[zoneKey] ?? "Sin conductor asignado";
-            return (
-              <article className="item" key={report.id}>
-                <div className="item-row">
-                  <strong>{report.type ?? "Sin tipo"}</strong>
-                  <span className={`tag ${statusTone(report.status)}`}>{report.status ?? "Sin estado"}</span>
-                </div>
-                <span>{report.zone ?? "Sin zona"} | {report.citizen ?? "Sin ciudadano"} | {reportDriver}</span>
-                <p>{report.detail ?? "Sin detalle"}</p>
-                {showResolve && (
-                  <div className="item-actions">
-                    <button
-                      type="button"
-                      className="report-action-btn"
-                      onClick={() => void handleResolve(report.id)}
-                      disabled={resolvingId === report.id}
-                      aria-label={`Resolver reporte ${report.id}`}
-                    >
-                      {resolvingId === report.id ? "Procesando..." : "Resolver reporte"}
-                    </button>
-                  </div>
-                )}
-              </article>
-            );
+{filtered.map(report => {
+              const zoneKey = String(report.zone ?? "").toLowerCase();
+              const reportDriver = driverByZone[zoneKey] ?? "Sin conductor asignado";
+              return (
+               <article className="item" key={report.id}>
+                 <div className="item-row">
+                   <strong>{report.type ?? "Sin tipo"}</strong>
+                   <span className={`tag ${statusTone(report.status)}`}>{report.status ?? "Sin estado"}</span>
+                   {(report as any).priority && <span className={`tag ${(report as any).priority === "Urgente" || (report as any).priority === "Alta" ? "red" : (report as any).priority === "Media" ? "yellow" : "blue"}`}>{(report as any).priority}</span>}
+                 </div>
+                 <span>{report.zone ?? "Sin zona"} | {report.citizen ?? "Sin ciudadano"} | {reportDriver}</span>
+                 <p>{report.detail ?? "Sin detalle"}</p>
+                 {showResolve && (
+                   <div className="item-actions">
+                     <button
+                       type="button"
+                       className="report-action-btn"
+                       onClick={(e) => { e.stopPropagation(); void handleResolve(report.id); }}
+                       disabled={resolvingId === report.id}
+                       aria-label={`Resolver reporte ${report.id}`}
+                     >
+                       {resolvingId === report.id ? "Procesando..." : "Resolver reporte"}
+                     </button>
+                   </div>
+                 )}
+                 {onViewDetail && (
+                   <div className="item-actions">
+                     <button type="button" className="report-action-btn" onClick={() => onViewDetail(report)}>Ver detalle</button>
+                   </div>
+                 )}
+               </article>
+             );
           })}
         </div>
       )}
