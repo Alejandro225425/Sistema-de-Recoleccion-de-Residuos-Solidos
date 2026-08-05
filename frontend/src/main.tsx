@@ -133,27 +133,13 @@ function exportToPDF(title: string, html: string) {
   printWindow.print();
 }
 
-function extractWasteTypes(waste: string): string[] {
+export function extractWasteTypes(waste: string): string[] {
   if (!waste) return [];
-  const parts = waste.split(/[,\s]+/);
-  const result: string[] = [];
-  let i = 0;
-  while (i < parts.length) {
-    const part = parts[i].trim();
-    if (!part) { i++; continue; }
-    if (part.toLowerCase() === "y" || part.toLowerCase() === "e") { i++; continue; }
-    if (part.toLowerCase() === "no" && i + 1 < parts.length) {
-      const next = parts[i + 1].trim();
-      if (next && next.toLowerCase() !== "y" && next.toLowerCase() !== "e") {
-        result.push(`No ${next}`);
-        i += 2;
-        continue;
-      }
-    }
-    result.push(part);
-    i++;
-  }
-  return result;
+  return waste
+    .split(/[,\;]|\s+(?:y|e|&)\s+/i)
+    .map(t => t.trim())
+    .filter(t => t && !(t === "y" || t === "e" || t === "&" || ["y", "e", "&"].includes(t.toLowerCase())))
+    .map(t => t.charAt(0).toUpperCase() + t.slice(1));
 }
 
 class ErrorBoundary extends React.Component<
@@ -1599,14 +1585,14 @@ export function Waste({ data, monitor, session, onCreateReport }: { data: Bootst
             <input type="text" placeholder="Buscar zona o tipo de residuo..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} aria-label="Buscar clasificacion" />
           </div>
 
-          <div className="filter-bar">
-            <select value={filterWaste} onChange={e => setFilterWaste(e.target.value)} aria-label="Filtrar por tipo de residuo" style={{ width: "auto", minWidth: 160 }}>
-              {wasteTypes.map(t => <option key={t} value={t}>{t}</option>)}
-            </select>
-            <select value={filterZone} onChange={e => setFilterZone(e.target.value)} aria-label="Filtrar por zona" style={{ width: "auto", minWidth: 160 }}>
-              {zones.map(z => <option key={z} value={z}>{z}</option>)}
-            </select>
-          </div>
+           <div className="filter-bar">
+             <select value={filterWaste} onChange={e => setFilterWaste(e.target.value)} aria-label="Filtrar por tipo de residuo" className="waste-filter-select">
+               {wasteTypes.map(t => <option key={t} value={t}>{t}</option>)}
+             </select>
+             <select value={filterZone} onChange={e => setFilterZone(e.target.value)} aria-label="Filtrar por zona" className="waste-filter-select">
+               {zones.map(z => <option key={z} value={z}>{z}</option>)}
+             </select>
+           </div>
 
           {displaySchedules.length === 0 ? (
             <p className="empty-state">No hay horarios de clasificacion que coincidan con los filtros.</p>
@@ -1664,8 +1650,8 @@ export function Waste({ data, monitor, session, onCreateReport }: { data: Bootst
           </div>
         </section>
 
-        <section className="panel">
-          <h2>Guía de disposición</h2>
+         <section className="panel guia-disposicion">
+           <h2>Guía de disposición</h2>
           <div className="list">
             <article className="item">
               <div className="item-row"><strong>🟢 Orgánicos</strong><span className="tag green">Compostaje</span></div>

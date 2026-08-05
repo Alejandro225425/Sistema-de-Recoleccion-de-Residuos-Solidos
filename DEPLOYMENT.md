@@ -30,7 +30,7 @@ git push origin version-3
 1. Entra a https://dashboard.render.com/.
 2. Haz clic en **New** → **Blueprint**.
 3. Conecta el repositorio `Alejandro225425/Sistema-de-Recoleccion-de-Residuos-Solidos`.
-4. Rama: `main` (o `version-5.5`).
+4. Rama: `main` (o `version-5.7`).
 5. Render detectará `render.yaml` y creará tres recursos:
    - Base de datos **PostgreSQL 16** (`sir-cusco-db`) — provisionada automáticamente.
    - `sir-cusco-api` (Python 3.11 / FastAPI) — `DATABASE_URL` se inyecta desde la base de datos.

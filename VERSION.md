@@ -1,4 +1,14 @@
-# Sistema de Recolección de Residuos Sólidos - Versión 5.5.10
+# Sistema de Recolección de Residuos Sólidos - Versión 5.6
+
+## Versión 5.6 - Corrección del Dashboard de Clasificación y mejora responsive
+
+### Cambios destacados
+
+- **Frontend - `extractWasteTypes`**: corregido el bug por el cual "No reciclable" se dividía en "No" y "reciclable" al separar por espacios en blanco. La función ahora divide por conectores en español ("y", "e", "&") y comas, manteniendo términos compuestos como una unidad. Se normaliza el casing (primera letra mayúscula) para evitar duplicados ("reciclable" vs "Reciclable").
+- **Frontend - Waste dashboard**: eliminada la sección "Mapa de puntos de clasificación". Agregada clase `guia-disposicion` para targeteo CSS. Migrados estilos inline de selects a clase `.waste-filter-select`.
+- **Frontend - styles.css**: estilos responsive `@media (max-width: 768px)` para el dashboard de Clasificación (1 columna, selects full-width, items compactos, estilos de tema en selects). Corregido selector `.filter-bar button` inexistente.
+- **Tests**: 13 tests nuevos en `Waste.test.tsx`. Verificación: 38/38 frontend, 30/31 backend.
+- **Archivos modificados**: `frontend/src/main.tsx`, `frontend/src/styles.css`, `frontend/src/Waste.test.tsx`, `CHANGELOG.md`, `VERSION.md`, `README.md`, `AGENTS.md`, `DEPLOYMENT.md`.
 
 ## Versión 5.5.10 - Operaciones masivas en panel administrativo
 
