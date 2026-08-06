@@ -8,7 +8,7 @@ Sistema inteligente para la recoleccion de residuos solidos segregados en la ciu
 - **Rama:** `main` y `version-6`
 - **Repositorio:** `Alejandro225425/Sistema-de-Recoleccion-de-Residuos-Solidos`
 - **Estado:** Dashboard ciudadano revisado y adaptado al rol, con paneles personalizados, permisos por rol, filtrado seguro de recolecciones por zona y mejoras de diseño en la experiencia de usuario. Backend en Render (`render.yaml`). Frontend en Vercel (dashboard). Ver `docs/DESPLIEGUE.md` y `DEPLOYMENT.md`.
-- **Responsive v6.0:** corrección del formulario de registro — eliminado el dropdown de rol (auto-asignado como ciudadano), agregado campo "Confirmar contraseña" con validación de coincidencia y toggle de visibilidad. Campo de zona en el panel administrativo convertido de input de texto a select dropdown poblado desde la base de datos. **Mapa de proximidad conectado en Dashboard ciudadano:** se muestra la ubicación del usuario, el radio de 500m y los camiones cercanos resaltados en rojo en el mapa operativo.
+- **Responsive v6.0:** corrección del formulario de registro — eliminado el dropdown de rol (auto-asignado como ciudadano), agregado campo "Confirmar contraseña" con validación de coincidencia y toggle de visibilidad. Campo de zona en el panel administrativo convertido de input de texto a select dropdown poblado desde la base de datos. **Mapa de proximidad conectado en Dashboard ciudadano:** se muestra la ubicación del usuario, el radio de 500m, icono de camión 🚛 con popup informativo y camiones cercanos resaltados en rojo en el mapa operativo.
 
 ## Estado
 

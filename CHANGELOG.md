@@ -19,12 +19,13 @@
 ### Version 6.1 - Mapa de proximidad conectado en Dashboard ciudadano
 
 - **Frontend - Map:** se conectó `proximityAlerts` al mapa del Dashboard ciudadano. Ahora el mapa muestra la ubicación del ciudadano como marcador azul, un círculo de radio de 500m alrededor de su zona y resalta en rojo los camiones cercanos cuando existen alertas de proximidad.
+- **Frontend - Map:** los camiones se representan con un icono de camión (emoji 🚛) en lugar de círculos, con popup que muestra código, zona y estado. El conductor ve su camión destacado en el mapa de Routes y el ciudadano ve los camiones cercanos en el mapa de Dashboard.
 - **Frontend - Map:** se reutilizó la lógica existente de `Routes` (prop `citizenProximity` y `citizenZone`) sin duplicar código. El componente `Map` ahora acepta `citizenZone` para dibujar la ubicación del usuario y el radio de proximidad incluso cuando no hay camiones cercanos.
 - **Frontend - Dashboard:** se pasó `citizenZone` al `Map` calculado desde `session.zone` y `data.zones`, manteniendo el comportamiento dinámico sin hardcode.
 - **Verificación:** `tsc --noEmit` sin errores, `npm run build` exitoso, `pytest` 38/38 pasados, `vitest` 38/38 pasados.
 
 ### Archivos modificados
-- `frontend/src/main.tsx` — Conexión de `proximityAlerts` y `citizenZone` al `Map` en Dashboard y Routes, lógica de dibujado de ubicación ciudadana y radio 500m
+- `frontend/src/main.tsx` — Conexión de `proximityAlerts` y `citizenZone` al `Map` en Dashboard y Routes, lógica de dibujado de ubicación ciudadana y radio 500m, icono de camión con popup informativo
 
 ## 2026-08-05
 

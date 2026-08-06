@@ -2332,6 +2332,29 @@ function Map({ zones, trucks, routes, prioritizedZones, citizenProximity, citize
     return s;
   }, [zones.length, trucks.length, routes.length, prioritizedZones.length]);
 
+  const createTruckIcon = (isNear: boolean) => {
+    if (typeof L === "undefined") return undefined;
+    const color = isNear ? "#c94735" : "#f5b942";
+    return L.divIcon({
+      className: "truck-marker",
+      html: `<div style="
+        width: 32px;
+        height: 32px;
+        background: ${color};
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 18px;
+        border: 2px solid #ffffff;
+        box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+      ">🚛</div>`,
+      iconSize: [32, 32],
+      iconAnchor: [16, 16],
+      popupAnchor: [0, -16],
+    });
+  };
+
   useEffect(() => {
     if (signatureRef.current === signature) return;
     signatureRef.current = signature;
@@ -2375,7 +2398,11 @@ function Map({ zones, trucks, routes, prioritizedZones, citizenProximity, citize
       }
       trucks.forEach(truck => {
         const isNear = (citizenProximity ?? []).some(alert => String(alert.truck_code ?? "").toLowerCase() === String(truck.code ?? "").toLowerCase());
-        L.circleMarker([truck.latitude, truck.longitude], { radius: isNear ? 12 : 8, color: isNear ? "#c94735" : "#f5b942", fillOpacity: 0.9 }).bindPopup(`${truck.code} - ${truck.status}${isNear ? " (cercano)" : ""}`).addTo(layer);
+        const icon = createTruckIcon(isNear);
+        const marker = icon
+          ? L.marker([truck.latitude, truck.longitude], { icon })
+          : L.circleMarker([truck.latitude, truck.longitude], { radius: isNear ? 12 : 8, color: isNear ? "#c94735" : "#f5b942", fillOpacity: 0.9 });
+        marker.bindPopup(`<strong>${truck.code}</strong><br/>Zona: ${truck.zone ?? "N/A"}<br/>Estado: ${truck.status}`).addTo(layer);
       });
       routes.forEach(route => {
          L.circle([route.latitude, route.longitude], { radius: 450, color: String(route.delay ?? "").toLowerCase().includes("retraso") ? "#c94735" : "#0f8b8d" }).bindPopup(`${route.truck}: ${route.eta}`).addTo(layer);
