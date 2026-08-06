@@ -941,11 +941,13 @@ export function Dashboard({ data, monitor, session, onConfirmCollection, health,
             </div>
           </section>
 
-          {proximityAlerts.length > 0 && (
-            <section className="panel">
-              <h2>🚛 Camiones cercanos</h2>
-              <div className="alerts-list">
-                {proximityAlerts.map(alert => (
+          <section className="panel">
+            <h2>🚛 Camiones cercanos</h2>
+            <div className="alerts-list">
+              {proximityAlerts.length === 0 ? (
+                <p className="empty-state">No hay camiones cercanos en este momento.</p>
+              ) : (
+                proximityAlerts.map(alert => (
                   <div className={`alert-item alert-${alert.tone === "muy_cercano" ? "activo" : "pendiente"}`} key={`${alert.truck_code}-${alert.distance_m}`}>
                     <div className="alert-icon" aria-hidden="true">{alert.tone === "muy_cercano" ? "🔴" : "🟡"}</div>
                     <div className="alert-content">
@@ -954,10 +956,10 @@ export function Dashboard({ data, monitor, session, onConfirmCollection, health,
                       <span className="alert-time">{alert.tone === "muy_cercano" ? "Muy cercano" : "Cercano"}</span>
                     </div>
                   </div>
-                ))}
-              </div>
-            </section>
-          )}
+                ))
+              )}
+            </div>
+          </section>
         </div>
       </>
     );
