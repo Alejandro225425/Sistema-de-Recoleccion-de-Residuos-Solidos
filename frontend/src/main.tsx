@@ -256,17 +256,43 @@ export function App() {
 
   const [proximityAlerts, setProximityAlerts] = useState<ProximityAlert[]>([]);
 
-  async function loadProximity() {
+  const sessionRef = useRef(session);
+  const dataRef = useRef(data);
+  useEffect(() => { sessionRef.current = session; }, [session]);
+  useEffect(() => { dataRef.current = data; }, [data]);
+
+  const loadProximity = useCallback(async () => {
     try {
-      const citizenZone = session?.zone;
-      const zone = (data.zones ?? []).find(z => String(z.name).toLowerCase() === String(citizenZone ?? "").toLowerCase());
-      if (!zone) return;
+      const currentSession = sessionRef.current;
+      const currentData = dataRef.current;
+      const citizenZone = currentSession?.zone;
+      const zone = (currentData.zones ?? []).find(z => String(z.name).toLowerCase() === String(citizenZone ?? "").toLowerCase());
+      if (!zone) {
+        console.debug("[proximity] no zone match for", citizenZone);
+        return;
+      }
+      console.debug("[proximity] checking", citizenZone, zone.latitude, zone.longitude);
       const response = await proximityCheck({ latitude: zone.latitude, longitude: zone.longitude, radius_m: 500 });
+      console.debug("[proximity] response", response);
       setProximityAlerts(response.nearby ?? []);
-    } catch {
+    } catch (error) {
+      console.error("[proximity] load failed", error);
       setProximityAlerts([]);
     }
-  }
+  }, []);
+
+  useEffect(() => {
+    if (!session) return;
+    if (!data || Object.keys(data).length === 0) return;
+    loadProximity();
+  }, [loadProximity, session, data]);
+
+  useEffect(() => {
+    const interval = window.setInterval(() => {
+      loadProximity();
+    }, 10000);
+    return () => window.clearInterval(interval);
+  }, [loadProximity]);
 
 async function loadData() {
      setLoading(true);
@@ -315,10 +341,8 @@ async function loadData() {
       loadData().catch(() => setMessage("No se pudo conectar con FastAPI. Verifica que el backend este ejecutandose."));
       loadMonitor().catch(() => {});
       loadHealth().catch(() => {});
-      loadProximity().catch(() => {});
       const monitorInterval = window.setInterval(() => {
        loadMonitor().catch(() => {});
-       loadProximity().catch(() => {});
      }, 10000);
      return () => window.clearInterval(monitorInterval);
    }, []);
