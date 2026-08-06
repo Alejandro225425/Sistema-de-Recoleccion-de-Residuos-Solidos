@@ -545,6 +545,13 @@ export function Dashboard({ data, monitor, session, onConfirmCollection, health,
     } as Bootstrap;
   }, [data, monitor]);
 
+  const citizenTruckCodes = useMemo(() => new Set((proximityAlerts ?? []).map(alert => String(alert.truck_code ?? "").toLowerCase()).filter(Boolean)), [proximityAlerts]);
+  const citizenTrucks = useMemo(() => {
+    const allTrucks = effectiveData.trucks ?? [];
+    if (citizenTruckCodes.size === 0) return [];
+    return allTrucks.filter(truck => citizenTruckCodes.has(String(truck.code ?? "").toLowerCase()));
+  }, [effectiveData.trucks, citizenTruckCodes]);
+
   const safeReports = useMemo(() => (Array.isArray(data.reports) ? data.reports : []), [data.reports]);
   const safeCollections = useMemo(() => (Array.isArray(data.collections) ? data.collections : []), [data.collections]);
   const myReports = useMemo(() => {
@@ -963,7 +970,7 @@ export function Dashboard({ data, monitor, session, onConfirmCollection, health,
 
           <section className="panel panel-large">
             <h2>🗺️ Mapa Operativo</h2>
-            <Map zones={data.zones} trucks={effectiveData.trucks} routes={effectiveData.optimized_routes ?? effectiveData.routes} prioritizedZones={effectiveData.prioritized_zones ?? []} citizenProximity={proximityAlerts} citizenZone={(data.zones ?? []).find(z => String(z.name).toLowerCase() === String(session.zone ?? "").toLowerCase())} />
+            <Map zones={data.zones} trucks={citizenTrucks} routes={effectiveData.optimized_routes ?? effectiveData.routes} prioritizedZones={effectiveData.prioritized_zones ?? []} citizenProximity={proximityAlerts} citizenZone={(data.zones ?? []).find(z => String(z.name).toLowerCase() === String(session.zone ?? "").toLowerCase())} />
           </section>
         </div>
       </>
