@@ -2,6 +2,20 @@
 
 ## 2026-08-05
 
+### Version 6.0 - Mejoras en registro y panel administrativo
+
+- **Frontend - AuthView.tsx (Registrarme):** se eliminó el dropdown de rol del formulario de auto-registro. Los usuarios se registran automáticamente con rol `ciudadano`. Se agregó campo de "Confirmar contraseña" con validación de coincidencia y toggle de visibilidad.
+- **Frontend - Admin.tsx:** el campo de zona en la creación de usuarios ahora usa un `<select>` dropdown poblado desde `safeData.zones` en vez de un input de texto libre.
+- **Seguridad:** el rol en auto-registro está hardcodeado como `"ciudadano"` tanto en la UI como en el request al backend. El `normalize_role()` del backend sigue como segunda capa de defensa.
+- **Verificación:** `tsc --noEmit` sin errores, `npm run build` exitoso, `pytest` 38/38 pasados, `vitest` 38/38 pasados.
+
+### Archivos modificados
+- `frontend/src/components/AuthView.tsx` — Eliminación de dropdown de rol, hardcodeo de `role: "ciudadano"`, campo "Confirmar contraseña" con validación
+- `frontend/src/components/Admin.tsx` — Campo de zona convertido de `<input>` a `<select>` dropdown
+- `VERSION.md`, `CHANGELOG.md`, `README.md`, `AGENTS.md` — documentación actualizada
+
+## 2026-08-05
+
 ### Version 5.6 - Simulación de alerta de proximidad Ciudadano ↔ Conductor
 
 - **Backend - Haversine**: se agregó `haversine_distance_m()` para cálculo de distancia geodésica en metros entre coordenadas. Sin dependencias externas, usa fórmula manual.

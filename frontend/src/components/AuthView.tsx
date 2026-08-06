@@ -1,6 +1,6 @@
 import React, { FormEvent, useEffect, useRef, useState } from "react";
 import { request } from "../api";
-import { Session, Zone, Role } from "../types";
+import { Session, Zone } from "../types";
 
 interface AuthViewProps {
   zones: Zone[];
@@ -59,7 +59,9 @@ export function AuthView({ zones, onLogin, message }: AuthViewProps) {
   const [recoveryToken, setRecoveryToken] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
 
   const emailRef = useRef<HTMLInputElement>(null);
 
@@ -74,7 +76,6 @@ export function AuthView({ zones, onLogin, message }: AuthViewProps) {
     const password = String(form.get("password") || "");
     const token = String(form.get("token") || "").trim();
     const name = String(form.get("name") || "").trim();
-    const role = String(form.get("role") || "ciudadano") as Role;
     const zone = String(form.get("zone") || "Centro Historico");
 
     setIsSubmitting(true);
@@ -84,9 +85,15 @@ export function AuthView({ zones, onLogin, message }: AuthViewProps) {
 
     try {
       if (mode === "register") {
+        if (password !== confirmPassword) {
+          throw new Error("Las contraseñas no coinciden");
+        }
+        if (password.length < 8) {
+          throw new Error("La contraseña debe tener al menos 8 caracteres");
+        }
         const created = await request<{ token?: string; user?: Session; detail?: string }>("/auth/register", {
           method: "POST",
-          body: JSON.stringify({ name, email, password, role, zone }),
+          body: JSON.stringify({ name, email, password, role: "ciudadano", zone }),
         });
         if (!created.token || !created.user) {
           throw new Error(created.detail || "No se pudo registrar el usuario");
@@ -134,7 +141,9 @@ export function AuthView({ zones, onLogin, message }: AuthViewProps) {
     setRecoveryToken("");
     setShowPassword(false);
     setShowNewPassword(false);
+    setShowConfirmPassword(false);
     setPassword("");
+    setConfirmPassword("");
     emailRef.current?.focus();
   };
 
@@ -275,13 +284,42 @@ export function AuthView({ zones, onLogin, message }: AuthViewProps) {
                 </button>
               </div>
 
-              {mode === "register" && <PasswordStrength password={password} />}
-            </div>
-          )}
+{mode === "register" && <PasswordStrength password={password} />}
+             </div>
+           )}
 
-          {mode === "forgot" && (
-            <div className="form-group">
-              <label htmlFor="auth-token">Token de recuperación</label>
+           {mode === "register" && (
+             <div className="form-group">
+               <label htmlFor="auth-confirm-password">Confirmar Contraseña</label>
+               <div className="password-field">
+                 <input
+                   id="auth-confirm-password"
+                   name="confirmPassword"
+                   type={showConfirmPassword ? "text" : "password"}
+                   required
+                   minLength={8}
+                   autoComplete="new-password"
+                   placeholder="Repite la contraseña"
+                   value={confirmPassword}
+                   onChange={(e) => setConfirmPassword(e.target.value)}
+                 />
+                 <button
+                   type="button"
+                   className="password-toggle"
+                   aria-label={showConfirmPassword ? "Ocultar confirmación" : "Mostrar confirmación"}
+                   aria-pressed={showConfirmPassword}
+                   onClick={() => setShowConfirmPassword((value) => !value)}
+                   onKeyDown={(event) => handlePasswordToggleKeyDown(event, !showConfirmPassword, setShowConfirmPassword)}
+                 >
+                   <span aria-hidden="true">{showConfirmPassword ? "🙈" : "👁️"}</span>
+                 </button>
+               </div>
+             </div>
+           )}
+
+           {mode === "forgot" && (
+             <div className="form-group">
+               <label htmlFor="auth-token">Token de recuperación</label>
               <input
                 id="auth-token"
                 name="token"
@@ -341,27 +379,15 @@ export function AuthView({ zones, onLogin, message }: AuthViewProps) {
           )}
 
           {mode === "register" && (
-            <div className="form-row">
-              <div className="form-group">
-                <label htmlFor="auth-role">Rol de Usuario</label>
-                <select id="auth-role" name="role">
-                  <option value="ciudadano">👤 Ciudadano</option>
-                  <option value="operador">👷 Operador Municipal</option>
-                  <option value="admin">👨‍💼 Administrador</option>
-                  <option value="conductor">🚗 Conductor</option>
-                </select>
-              </div>
-
-              <div className="form-group">
-                <label htmlFor="auth-zone">Zona</label>
-                <select id="auth-zone" name="zone">
-                  {fallbackZones.map((zoneName) => (
-                    <option key={zoneName} value={zoneName}>
-                      {zoneName}
-                    </option>
-                  ))}
-                </select>
-              </div>
+            <div className="form-group">
+              <label htmlFor="auth-zone">Zona</label>
+              <select id="auth-zone" name="zone">
+                {fallbackZones.map((zoneName) => (
+                  <option key={zoneName} value={zoneName}>
+                    {zoneName}
+                  </option>
+                ))}
+              </select>
             </div>
           )}
 

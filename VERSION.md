@@ -1,4 +1,18 @@
-# Sistema de Recolección de Residuos Sólidos - Versión 5.6
+# Sistema de Recolección de Residuos Sólidos - Versión 6.0
+
+## Versión 6.0 - Mejoras en registro y panel administrativo
+
+### Cambios destacados
+
+- **Frontend - AuthView.tsx (Registrarme):** se eliminó el dropdown de rol del formulario de auto-registro. Los usuarios se registran automáticamente con rol `ciudadano`. Se agregó campo de "Confirmar contraseña" con validación de coincidencia en tiempo real y indicador de fortaleza.
+- **Frontend - Admin.tsx:** el campo de zona en la creación de usuarios ahora usa un `<select>` dropdown poblado desde `safeData.zones` en vez de un input de texto libre, evitando errores de tipeo y garantizando zonas válidas.
+- **Seguridad:** el rol en auto-registro está hardcodeado como `"ciudadano"` tanto en la UI como en el request al backend. El `normalize_role()` del backend (`main.py:491-493`) sigue como segunda capa de defensa, forzando cualquier rol inválido a `"ciudadano"`.
+- **Verificación:** `tsc --noEmit` sin errores, `npm run build` exitoso, `pytest` 38/38 pasados, `vitest` 38/38 pasados.
+
+### Archivos modificados
+- `frontend/src/components/AuthView.tsx` — Eliminación de dropdown de rol, hardcodeo de `role: "ciudadano"`, agregado de campo "Confirmar contraseña" con validación y toggle de visibilidad
+- `frontend/src/components/Admin.tsx` — Campo de zona convertido de `<input>` a `<select>` dropdown poblado desde `safeData.zones`
+- `VERSION.md`, `CHANGELOG.md`, `README.md`, `AGENTS.md` — documentación actualizada
 
 ## Versión 5.6 - Simulación de alerta de proximidad Ciudadano ↔ Conductor
 

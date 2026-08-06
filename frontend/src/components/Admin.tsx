@@ -551,10 +551,17 @@ async function deleteMaintenance(item: MaintenanceRecord) {
             <option value="admin">Administrador</option>
             <option value="conductor">Conductor</option>
           </select></label>
-          <label htmlFor="admin-user-zone">Zona<input id="admin-user-zone" value={formValues.zone} onChange={event => {
-              const value = event.currentTarget.value;
-              setFormValues(prev => ({ ...prev, zone: value }));
-            }} /></label>
+<label htmlFor="admin-user-zone">Zona<select id="admin-user-zone" value={formValues.zone} onChange={event => {
+               const value = event.currentTarget.value;
+               setFormValues(prev => ({ ...prev, zone: value }));
+             }}>
+               <option value="">Seleccionar zona</option>
+               {safeData.zones.map(zone => (
+                 <option key={zone.id} value={zone.name}>
+                   {zone.name}
+                 </option>
+               ))}
+             </select></label>
           <button type="submit" disabled={creating}>{creating ? "Creando..." : "Crear usuario"}</button>
         </form>
         {feedback && <p className="hint success" role="status" aria-live="polite">{feedback}</p>}
