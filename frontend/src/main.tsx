@@ -960,6 +960,11 @@ export function Dashboard({ data, monitor, session, onConfirmCollection, health,
               )}
             </div>
           </section>
+
+          <section className="panel panel-large">
+            <h2>🗺️ Mapa Operativo</h2>
+            <Map zones={data.zones} trucks={effectiveData.trucks} routes={effectiveData.optimized_routes ?? effectiveData.routes} prioritizedZones={effectiveData.prioritized_zones ?? []} citizenProximity={proximityAlerts} citizenZone={(data.zones ?? []).find(z => String(z.name).toLowerCase() === String(session.zone ?? "").toLowerCase())} />
+          </section>
         </div>
       </>
     );
@@ -2331,53 +2336,75 @@ function Map({ zones, trucks, routes, prioritizedZones, citizenProximity, citize
     if (signatureRef.current === signature) return;
     signatureRef.current = signature;
     if (!ref.current || mapRef.current) return;
-    mapRef.current = L.map(ref.current).setView([-13.532, -71.967], 12);
-    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-      attribution: "&copy; OpenStreetMap contributors"
-    }).addTo(mapRef.current);
-    layerRef.current = L.layerGroup().addTo(mapRef.current);
-    mapRef.current.invalidateSize();
+    if (typeof L === "undefined") return;
+    if (ref.current.offsetWidth === 0 && ref.current.offsetHeight === 0) return;
+
+    try {
+      mapRef.current = L.map(ref.current).setView([-13.532, -71.967], 12);
+      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        attribution: "&copy; OpenStreetMap contributors"
+      }).addTo(mapRef.current);
+      layerRef.current = L.layerGroup().addTo(mapRef.current);
+      mapRef.current.invalidateSize();
+    } catch (error) {
+      if (import.meta.env.DEV) {
+        console.error("Error initializing map:", error);
+      }
+    }
   }, [signature]);
 
   useEffect(() => {
     if (!mapRef.current || !layerRef.current) return;
     if (signatureRef.current !== signature) return;
+    if (typeof L === "undefined") return;
 
-    const layer = layerRef.current;
-    layer.clearLayers();
-    zones.forEach(zone => L.marker([zone.latitude, zone.longitude]).bindPopup(`${zone.name} - ${zone.criticality}`).addTo(layer));
-    prioritizedZones.forEach(zone => {
-      const lat = zone.latitude ?? zones.find(item => item.name === zone.name)?.latitude;
-      const lon = zone.longitude ?? zones.find(item => item.name === zone.name)?.longitude;
-      if (lat !== undefined && lon !== undefined) {
-        L.circleMarker([lat, lon], { radius: 12, color: zone.priority_score >= 5 ? "#c94735" : "#f5b942", fillColor: zone.priority_score >= 5 ? "#c94735" : "#f5b942", fillOpacity: 0.9, weight: 3 }).bindPopup(`${zone.name} · Prioridad ${zone.priority_score}`).addTo(layer);
+    try {
+      const layer = layerRef.current;
+      layer.clearLayers();
+      zones.forEach(zone => L.marker([zone.latitude, zone.longitude]).bindPopup(`${zone.name} - ${zone.criticality}`).addTo(layer));
+      prioritizedZones.forEach(zone => {
+        const lat = zone.latitude ?? zones.find(item => item.name === zone.name)?.latitude;
+        const lon = zone.longitude ?? zones.find(item => item.name === zone.name)?.longitude;
+        if (lat !== undefined && lon !== undefined) {
+          L.circleMarker([lat, lon], { radius: 12, color: zone.priority_score >= 5 ? "#c94735" : "#f5b942", fillColor: zone.priority_score >= 5 ? "#c94735" : "#f5b942", fillOpacity: 0.9, weight: 3 }).bindPopup(`${zone.name} · Prioridad ${zone.priority_score}`).addTo(layer);
+        }
+      });
+      if (citizenZone) {
+        L.circleMarker([citizenZone.latitude, citizenZone.longitude], { radius: 10, color: "#2563eb", fillColor: "#2563eb", fillOpacity: 0.95, weight: 3 }).bindPopup(`Tu zona: ${citizenZone.name}`).addTo(layer);
+        L.circle([citizenZone.latitude, citizenZone.longitude], { radius: 500, color: "#3b82f6", fillColor: "#3b82f6", fillOpacity: 0.15, weight: 2, dashArray: "6 4" }).bindPopup("Radio de proximidad (500m)").addTo(layer);
       }
-    });
-    if (citizenZone) {
-      L.circleMarker([citizenZone.latitude, citizenZone.longitude], { radius: 10, color: "#2563eb", fillColor: "#2563eb", fillOpacity: 0.95, weight: 3 }).bindPopup(`Tu zona: ${citizenZone.name}`).addTo(layer);
-      L.circle([citizenZone.latitude, citizenZone.longitude], { radius: 500, color: "#3b82f6", fillColor: "#3b82f6", fillOpacity: 0.15, weight: 2, dashArray: "6 4" }).bindPopup("Radio de proximidad (500m)").addTo(layer);
+      trucks.forEach(truck => {
+        const isNear = (citizenProximity ?? []).some(alert => String(alert.truck_code ?? "").toLowerCase() === String(truck.code ?? "").toLowerCase());
+        L.circleMarker([truck.latitude, truck.longitude], { radius: isNear ? 12 : 8, color: isNear ? "#c94735" : "#f5b942", fillOpacity: 0.9 }).bindPopup(`${truck.code} - ${truck.status}${isNear ? " (cercano)" : ""}`).addTo(layer);
+      });
+      routes.forEach(route => {
+         L.circle([route.latitude, route.longitude], { radius: 450, color: String(route.delay ?? "").toLowerCase().includes("retraso") ? "#c94735" : "#0f8b8d" }).bindPopup(`${route.truck}: ${route.eta}`).addTo(layer);
+         const waypoints = (route as any).waypoints;
+         if (waypoints && waypoints.length > 1) {
+           const points = waypoints.map((w: any) => [w.latitude ?? route.latitude, w.longitude ?? route.longitude] as [number, number]);
+           L.polyline(points, { color: "#0f8b8d", weight: 3, opacity: 0.7 }).addTo(layer);
+         }
+       });
+      mapRef.current.invalidateSize();
+    } catch (error) {
+      if (import.meta.env.DEV) {
+        console.error("Error rendering map layers:", error);
+      }
     }
-    trucks.forEach(truck => {
-      const isNear = (citizenProximity ?? []).some(alert => String(alert.truck_code ?? "").toLowerCase() === String(truck.code ?? "").toLowerCase());
-      L.circleMarker([truck.latitude, truck.longitude], { radius: isNear ? 12 : 8, color: isNear ? "#c94735" : "#f5b942", fillOpacity: 0.9 }).bindPopup(`${truck.code} - ${truck.status}${isNear ? " (cercano)" : ""}`).addTo(layer);
-    });
-    routes.forEach(route => {
-       L.circle([route.latitude, route.longitude], { radius: 450, color: String(route.delay ?? "").toLowerCase().includes("retraso") ? "#c94735" : "#0f8b8d" }).bindPopup(`${route.truck}: ${route.eta}`).addTo(layer);
-       const waypoints = (route as any).waypoints;
-       if (waypoints && waypoints.length > 1) {
-         const points = waypoints.map((w: any) => [w.latitude ?? route.latitude, w.longitude ?? route.longitude] as [number, number]);
-         L.polyline(points, { color: "#0f8b8d", weight: 3, opacity: 0.7 }).addTo(layer);
-       }
-     });
-    mapRef.current.invalidateSize();
   }, [signature, zones, trucks, routes, prioritizedZones, citizenProximity, citizenZone]);
 
   useEffect(() => {
     return () => {
-      if (mapRef.current) {
-        mapRef.current.remove();
-        mapRef.current = null;
-        layerRef.current = null;
+      try {
+        if (mapRef.current) {
+          mapRef.current.remove();
+          mapRef.current = null;
+          layerRef.current = null;
+        }
+      } catch (error) {
+        if (import.meta.env.DEV) {
+          console.error("Error removing map:", error);
+        }
       }
     };
   }, []);
