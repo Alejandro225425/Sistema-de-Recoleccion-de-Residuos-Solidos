@@ -1055,7 +1055,7 @@ export function Dashboard({ data, monitor, session, onConfirmCollection, health,
       <div className="dashboard-sections">
         <section className="panel panel-large">
           <h2>🗺️ Mapa Operativo</h2>
-          <Map zones={data.zones} trucks={effectiveData.trucks} routes={effectiveData.optimized_routes ?? effectiveData.routes} prioritizedZones={effectiveData.prioritized_zones ?? []} />
+          <Map zones={data.zones} trucks={effectiveData.trucks} routes={effectiveData.optimized_routes ?? effectiveData.routes} prioritizedZones={effectiveData.prioritized_zones ?? []} citizenProximity={proximityAlerts} citizenZone={(data.zones ?? []).find(z => String(z.name).toLowerCase() === String(session.zone ?? "").toLowerCase())} />
         </section>
         <section className="panel panel-alerts">
           <div className="alerts-header">
@@ -1834,10 +1834,10 @@ useEffect(() => {
     }
   }
 
-  return (
+   return (
     <>
        <div className="two-col">
-          <section className="panel"><h2>Mapa operativo OpenStreetMap</h2><Map zones={data.zones ?? []} trucks={safeTrucks} routes={routes} prioritizedZones={prioritizedZones} citizenProximity={proximityAlerts} /></section>
+          <section className="panel"><h2>Mapa operativo OpenStreetMap</h2><Map zones={data.zones ?? []} trucks={safeTrucks} routes={routes} prioritizedZones={prioritizedZones} citizenProximity={proximityAlerts} citizenZone={conductorZone} /></section>
           <section className="panel">
             <h2>Seguimiento GPS</h2>
             {geoError && <p className="hint error">El servicio de alertas geo no está disponible. Los datos pueden estar desactualizados.</p>}
@@ -2317,7 +2317,7 @@ function Analytics({ data, session, onConfirmCollection }: { data: Bootstrap; se
    );
  }
 
-function Map({ zones, trucks, routes, prioritizedZones, citizenProximity }: { zones: Zone[]; trucks: Truck[]; routes: Route[]; prioritizedZones: Array<{ id: number; name: string; priority_score: number; criticality: string; latitude?: number; longitude?: number }>; citizenProximity?: ProximityAlert[]; }) {
+function Map({ zones, trucks, routes, prioritizedZones, citizenProximity, citizenZone }: { zones: Zone[]; trucks: Truck[]; routes: Route[]; prioritizedZones: Array<{ id: number; name: string; priority_score: number; criticality: string; latitude?: number; longitude?: number }>; citizenProximity?: ProximityAlert[]; citizenZone?: Zone; }) {
   const ref = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<L.Map | null>(null);
   const layerRef = useRef<L.LayerGroup | null>(null);
@@ -2353,6 +2353,10 @@ function Map({ zones, trucks, routes, prioritizedZones, citizenProximity }: { zo
         L.circleMarker([lat, lon], { radius: 12, color: zone.priority_score >= 5 ? "#c94735" : "#f5b942", fillColor: zone.priority_score >= 5 ? "#c94735" : "#f5b942", fillOpacity: 0.9, weight: 3 }).bindPopup(`${zone.name} · Prioridad ${zone.priority_score}`).addTo(layer);
       }
     });
+    if (citizenZone) {
+      L.circleMarker([citizenZone.latitude, citizenZone.longitude], { radius: 10, color: "#2563eb", fillColor: "#2563eb", fillOpacity: 0.95, weight: 3 }).bindPopup(`Tu zona: ${citizenZone.name}`).addTo(layer);
+      L.circle([citizenZone.latitude, citizenZone.longitude], { radius: 500, color: "#3b82f6", fillColor: "#3b82f6", fillOpacity: 0.15, weight: 2, dashArray: "6 4" }).bindPopup("Radio de proximidad (500m)").addTo(layer);
+    }
     trucks.forEach(truck => {
       const isNear = (citizenProximity ?? []).some(alert => String(alert.truck_code ?? "").toLowerCase() === String(truck.code ?? "").toLowerCase());
       L.circleMarker([truck.latitude, truck.longitude], { radius: isNear ? 12 : 8, color: isNear ? "#c94735" : "#f5b942", fillOpacity: 0.9 }).bindPopup(`${truck.code} - ${truck.status}${isNear ? " (cercano)" : ""}`).addTo(layer);
@@ -2365,15 +2369,8 @@ function Map({ zones, trucks, routes, prioritizedZones, citizenProximity }: { zo
          L.polyline(points, { color: "#0f8b8d", weight: 3, opacity: 0.7 }).addTo(layer);
        }
      });
-    if (citizenProximity && citizenProximity.length > 0) {
-      const first = citizenProximity[0];
-      const zone = zones.find(z => String(z.name).toLowerCase() === String(first.zone).toLowerCase());
-      if (zone) {
-        L.circle([zone.latitude, zone.longitude], { radius: 500, color: "#3b82f6", fillColor: "#3b82f6", fillOpacity: 0.15, weight: 2, dashArray: "6 4" }).bindPopup("Radio de proximidad (500m)").addTo(layer);
-      }
-    }
     mapRef.current.invalidateSize();
-  }, [signature, zones, trucks, routes, prioritizedZones, citizenProximity]);
+  }, [signature, zones, trucks, routes, prioritizedZones, citizenProximity, citizenZone]);
 
   useEffect(() => {
     return () => {

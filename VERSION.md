@@ -30,7 +30,7 @@
 - **Frontend - api.ts**: se agregó `proximityCheck()` para llamar al endpoint `/api/proximity/check`.
 - **Frontend - Dashboard**: los ciudadanos ven una sección "🚛 Camiones cercanos" con tarjetas de proximidad (distancia, ETA, tono cercano/muy cercano). Se actualiza cada 10s junto con el monitor.
 - **Frontend - Routes**: conductores, operadores y administradores ven alertas de proximidad en el seguimiento GPS. Se muestra distancia y ETA de zonas/camiones cercanos.
-- **Frontend - Map**: el mapa operativo ahora dibuja un círculo de radio de 500m alrededor de la zona del ciudadano cuando hay alertas de proximidad, y resalta los marcadores de camiones cercanos en rojo.
+- **Frontend - Map**: el mapa operativo ahora dibuja un círculo de radio de 500m alrededor de la zona del ciudadano cuando hay alertas de proximidad, y resalta los marcadores de camiones cercanos en rojo. En el Dashboard ciudadano, el mapa muestra siempre la ubicación del ciudadano y el radio de proximidad aunque no haya camiones cercanos. En el Dashboard ciudadano, el mapa muestra siempre la ubicación del ciudadano y el radio de proximidad aunque no haya camiones cercanos.
 - **Tests - backend**: se creó `tests/test_proximity.py` con 8 tests que cubren Haversine, alertas de proximidad por rol, endpoint `/api/proximity/check`, monitor y alerts con proximidad.
 - **Verificación**: `tsc --noEmit` sin errores, `npm run build` exitoso, `pytest` 38/38 pasados, `vitest` 38/38 pasados.
 

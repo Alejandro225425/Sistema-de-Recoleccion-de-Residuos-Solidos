@@ -16,6 +16,18 @@
 
 ## 2026-08-05
 
+### Version 6.1 - Mapa de proximidad conectado en Dashboard ciudadano
+
+- **Frontend - Map:** se conectó `proximityAlerts` al mapa del Dashboard ciudadano. Ahora el mapa muestra la ubicación del ciudadano como marcador azul, un círculo de radio de 500m alrededor de su zona y resalta en rojo los camiones cercanos cuando existen alertas de proximidad.
+- **Frontend - Map:** se reutilizó la lógica existente de `Routes` (prop `citizenProximity` y `citizenZone`) sin duplicar código. El componente `Map` ahora acepta `citizenZone` para dibujar la ubicación del usuario y el radio de proximidad incluso cuando no hay camiones cercanos.
+- **Frontend - Dashboard:** se pasó `citizenZone` al `Map` calculado desde `session.zone` y `data.zones`, manteniendo el comportamiento dinámico sin hardcode.
+- **Verificación:** `tsc --noEmit` sin errores, `npm run build` exitoso, `pytest` 38/38 pasados, `vitest` 38/38 pasados.
+
+### Archivos modificados
+- `frontend/src/main.tsx` — Conexión de `proximityAlerts` y `citizenZone` al `Map` en Dashboard y Routes, lógica de dibujado de ubicación ciudadana y radio 500m
+
+## 2026-08-05
+
 ### Version 5.6 - Simulación de alerta de proximidad Ciudadano ↔ Conductor
 
 - **Backend - Haversine**: se agregó `haversine_distance_m()` para cálculo de distancia geodésica en metros entre coordenadas. Sin dependencias externas, usa fórmula manual.
