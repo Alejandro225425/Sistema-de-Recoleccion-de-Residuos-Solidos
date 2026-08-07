@@ -255,9 +255,9 @@ class MemoryStore:
             {"id": 5, "zone_id": 5, "zone": "Santiago", "day": "Martes y viernes", "time": "06:00 - 08:00", "waste": "Reciclable"},
         ]
         self.trucks = [
-            {"id": 1, "code": "C-01", "driver": "Luis Huaman", "status": "En ruta", "zone_id": 1, "zone": "Centro Historico", "user_id": None, "latitude": -13.5166, "longitude": -71.9789},
-            {"id": 2, "code": "C-02", "driver": "Rosa Ccahuana", "status": "En ruta", "zone_id": 2, "zone": "Wanchaq", "user_id": None, "latitude": -13.5256, "longitude": -71.9558},
-            {"id": 3, "code": "C-03", "driver": "Mario Quispe", "status": "Mantenimiento", "zone_id": 3, "zone": "San Sebastian", "user_id": None, "latitude": -13.5309, "longitude": -71.9386},
+            {"id": 1, "code": "C-01", "driver": "Luis Huaman", "status": "En ruta", "zone_id": 1, "zone": "Centro Historico", "user_id": 6, "latitude": -13.5166, "longitude": -71.9789},
+            {"id": 2, "code": "C-02", "driver": "Rosa Ccahuana", "status": "En ruta", "zone_id": 2, "zone": "Wanchaq", "user_id": 7, "latitude": -13.5256, "longitude": -71.9558},
+            {"id": 3, "code": "C-03", "driver": "Mario Quispe", "status": "Mantenimiento", "zone_id": 3, "zone": "San Sebastian", "user_id": 8, "latitude": -13.5309, "longitude": -71.9386},
             {"id": 4, "code": "C-04", "driver": "Elena Condori", "status": "En ruta", "zone_id": 5, "zone": "Santiago", "user_id": 4, "latitude": -13.5350, "longitude": -71.9847},
         ]
         self.routes = [
@@ -312,6 +312,33 @@ class MemoryStore:
                 "email": "conductor@ecocusco.pe",
                 "role": "conductor",
                 "zone": "Santiago",
+                "password_hash": hash_password("Test12345!"),
+                "created_at": datetime.now(timezone.utc).isoformat(),
+            },
+            {
+                "id": 6,
+                "name": "Luis Huaman",
+                "email": "luis.huaman@ecocusco.pe",
+                "role": "conductor",
+                "zone": "Centro Historico",
+                "password_hash": hash_password("Test12345!"),
+                "created_at": datetime.now(timezone.utc).isoformat(),
+            },
+            {
+                "id": 7,
+                "name": "Rosa Ccahuana",
+                "email": "rosa.ccahuana@ecocusco.pe",
+                "role": "conductor",
+                "zone": "Wanchaq",
+                "password_hash": hash_password("Test12345!"),
+                "created_at": datetime.now(timezone.utc).isoformat(),
+            },
+            {
+                "id": 8,
+                "name": "Mario Quispe",
+                "email": "mario.quispe@ecocusco.pe",
+                "role": "conductor",
+                "zone": "San Sebastian",
                 "password_hash": hash_password("Test12345!"),
                 "created_at": datetime.now(timezone.utc).isoformat(),
             },
