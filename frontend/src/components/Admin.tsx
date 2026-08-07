@@ -18,7 +18,9 @@ type MaintenanceRecord = {
 type RouteRecord = {
   id: number;
   truck: string;
+  truck_id?: number;
   zone: string;
+  zone_id?: number;
   progress: number;
   eta: string;
   delay: string;
@@ -47,7 +49,9 @@ type ContainerRecord = {
 type CollectionRecord = {
   id: number;
   zone: string;
+  zone_id?: number;
   truck: string;
+  truck_id?: number;
   kg: number;
   status: string;
   date: string;
