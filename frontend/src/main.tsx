@@ -13,7 +13,7 @@ import "./styles.css";
 import Admin from "./components/Admin";
 import { AuthView } from "./components/AuthView";
 import Item, { Metric } from "./components/Item";
-import { request, proximityCheck } from "./api";
+import { request, requestPublic, proximityCheck } from "./api";
 import { shouldAutoLoginAsAdmin } from "./demoAuth";
 import {
   Bootstrap,
@@ -350,21 +350,36 @@ async function loadData() {
     }
   }
 
+  async function loadPublicData() {
+    try {
+      const publicData = await requestPublic<Pick<Bootstrap, "zones" | "schedules">>("/public/bootstrap");
+      setData(prev => ({ ...prev, ...publicData }));
+    } catch {
+      // Si el endpoint público no está disponible, usar datos vacíos
+      setData(emptyBootstrap);
+    }
+  }
+
   useEffect(() => {
     if (session && session.role !== "admin" && view === "admin") {
       setView("dashboard");
     }
   }, [session, view]);
 
-   useEffect(() => {
-      loadData().catch(() => setMessage("No se pudo conectar con FastAPI. Verifica que el backend este ejecutandose."));
+  useEffect(() => {
+    loadPublicData().catch(() => {});
+    loadHealth().catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    if (!session) return;
+    loadData().catch(() => setMessage("No se pudo conectar con FastAPI. Verifica que el backend este ejecutandose."));
+    loadMonitor().catch(() => {});
+    const monitorInterval = window.setInterval(() => {
       loadMonitor().catch(() => {});
-      loadHealth().catch(() => {});
-      const monitorInterval = window.setInterval(() => {
-       loadMonitor().catch(() => {});
-     }, 10000);
-     return () => window.clearInterval(monitorInterval);
-   }, []);
+    }, 10000);
+    return () => window.clearInterval(monitorInterval);
+  }, [session]);
 
   async function login(email: string, password: string) {
     try {
@@ -380,6 +395,7 @@ async function loadData() {
       setSession(payload.user);
       setMessage('');
       await loadData();
+      await loadMonitor();
     } catch (error) {
       const msg = error instanceof Error ? error.message : 'No se pudo iniciar sesión';
       setMessage(msg);
@@ -390,6 +406,9 @@ async function loadData() {
   function logout() {
     localStorage.removeItem('sir-session');
     localStorage.removeItem('sir-token');
+    setData({} as Bootstrap);
+    setMonitor({} as Monitor);
+    setProximityAlerts([]);
     setSession(null);
     setView('dashboard');
   }
@@ -590,8 +609,8 @@ export function Dashboard({ data, monitor, session, onConfirmCollection, health,
   const myTruck = useMemo(() => {
     if (!isConductor) return undefined;
     const trucks = Array.isArray(effectiveData.trucks) ? effectiveData.trucks : [];
-    return trucks.find(t => String(t.driver ?? "").toLowerCase() === String(session.name ?? "").toLowerCase());
-  }, [isConductor, effectiveData.trucks, session.name]);
+    return trucks.find(t => Number(t.user_id) === Number(session.id));
+  }, [isConductor, effectiveData.trucks, session.id]);
 
   const myZoneCollections = useMemo(() => {
     if (!isConductor) return [];
@@ -1781,8 +1800,8 @@ function Routes({ data, monitor, session, onCreateCollection, proximityAlerts }:
 
   const myTruck = useMemo(() => {
     if (!session) return undefined;
-    return safeTrucks.find(t => String(t.driver ?? "").trim().toLowerCase() === String(session.name ?? "").trim().toLowerCase());
-  }, [safeTrucks, session?.name, session?.role]);
+    return safeTrucks.find(t => Number(t.user_id) === Number(session.id));
+  }, [safeTrucks, session?.id, session?.role]);
 
   const conductorZone = useMemo(() => {
     if (!session) return undefined;
@@ -1876,7 +1895,7 @@ useEffect(() => {
    return (
     <>
        <div className="two-col">
-          <section className="panel"><h2>Mapa operativo OpenStreetMap</h2><Map zones={data.zones ?? []} trucks={safeTrucks} routes={routes} prioritizedZones={prioritizedZones} citizenProximity={proximityAlerts} citizenZone={conductorZone} /></section>
+           {isConductor && conductorZone && (<section className="panel"><h2>Mapa operativo OpenStreetMap</h2><Map zones={data.zones ?? []} trucks={safeTrucks} routes={routes} prioritizedZones={prioritizedZones} citizenProximity={proximityAlerts} citizenZone={conductorZone} /></section>)}
           <section className="panel">
             <h2>Seguimiento GPS</h2>
             {geoError && <p className="hint error">El servicio de alertas geo no está disponible. Los datos pueden estar desactualizados.</p>}
@@ -2344,7 +2363,7 @@ function Analytics({ data, session, onConfirmCollection }: { data: Bootstrap; se
    );
  }
 
-function Map({ zones, trucks, routes, prioritizedZones, citizenProximity, citizenZone }: { zones: Zone[]; trucks: Truck[]; routes: Route[]; prioritizedZones: Array<{ id: number; name: string; priority_score: number; criticality: string; latitude?: number; longitude?: number }>; citizenProximity?: ProximityAlert[]; citizenZone?: Zone; }) {
+function Map({ zones, trucks, routes, prioritizedZones, citizenProximity, citizenZone }: { zones: Zone[]; trucks: Truck[]; routes: Route[]; prioritizedZones: Array<{ id: number; name: string; priority_score: number; criticality: string; latitude?: number; longitude?: number }>; citizenProximity?: ProximityAlert[]; citizenZone: Zone | null | undefined; }) {
   const ref = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<L.Map | null>(null);
   const layerRef = useRef<L.LayerGroup | null>(null);
@@ -2378,6 +2397,20 @@ function Map({ zones, trucks, routes, prioritizedZones, citizenProximity, citize
   };
 
   useEffect(() => {
+    if (!citizenZone) {
+      if (mapRef.current) {
+        try {
+          mapRef.current.remove();
+        } catch (error) {
+          if (import.meta.env.DEV) {
+            console.error("Error removing map:", error);
+          }
+        }
+        mapRef.current = null;
+        layerRef.current = null;
+      }
+      return;
+    }
     if (signatureRef.current === signature) return;
     signatureRef.current = signature;
     if (!ref.current || mapRef.current) return;
@@ -2396,9 +2429,10 @@ function Map({ zones, trucks, routes, prioritizedZones, citizenProximity, citize
         console.error("Error initializing map:", error);
       }
     }
-  }, [signature]);
+  }, [signature, citizenZone]);
 
   useEffect(() => {
+    if (!citizenZone) return;
     if (!mapRef.current || !layerRef.current) return;
     if (signatureRef.current !== signature) return;
     if (typeof L === "undefined") return;
@@ -2457,6 +2491,10 @@ function Map({ zones, trucks, routes, prioritizedZones, citizenProximity, citize
       }
     };
   }, []);
+
+  if (!citizenZone) {
+    return <div className="map" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--muted)', fontSize: '0.95rem' }}>Inicia sesión para ver el mapa operativo</div>;
+  }
 
   return <div className="map" ref={ref} />;
 }

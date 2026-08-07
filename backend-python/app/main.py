@@ -152,6 +152,7 @@ class TruckUpdate(BaseModel):
     driver: str | None = Field(default=None, min_length=2, max_length=120)
     status: str | None = Field(default=None, min_length=2, max_length=60)
     zone_id: int | None = None
+    user_id: int | None = None
     latitude: float | None = None
     longitude: float | None = None
 
@@ -254,10 +255,10 @@ class MemoryStore:
             {"id": 5, "zone_id": 5, "zone": "Santiago", "day": "Martes y viernes", "time": "06:00 - 08:00", "waste": "Reciclable"},
         ]
         self.trucks = [
-            {"id": 1, "code": "C-01", "driver": "Luis Huaman", "status": "En ruta", "zone_id": 1, "zone": "Centro Historico", "latitude": -13.5166, "longitude": -71.9789},
-            {"id": 2, "code": "C-02", "driver": "Rosa Ccahuana", "status": "En ruta", "zone_id": 2, "zone": "Wanchaq", "latitude": -13.5256, "longitude": -71.9558},
-            {"id": 3, "code": "C-03", "driver": "Mario Quispe", "status": "Mantenimiento", "zone_id": 3, "zone": "San Sebastian", "latitude": -13.5309, "longitude": -71.9386},
-            {"id": 4, "code": "C-04", "driver": "Elena Condori", "status": "En ruta", "zone_id": 5, "zone": "Santiago", "latitude": -13.5350, "longitude": -71.9847},
+            {"id": 1, "code": "C-01", "driver": "Luis Huaman", "status": "En ruta", "zone_id": 1, "zone": "Centro Historico", "user_id": 6, "latitude": -13.5166, "longitude": -71.9789},
+            {"id": 2, "code": "C-02", "driver": "Rosa Ccahuana", "status": "En ruta", "zone_id": 2, "zone": "Wanchaq", "user_id": 7, "latitude": -13.5256, "longitude": -71.9558},
+            {"id": 3, "code": "C-03", "driver": "Mario Quispe", "status": "Mantenimiento", "zone_id": 3, "zone": "San Sebastian", "user_id": 8, "latitude": -13.5309, "longitude": -71.9386},
+            {"id": 4, "code": "C-04", "driver": "Elena Condori", "status": "En ruta", "zone_id": 5, "zone": "Santiago", "user_id": 4, "latitude": -13.5350, "longitude": -71.9847},
         ]
         self.routes = [
             {"id": 1, "truck": "C-02", "zone": "Wanchaq", "progress": 62, "eta": "12 min", "delay": "Sin retraso", "latitude": -13.5256, "longitude": -71.9558},
@@ -311,6 +312,33 @@ class MemoryStore:
                 "email": "conductor@ecocusco.pe",
                 "role": "conductor",
                 "zone": "Santiago",
+                "password_hash": hash_password("Test12345!"),
+                "created_at": datetime.now(timezone.utc).isoformat(),
+            },
+            {
+                "id": 6,
+                "name": "Luis Huaman",
+                "email": "luis.huaman@ecocusco.pe",
+                "role": "conductor",
+                "zone": "Centro Historico",
+                "password_hash": hash_password("Test12345!"),
+                "created_at": datetime.now(timezone.utc).isoformat(),
+            },
+            {
+                "id": 7,
+                "name": "Rosa Ccahuana",
+                "email": "rosa.ccahuana@ecocusco.pe",
+                "role": "conductor",
+                "zone": "Wanchaq",
+                "password_hash": hash_password("Test12345!"),
+                "created_at": datetime.now(timezone.utc).isoformat(),
+            },
+            {
+                "id": 8,
+                "name": "Mario Quispe",
+                "email": "mario.quispe@ecocusco.pe",
+                "role": "conductor",
+                "zone": "San Sebastian",
                 "password_hash": hash_password("Test12345!"),
                 "created_at": datetime.now(timezone.utc).isoformat(),
             },
@@ -721,7 +749,7 @@ def build_proximity_alerts(
                     })
 
     if role == "conductor" and active_trucks:
-        my_truck = next((truck for truck in active_trucks if str(truck.get("driver", "")).strip().lower() == str(current_user.get("name", "")).strip().lower()), None)
+        my_truck = next((truck for truck in active_trucks if truck.get("user_id") is not None and int(truck.get("user_id", 0)) == int(current_user.get("id", 0))), None)
         if my_truck:
             mt_lat = float(my_truck.get("latitude", 0) or 0)
             mt_lon = float(my_truck.get("longitude", 0) or 0)
@@ -1098,6 +1126,7 @@ def build_truck_payload(truck: dict[str, Any]) -> dict[str, Any]:
         "status": truck.get("status"),
         "zone_id": truck.get("zone_id"),
         "zone": truck.get("zone") or get_zone_name(truck.get("zone_id")),
+        "user_id": truck.get("user_id"),
         "latitude": truck.get("latitude"),
         "longitude": truck.get("longitude"),
     }
@@ -1106,8 +1135,8 @@ def build_truck_payload(truck: dict[str, Any]) -> dict[str, Any]:
 def create_truck_record(payload: TruckCreate) -> dict[str, Any]:
     try:
         row = execute_one(
-            "insert into trucks (code, driver, status, zone_id, latitude, longitude) values (%s, %s, %s, %s, %s, %s) returning id, code, driver, status, zone_id, latitude, longitude",
-            (payload.code, payload.driver, payload.status, payload.zone_id, payload.latitude, payload.longitude),
+            "insert into trucks (code, driver, status, zone_id, user_id, latitude, longitude) values (%s, %s, %s, %s, %s, %s, %s) returning id, code, driver, status, zone_id, user_id, latitude, longitude",
+            (payload.code, payload.driver, payload.status, payload.zone_id, None, payload.latitude, payload.longitude),
         )
         return build_truck_payload({**row, "zone": get_zone_name(payload.zone_id)})
     except Exception:
@@ -1118,6 +1147,7 @@ def create_truck_record(payload: TruckCreate) -> dict[str, Any]:
             "status": payload.status,
             "zone_id": payload.zone_id,
             "zone": get_zone_name(payload.zone_id),
+            "user_id": None,
             "latitude": payload.latitude,
             "longitude": payload.longitude,
         }
@@ -1135,11 +1165,13 @@ def update_truck(truck_id: int, payload: TruckUpdate) -> dict[str, Any]:
             execute_one("update trucks set status = %s where id = %s", (payload.status, truck_id))
         if payload.zone_id is not None:
             execute_one("update trucks set zone_id = %s where id = %s", (payload.zone_id, truck_id))
+        if payload.user_id is not None:
+            execute_one("update trucks set user_id = %s where id = %s", (payload.user_id, truck_id))
         if payload.latitude is not None:
             execute_one("update trucks set latitude = %s where id = %s", (payload.latitude, truck_id))
         if payload.longitude is not None:
             execute_one("update trucks set longitude = %s where id = %s", (payload.longitude, truck_id))
-        row = execute_one("select id, code, driver, status, zone_id, latitude, longitude from trucks where id = %s", (truck_id,))
+        row = execute_one("select id, code, driver, status, zone_id, user_id, latitude, longitude from trucks where id = %s", (truck_id,))
         return build_truck_payload({**row, "zone": get_zone_name(row.get("zone_id"))})
     except Exception:
         for truck in memory.trucks:
@@ -1153,6 +1185,8 @@ def update_truck(truck_id: int, payload: TruckUpdate) -> dict[str, Any]:
                 if payload.zone_id is not None:
                     truck["zone_id"] = payload.zone_id
                     truck["zone"] = get_zone_name(payload.zone_id)
+                if payload.user_id is not None:
+                    truck["user_id"] = payload.user_id
                 if payload.latitude is not None:
                     truck["latitude"] = payload.latitude
                 if payload.longitude is not None:
@@ -1803,7 +1837,7 @@ def bootstrap() -> dict[str, Any]:
         rows = {
             "zones": fetch_all("select id, name, latitude, longitude, criticality from zones order by id"),
             "schedules": fetch_all("select s.id, z.name as zone, s.day, s.time, s.waste from schedules s join zones z on z.id = s.zone_id order by s.id"),
-            "trucks": fetch_all("select t.id, t.code, t.driver, t.status, z.name as zone, t.latitude, t.longitude from trucks t join zones z on z.id = t.zone_id order by t.id"),
+            "trucks": fetch_all("select t.id, t.code, t.driver, t.status, z.name as zone, t.zone_id, t.user_id, t.latitude, t.longitude from trucks t join zones z on z.id = t.zone_id order by t.id"),
             "routes": fetch_all("select r.id, t.code as truck, z.name as zone, r.progress, r.eta, r.delay, r.latitude, r.longitude from routes r join trucks t on t.id = r.truck_id join zones z on z.id = r.zone_id order by r.id"),
             "reports": fetch_all("select id, citizen, zone, type, detail, status from reports order by id desc"),
             "collections": normalize_dates(fetch_all("select c.id, z.name as zone, t.code as truck, c.kg, c.status, c.date from collections c join zones z on z.id = c.zone_id join trucks t on t.id = c.truck_id order by c.date desc")),
@@ -1896,13 +1930,13 @@ def health() -> dict[str, Any]:
 
 
 @app.get("/api/bootstrap")
-def get_bootstrap(current_user: dict[str, Any] | None = Depends(get_current_user_optional)) -> dict[str, Any]:
+def get_bootstrap(current_user: dict[str, Any] = Depends(require_current_user)) -> dict[str, Any]:
     data = bootstrap()
-    role = normalize_role(str(current_user.get("role", "ciudadano"))) if current_user else "ciudadano"
+    role = normalize_role(str(current_user.get("role", "ciudadano")))
     if role != "admin":
         data.pop("users", None)
         data.pop("maintenance", None)
-    if role == "ciudadano" and current_user is not None:
+    if role == "ciudadano":
         citizen_zone = str(current_user.get("zone", "")).strip().lower()
         filtered_collections = [
             col for col in data.get("collections", [])
@@ -1919,6 +1953,24 @@ def get_bootstrap(current_user: dict[str, Any] | None = Depends(get_current_user
     elif role != "admin":
         data.pop("notifications", None)
     return data
+
+
+def public_bootstrap() -> dict[str, Any]:
+    try:
+        return {
+            "zones": fetch_all("select id, name, latitude, longitude, criticality from zones order by id"),
+            "schedules": fetch_all("select s.id, z.name as zone, s.day, s.time, s.waste from schedules s join zones z on z.id = s.zone_id order by s.id"),
+        }
+    except Exception:
+        return {
+            "zones": memory.zones,
+            "schedules": memory.schedules,
+        }
+
+
+@app.get("/api/public/bootstrap")
+def get_public_bootstrap() -> dict[str, Any]:
+    return public_bootstrap()
 
 
 @app.post("/api/auth/register")
@@ -2548,7 +2600,6 @@ def get_collections(current_user: dict[str, Any] = Depends(require_current_user)
 @app.post("/api/collections", dependencies=[Depends(require_role({"conductor", "admin"}))])
 def register_collection(payload: CollectionCreate, current_user: dict[str, Any] = Depends(require_current_user)) -> dict[str, Any]:
     role = normalize_role(str(current_user.get("role", "ciudadano")))
-    # Un conductor solo puede registrar recolecciones para su camión asignado
     if role == "conductor":
         trucks = bootstrap().get("trucks", [])
         assigned_truck = next(
@@ -2557,14 +2608,13 @@ def register_collection(payload: CollectionCreate, current_user: dict[str, Any] 
         )
         if assigned_truck is None:
             raise HTTPException(status_code=404, detail="Camión no encontrado")
-        truck_driver = str(assigned_truck.get("driver", "")).strip().lower()
-        user_name = str(current_user.get("name", "")).strip().lower()
-        if truck_driver and user_name and truck_driver != user_name:
+        truck_user_id = assigned_truck.get("user_id")
+        current_user_id = current_user.get("id")
+        if not truck_user_id or not current_user_id or int(truck_user_id) != int(current_user_id):
             raise HTTPException(
                 status_code=403,
                 detail=f"El camión {assigned_truck.get('code')} está asignado a otro conductor ({assigned_truck.get('driver')}).",
             )
-    # Permitimos que un conductor o administrador registre la recolección realizada
     created = create_collection_record(payload, created_by=current_user)
     return created
 

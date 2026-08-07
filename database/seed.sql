@@ -14,12 +14,12 @@ insert into schedules (id, zone_id, day, time, waste) values
   (5, 5, 'Martes y viernes', '06:00 - 08:00', 'Reciclable')
 on conflict (id) do update set day = excluded.day, time = excluded.time, waste = excluded.waste;
 
-insert into trucks (id, code, driver, status, zone_id, latitude, longitude) values
-  (1, 'C-01', 'Luis Huaman', 'En ruta', 1, -13.5166000, -71.9789000),
-  (2, 'C-02', 'Rosa Ccahuana', 'En ruta', 2, -13.5256000, -71.9558000),
-  (3, 'C-03', 'Mario Quispe', 'Mantenimiento', 3, -13.5309000, -71.9386000),
-  (4, 'C-04', 'Elena Condori', 'En ruta', 5, -13.5350000, -71.9847000)
-on conflict (id) do update set code = excluded.code, driver = excluded.driver, status = excluded.status, zone_id = excluded.zone_id, latitude = excluded.latitude, longitude = excluded.longitude;
+insert into trucks (id, code, driver, status, zone_id, user_id, latitude, longitude) values
+  (1, 'C-01', 'Luis Huaman', 'En ruta', 1, 6, -13.5166000, -71.9789000),
+  (2, 'C-02', 'Rosa Ccahuana', 'En ruta', 2, 7, -13.5256000, -71.9558000),
+  (3, 'C-03', 'Mario Quispe', 'Mantenimiento', 3, 8, -13.5309000, -71.9386000),
+  (4, 'C-04', 'Elena Condori', 'En ruta', 5, 4, -13.5350000, -71.9847000)
+on conflict (id) do update set code = excluded.code, driver = excluded.driver, status = excluded.status, zone_id = excluded.zone_id, user_id = excluded.user_id, latitude = excluded.latitude, longitude = excluded.longitude;
 
 insert into routes (id, truck_id, zone_id, progress, eta, delay, latitude, longitude) values
   (1, 2, 2, 62, '12 min', 'Sin retraso', -13.5256000, -71.9558000),
@@ -52,8 +52,11 @@ on conflict (id) do update set zone_id = excluded.zone_id, name = excluded.name,
 insert into users (id, name, email, role, zone, password_hash) values
   (1, 'Administrador EcoCusco', 'admin@ecocusco.pe', 'admin', 'Centro Historico', '$2b$12$0ICgCTA03BhDTZM/2xRX5O/fTV.mWlSiLvAUvuruMJ/a/GsrXK5Le'),
   (2, 'Ciudadano Demo', 'ciudadano@ecocusco.pe', 'ciudadano', 'Centro Historico', '$2b$12$HZd0MtBudNu/yFVGtQGIsOQkI1D1l0h44H094Eimw.HJ1XIvk17y.'),
-   (4, 'Elena Condori', 'conductor@ecocusco.pe', 'conductor', 'Santiago', '$2b$12$ywVROecAs/1X16ZXrMe5duedRmUnzlB1y94ezWhHx/Jzq1EADFJ8m'),
-  (5, 'Admin Regional', 'admin2@ecocusco.pe', 'admin', 'San Sebastian', '$2b$12$2Tcv2pgCesoYmUZoR.LE8uQMLVeyJkNya4Wm8huxI8VGMrFCXnu8a')
+  (4, 'Elena Condori', 'conductor@ecocusco.pe', 'conductor', 'Santiago', '$2b$12$ywVROecAs/1X16ZXrMe5duedRmUnzlB1y94ezWhHx/Jzq1EADFJ8m'),
+  (5, 'Admin Regional', 'admin2@ecocusco.pe', 'admin', 'San Sebastian', '$2b$12$2Tcv2pgCesoYmUZoR.LE8uQMLVeyJkNya4Wm8huxI8VGMrFCXnu8a'),
+  (6, 'Luis Huaman', 'luis.huaman@ecocusco.pe', 'conductor', 'Centro Historico', '$2b$12$xsgWoXKH3I6aApWb3CitYetyrOKERYDyQikPtIbcM.Ce/kMC2wBDa'),
+  (7, 'Rosa Ccahuana', 'rosa.ccahuana@ecocusco.pe', 'conductor', 'Wanchaq', '$2b$12$jsuEgayEYKtbllZvGzwC7.wcJF8zq8g8zXiaQh2JFvLbJz.LFFk5O'),
+  (8, 'Mario Quispe', 'mario.quispe@ecocusco.pe', 'conductor', 'San Sebastian', '$2b$12$/SyO6KVGSUU0tAro8TBHN.erS160u52vq509zAfe1YKGH94lnHs1S')
 on conflict (id) do update set name = excluded.name, email = excluded.email, role = excluded.role, zone = excluded.zone, password_hash = excluded.password_hash;
 
 insert into notifications (id, user_id, title, message, type, is_read, created_at) values

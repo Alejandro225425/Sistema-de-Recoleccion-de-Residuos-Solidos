@@ -180,7 +180,7 @@ describe("App e2e integration", () => {
 
     await screen.findByRole("heading", { name: /Panel Principal/i });
     fireEvent.click(screen.getByRole("button", { name: /Administración/i }));
-    await screen.findByRole("heading", { name: /Eventos operativos/i }, {}, { timeout: 15000 });
+    await waitFor(() => screen.getByRole("heading", { name: /Eventos operativos/i }), { timeout: 15000 });
 
     fireEvent.change(screen.getByLabelText(/Tipo de evento/i), { target: { value: "route_update" } });
     fireEvent.change(screen.getByLabelText(/Objetivo/i), { target: { value: "1" } });
@@ -200,7 +200,7 @@ describe("App e2e integration", () => {
 
     await screen.findByRole("heading", { name: /Panel Principal/i });
     fireEvent.click(screen.getByRole("button", { name: /Administración/i }));
-    await screen.findByRole("heading", { name: /Eventos operativos/i }, {}, { timeout: 15000 });
+    await waitFor(() => screen.getByRole("heading", { name: /Eventos operativos/i }), { timeout: 15000 });
 
     fireEvent.change(screen.getByLabelText(/Tipo de evento/i), { target: { value: "container_update" } });
     fireEvent.change(screen.getByLabelText(/Objetivo/i), { target: { value: "1" } });
