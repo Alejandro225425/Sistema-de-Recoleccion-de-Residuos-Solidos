@@ -83,3 +83,50 @@ def test_conductor_ve_solo_colecciones_de_su_zona_en_analytics():
     payload = response.json()
     assert "compliance" in payload
     assert "total_kg" in payload
+
+
+def test_trucks_payload_incluye_user_id():
+    client = TestClient(app)
+    login = client.post("/api/auth/login", json={"email": "admin@ecocusco.pe", "password": "admin123"})
+    assert login.status_code == 200
+    token = login.json()["token"]
+    headers = {"Authorization": f"Bearer {token}"}
+
+    response = client.get("/api/trucks", headers=headers)
+    assert response.status_code == 200
+    trucks = response.json()
+    assert isinstance(trucks, list)
+    assert len(trucks) > 0
+    for truck in trucks:
+        assert "user_id" in truck
+
+
+def test_conductor_no_puede_usar_camion_sin_usuario_asignado():
+    client = TestClient(app)
+    login = client.post("/api/auth/login", json={"email": "conductor@ecocusco.pe", "password": "Test12345!"})
+    assert login.status_code == 200
+    token = login.json()["token"]
+    headers = {"Authorization": f"Bearer {token}"}
+
+    response = client.post(
+        "/api/collections",
+        json={"truck_id": 3, "zone_id": 3, "kg": 100},
+        headers=headers,
+    )
+    assert response.status_code == 403
+
+
+def test_conductor_vinculado_por_user_id_no_por_nombre():
+    client = TestClient(app)
+    login = client.post("/api/auth/login", json={"email": "conductor@ecocusco.pe", "password": "Test12345!"})
+    assert login.status_code == 200
+    token = login.json()["token"]
+    headers = {"Authorization": f"Bearer {token}"}
+
+    response = client.get("/api/trucks", headers=headers)
+    assert response.status_code == 200
+    trucks = response.json()
+    my_truck = next((t for t in trucks if t.get("user_id") == 4), None)
+    assert my_truck is not None
+    assert my_truck["code"] == "C-04"
+

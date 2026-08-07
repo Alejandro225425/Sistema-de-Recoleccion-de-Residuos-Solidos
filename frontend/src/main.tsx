@@ -609,8 +609,8 @@ export function Dashboard({ data, monitor, session, onConfirmCollection, health,
   const myTruck = useMemo(() => {
     if (!isConductor) return undefined;
     const trucks = Array.isArray(effectiveData.trucks) ? effectiveData.trucks : [];
-    return trucks.find(t => String(t.driver ?? "").toLowerCase() === String(session.name ?? "").toLowerCase());
-  }, [isConductor, effectiveData.trucks, session.name]);
+    return trucks.find(t => Number(t.user_id) === Number(session.id));
+  }, [isConductor, effectiveData.trucks, session.id]);
 
   const myZoneCollections = useMemo(() => {
     if (!isConductor) return [];
@@ -1800,8 +1800,8 @@ function Routes({ data, monitor, session, onCreateCollection, proximityAlerts }:
 
   const myTruck = useMemo(() => {
     if (!session) return undefined;
-    return safeTrucks.find(t => String(t.driver ?? "").trim().toLowerCase() === String(session.name ?? "").trim().toLowerCase());
-  }, [safeTrucks, session?.name, session?.role]);
+    return safeTrucks.find(t => Number(t.user_id) === Number(session.id));
+  }, [safeTrucks, session?.id, session?.role]);
 
   const conductorZone = useMemo(() => {
     if (!session) return undefined;

@@ -20,6 +20,7 @@ create table if not exists trucks (
   driver varchar(120) not null,
   status varchar(60) not null,
   zone_id bigint not null references zones(id),
+  user_id bigint references users(id),
   latitude numeric(10, 7) not null,
   longitude numeric(10, 7) not null
 );

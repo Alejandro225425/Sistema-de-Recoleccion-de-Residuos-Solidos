@@ -14,12 +14,12 @@ insert into schedules (id, zone_id, day, time, waste) values
   (5, 5, 'Martes y viernes', '06:00 - 08:00', 'Reciclable')
 on conflict (id) do update set day = excluded.day, time = excluded.time, waste = excluded.waste;
 
-insert into trucks (id, code, driver, status, zone_id, latitude, longitude) values
-  (1, 'C-01', 'Luis Huaman', 'En ruta', 1, -13.5166000, -71.9789000),
-  (2, 'C-02', 'Rosa Ccahuana', 'En ruta', 2, -13.5256000, -71.9558000),
-  (3, 'C-03', 'Mario Quispe', 'Mantenimiento', 3, -13.5309000, -71.9386000),
-  (4, 'C-04', 'Elena Condori', 'En ruta', 5, -13.5350000, -71.9847000)
-on conflict (id) do update set code = excluded.code, driver = excluded.driver, status = excluded.status, zone_id = excluded.zone_id, latitude = excluded.latitude, longitude = excluded.longitude;
+insert into trucks (id, code, driver, status, zone_id, user_id, latitude, longitude) values
+  (1, 'C-01', 'Luis Huaman', 'En ruta', 1, NULL, -13.5166000, -71.9789000),
+  (2, 'C-02', 'Rosa Ccahuana', 'En ruta', 2, NULL, -13.5256000, -71.9558000),
+  (3, 'C-03', 'Mario Quispe', 'Mantenimiento', 3, NULL, -13.5309000, -71.9386000),
+  (4, 'C-04', 'Elena Condori', 'En ruta', 5, 4, -13.5350000, -71.9847000)
+on conflict (id) do update set code = excluded.code, driver = excluded.driver, status = excluded.status, zone_id = excluded.zone_id, user_id = excluded.user_id, latitude = excluded.latitude, longitude = excluded.longitude;
 
 insert into routes (id, truck_id, zone_id, progress, eta, delay, latitude, longitude) values
   (1, 2, 2, 62, '12 min', 'Sin retraso', -13.5256000, -71.9558000),
