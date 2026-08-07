@@ -1896,13 +1896,13 @@ def health() -> dict[str, Any]:
 
 
 @app.get("/api/bootstrap")
-def get_bootstrap(current_user: dict[str, Any] | None = Depends(get_current_user_optional)) -> dict[str, Any]:
+def get_bootstrap(current_user: dict[str, Any] = Depends(require_current_user)) -> dict[str, Any]:
     data = bootstrap()
-    role = normalize_role(str(current_user.get("role", "ciudadano"))) if current_user else "ciudadano"
+    role = normalize_role(str(current_user.get("role", "ciudadano")))
     if role != "admin":
         data.pop("users", None)
         data.pop("maintenance", None)
-    if role == "ciudadano" and current_user is not None:
+    if role == "ciudadano":
         citizen_zone = str(current_user.get("zone", "")).strip().lower()
         filtered_collections = [
             col for col in data.get("collections", [])
@@ -1919,6 +1919,24 @@ def get_bootstrap(current_user: dict[str, Any] | None = Depends(get_current_user
     elif role != "admin":
         data.pop("notifications", None)
     return data
+
+
+def public_bootstrap() -> dict[str, Any]:
+    try:
+        return {
+            "zones": fetch_all("select id, name, latitude, longitude, criticality from zones order by id"),
+            "schedules": fetch_all("select s.id, z.name as zone, s.day, s.time, s.waste from schedules s join zones z on z.id = s.zone_id order by s.id"),
+        }
+    except Exception:
+        return {
+            "zones": memory.zones,
+            "schedules": memory.schedules,
+        }
+
+
+@app.get("/api/public/bootstrap")
+def get_public_bootstrap() -> dict[str, Any]:
+    return public_bootstrap()
 
 
 @app.post("/api/auth/register")

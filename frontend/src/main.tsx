@@ -13,7 +13,7 @@ import "./styles.css";
 import Admin from "./components/Admin";
 import { AuthView } from "./components/AuthView";
 import Item, { Metric } from "./components/Item";
-import { request, proximityCheck } from "./api";
+import { request, requestPublic, proximityCheck } from "./api";
 import { shouldAutoLoginAsAdmin } from "./demoAuth";
 import {
   Bootstrap,
@@ -350,21 +350,36 @@ async function loadData() {
     }
   }
 
+  async function loadPublicData() {
+    try {
+      const publicData = await requestPublic<Pick<Bootstrap, "zones" | "schedules">>("/public/bootstrap");
+      setData(prev => ({ ...prev, ...publicData }));
+    } catch {
+      // Si el endpoint público no está disponible, usar datos vacíos
+      setData(emptyBootstrap);
+    }
+  }
+
   useEffect(() => {
     if (session && session.role !== "admin" && view === "admin") {
       setView("dashboard");
     }
   }, [session, view]);
 
-   useEffect(() => {
-      loadData().catch(() => setMessage("No se pudo conectar con FastAPI. Verifica que el backend este ejecutandose."));
+  useEffect(() => {
+    loadPublicData().catch(() => {});
+    loadHealth().catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    if (!session) return;
+    loadData().catch(() => setMessage("No se pudo conectar con FastAPI. Verifica que el backend este ejecutandose."));
+    loadMonitor().catch(() => {});
+    const monitorInterval = window.setInterval(() => {
       loadMonitor().catch(() => {});
-      loadHealth().catch(() => {});
-      const monitorInterval = window.setInterval(() => {
-       loadMonitor().catch(() => {});
-     }, 10000);
-     return () => window.clearInterval(monitorInterval);
-   }, []);
+    }, 10000);
+    return () => window.clearInterval(monitorInterval);
+  }, [session]);
 
   async function login(email: string, password: string) {
     try {
@@ -380,6 +395,7 @@ async function loadData() {
       setSession(payload.user);
       setMessage('');
       await loadData();
+      await loadMonitor();
     } catch (error) {
       const msg = error instanceof Error ? error.message : 'No se pudo iniciar sesión';
       setMessage(msg);
@@ -390,6 +406,9 @@ async function loadData() {
   function logout() {
     localStorage.removeItem('sir-session');
     localStorage.removeItem('sir-token');
+    setData({} as Bootstrap);
+    setMonitor({} as Monitor);
+    setProximityAlerts([]);
     setSession(null);
     setView('dashboard');
   }
