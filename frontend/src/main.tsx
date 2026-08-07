@@ -263,6 +263,9 @@ export function App() {
   const loadProximity = useCallback(async () => {
     try {
       const currentSession = sessionRef.current;
+      if (currentSession?.role === "conductor") {
+        return;
+      }
       const currentData = dataRef.current;
       const citizenZone = currentSession?.zone;
       const zone = (currentData.zones ?? []).find(z => String(z.name).toLowerCase() === String(citizenZone ?? "").toLowerCase());
@@ -286,12 +289,29 @@ export function App() {
     loadProximity();
   }, [loadProximity, session, data]);
 
+   useEffect(() => {
+     const interval = window.setInterval(() => {
+       loadProximity();
+     }, 10000);
+     return () => window.clearInterval(interval);
+   }, [loadProximity]);
+
   useEffect(() => {
-    const interval = window.setInterval(() => {
-      loadProximity();
-    }, 10000);
-    return () => window.clearInterval(interval);
-  }, [loadProximity]);
+    if (session?.role !== "conductor") return;
+    if (!monitor?.notifications) return;
+    const proximityNotifications = (monitor.notifications as Array<Record<string, unknown>>)
+      .filter(n => n.type === "proximity")
+      .map(n => ({
+        id: n.id as string | number,
+        truck_code: n.truck_code as string | undefined,
+        driver: n.driver as string | undefined,
+        zone: n.zone as string,
+        distance_m: n.distance_m as number,
+        eta: n.eta as string,
+        tone: n.tone as "cercano" | "muy_cercano",
+      }));
+    setProximityAlerts(proximityNotifications);
+  }, [monitor.notifications, session?.role]);
 
 async function loadData() {
      setLoading(true);
@@ -1792,7 +1812,16 @@ useEffect(() => {
        fetch(`${geoBase}/alerts`).then(response => {
          if (!response.ok) throw new Error("Geo service unavailable");
          return response.json();
-       }).then(payload => { setAlerts(payload.alerts ?? []); setGeoError(false); }).catch(() => { setAlerts([]); setGeoError(true); });
+       }).then(payload => {
+         setGeoError(false);
+         if (Array.isArray(payload.alerts)) {
+           setAlerts(payload.alerts);
+         } else if (Array.isArray(payload.nearby)) {
+           setAlerts(payload.nearby.map((item: { truck_code?: string; zone?: string; distance_m?: number; eta?: string; tone?: string }) => `${item.truck_code ?? ""} · ${item.zone ?? ""} · ${Math.round(item.distance_m ?? 0)}m · ETA ${item.eta ?? "N/A"}${item.tone === "muy_cercano" ? " · Muy cercano" : ""}`));
+         } else {
+           setAlerts([]);
+         }
+       }).catch(() => { setAlerts([]); setGeoError(true); });
      };
      fetchAlerts();
      const interval = window.setInterval(fetchAlerts, 30000);
@@ -2398,7 +2427,7 @@ function Map({ zones, trucks, routes, prioritizedZones, citizenProximity, citize
         marker.bindPopup(`<strong>${truck.code}</strong><br/>Zona: ${truck.zone ?? "N/A"}<br/>Estado: ${truck.status}`).addTo(layer);
       });
       routes.forEach(route => {
-         L.circle([route.latitude, route.longitude], { radius: 450, color: String(route.delay ?? "").toLowerCase().includes("retraso") ? "#c94735" : "#0f8b8d" }).bindPopup(`${route.truck}: ${route.eta}`).addTo(layer);
+         L.circle([route.latitude, route.longitude], { radius: 500, color: String(route.delay ?? "").toLowerCase().includes("retraso") ? "#c94735" : "#0f8b8d" }).bindPopup(`${route.truck}: ${route.eta}`).addTo(layer);
          const waypoints = (route as any).waypoints;
          if (waypoints && waypoints.length > 1) {
            const points = waypoints.map((w: any) => [w.latitude ?? route.latitude, w.longitude ?? route.longitude] as [number, number]);
