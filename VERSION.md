@@ -1,6 +1,28 @@
-# Sistema de Recolección de Residuos Sólidos - Versión 6.0
+# Sistema de Recolección de Residuos Sólidos - Versión 6.3
 
-## Versión 6.0 - Mejoras en registro y panel administrativo
+## Versión 6.3 - Operaciones masivas extendidas y módulo transversal de residuos
+
+### Cambios destacados
+
+- **Backend - Bulk operations extendidas**: el endpoint `POST /api/admin/bulk-action` ahora soporta acciones adicionales (`update_status`, `assign_user`, `assign_truck`, `assign_zone`, `export`) para 9 entidades: users, zones, schedules, trucks, maintenance, routes, reports, containers, collections.
+- **Backend - Módulo de residuos CRUD**: nuevos endpoints `GET/POST/PATCH/DELETE /api/waste-types` y `GET /api/waste-stats` con modelos Pydantic (`WasteTypeCreate`, `WasteTypeUpdate`, `WasteStats`). Solo accesibles para rol `admin` en mutaciones.
+- **Backend - Store en memoria**: `waste_types_store` inicializado con 4 tipos de residuo por defecto (Orgánico, Reciclable, No reciclable, Mixto).
+- **Frontend - WasteSection componente**: componente reutilizable `WasteSection` con modo compacto, estadísticas de contenedores, próximas recolecciones y guía de disposición.
+- **Frontend - Integración transversal**: WasteSection integrado en los 7 dashboards (Panel Principal, Horarios, Reportes, Clasificación, Rutas, Administración, Estadísticas).
+- **Frontend - Admin waste CRUD**: sección completa de administración de tipos de residuo en `Admin.tsx` con creación y eliminación.
+- **Frontend - Tipos y API**: agregados `WasteType`, `WasteStats`, `WasteCategory` en `types.ts`; funciones cliente en `api.ts`.
+- **Verificación**: `pytest` 38/38 pasados, `vitest` 38/38 pasados.
+
+### Archivos modificados
+- `backend-python/app/main.py` — Bulk actions extendidas, CRUD waste-types, waste-stats, modelos Pydantic
+- `frontend/src/main.tsx` — Integración WasteSection en dashboards, métricas de residuo, breakdown por tipo
+- `frontend/src/components/Admin.tsx` — Sección CRUD de tipos de residuo
+- `frontend/src/components/WasteSection.tsx` — Componente reutilizable de residuos
+- `frontend/src/types.ts` — WasteType, WasteStats, WasteCategory
+- `frontend/src/api.ts` — Cliente API para waste types y stats
+- `frontend/src/styles.css` — Estilos para waste-section
+
+## Versión 6.0
 
 ### Cambios destacados
 

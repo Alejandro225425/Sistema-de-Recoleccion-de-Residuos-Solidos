@@ -1,5 +1,5 @@
 import React, { FormEvent, useEffect, useMemo, useState } from "react";
-import { Bootstrap, Session, Role, Zone, Schedule, Truck, OperationUpdatePayload } from "../types";
+import { Bootstrap, Session, Role, Zone, Schedule, Truck, OperationUpdatePayload, WasteType } from "../types";
 import { request } from "../api";
 import Item from "./Item";
 
@@ -100,6 +100,9 @@ export default function Admin({ data, session, onOperationUpdate, onRefresh }: {
   const [savingMaintenanceIds, setSavingMaintenanceIds] = useState<number[]>([]);
   const [deletingMaintenanceIds, setDeletingMaintenanceIds] = useState<number[]>([]);
 
+  const [wasteTypes, setWasteTypes] = useState<WasteType[]>([]);
+  const [wasteTypeForm, setWasteTypeForm] = useState({ name: "", category: "Orgánico" as WasteType["category"], color: "green", description: "" });
+
   const [selectedUsers, setSelectedUsers] = useState<Set<number>>(new Set());
   const [selectedZones, setSelectedZones] = useState<Set<number>>(new Set());
   const [selectedSchedules, setSelectedSchedules] = useState<Set<number>>(new Set());
@@ -108,24 +111,25 @@ export default function Admin({ data, session, onOperationUpdate, onRefresh }: {
   const [bulkDeleting, setBulkDeleting] = useState(false);
 
    useEffect(() => {
-    setUsers(safeData.users);
-    setZones(safeData.zones);
-    setSchedules(safeData.schedules);
-    setTrucks(safeData.trucks);
-    setMaintenance(safeData.maintenance);
-    setSelectedUsers(new Set());
-    setSelectedZones(new Set());
-    setSelectedSchedules(new Set());
-    setSelectedTrucks(new Set());
-    setSelectedMaintenance(new Set());
-    setNewTruck(prev => ({ ...prev, zone_id: safeData.zones[0]?.id ?? prev.zone_id }));
-    setNewMaintenance(prev => ({ ...prev, truck_id: safeData.trucks[0]?.id ?? prev.truck_id }));
-    setNewSchedule(prev => ({ ...prev, zone_id: safeData.zones[0]?.id ?? prev.zone_id }));
-    setEditingTruckId(null);
-    setEditingTruck({ code: '', driver: '', status: 'En ruta', zone_id: safeData.zones[0]?.id ?? 1, latitude: 0, longitude: 0 });
-    setEditingMaintenanceId(null);
-    setEditingMaintenance({ truck_id: safeData.trucks[0]?.id ?? 0, description: '', status: 'Pendiente' });
-  }, [safeData]);
+     setUsers(safeData.users);
+     setZones(safeData.zones);
+     setSchedules(safeData.schedules);
+     setTrucks(safeData.trucks);
+     setMaintenance(safeData.maintenance);
+     setWasteTypes(safeData.waste_types ?? []);
+     setSelectedUsers(new Set());
+     setSelectedZones(new Set());
+     setSelectedSchedules(new Set());
+     setSelectedTrucks(new Set());
+     setSelectedMaintenance(new Set());
+     setNewTruck(prev => ({ ...prev, zone_id: safeData.zones[0]?.id ?? prev.zone_id }));
+     setNewMaintenance(prev => ({ ...prev, truck_id: safeData.trucks[0]?.id ?? prev.truck_id }));
+     setNewSchedule(prev => ({ ...prev, zone_id: safeData.zones[0]?.id ?? prev.zone_id }));
+     setEditingTruckId(null);
+     setEditingTruck({ code: '', driver: '', status: 'En ruta', zone_id: safeData.zones[0]?.id ?? 1, latitude: 0, longitude: 0 });
+     setEditingMaintenanceId(null);
+     setEditingMaintenance({ truck_id: safeData.trucks[0]?.id ?? 0, description: '', status: 'Pendiente' });
+   }, [safeData]);
 
   useEffect(() => {
     const routeIds = safeData.routes.map(route => route.id);
@@ -521,6 +525,39 @@ async function deleteMaintenance(item: MaintenanceRecord) {
       setFeedback(error instanceof Error ? error.message : 'No se pudieron eliminar los elementos seleccionados');
     } finally {
       setBulkDeleting(false);
+    }
+  }
+
+  async function createWasteType(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!wasteTypeForm.name.trim()) return;
+    setCreating(true);
+    try {
+      const created = await request<WasteType>("/waste-types", {
+        method: "POST",
+        body: JSON.stringify(wasteTypeForm),
+      });
+      setWasteTypes(prev => [...prev, created]);
+      setWasteTypeForm({ name: "", category: "Orgánico", color: "green", description: "" });
+      setFeedback(`Tipo de residuo creado: ${created.name}`);
+      await onRefresh?.();
+    } catch (error) {
+      setFeedback(error instanceof Error ? error.message : "No se pudo crear el tipo de residuo");
+    } finally {
+      setCreating(false);
+    }
+  }
+
+  async function deleteWasteType(wasteType: WasteType) {
+    if (!wasteType.id) return;
+    if (!window.confirm(`¿Estás seguro de eliminar el tipo de residuo ${wasteType.name}?`)) return;
+    try {
+      await request(`/waste-types/${wasteType.id}`, { method: "DELETE" });
+      setWasteTypes(prev => prev.filter(wt => wt.id !== wasteType.id));
+      setFeedback(`Tipo de residuo ${wasteType.name} eliminado`);
+      await onRefresh?.();
+    } catch (error) {
+      setFeedback(error instanceof Error ? error.message : "No se pudo eliminar el tipo de residuo");
     }
   }
 
@@ -973,6 +1010,44 @@ async function deleteMaintenance(item: MaintenanceRecord) {
           <label htmlFor="event-note" className="wide">Nota<textarea id="event-note" value={eventNote} onChange={event => setEventNote(event.currentTarget.value)} placeholder="Detalle de la acción..." /></label>
           <button type="submit">Enviar evento</button>
         </form>
+      </section>
+
+      <section className="panel">
+        <h2>Tipos de residuo</h2>
+        <p>Administra las categorías de residuos del sistema.</p>
+        <form className="form-grid" onSubmit={createWasteType}>
+          <label htmlFor="waste-name">Nombre<input id="waste-name" required value={wasteTypeForm.name} onChange={event => setWasteTypeForm(prev => ({ ...prev, name: event.currentTarget.value }))} /></label>
+          <label htmlFor="waste-category">Categoría<select id="waste-category" value={wasteTypeForm.category} onChange={event => setWasteTypeForm(prev => ({ ...prev, category: event.currentTarget.value }))}>
+            <option>Orgánico</option>
+            <option>Reciclable</option>
+            <option>No reciclable</option>
+            <option>Mixto</option>
+          </select></label>
+          <label htmlFor="waste-color">Color<select id="waste-color" value={wasteTypeForm.color} onChange={event => setWasteTypeForm(prev => ({ ...prev, color: event.currentTarget.value }))}>
+            <option value="green">Verde</option>
+            <option value="blue">Azul</option>
+            <option value="red">Rojo</option>
+            <option value="yellow">Amarillo</option>
+          </select></label>
+          <label htmlFor="waste-desc" className="wide">Descripción<textarea id="waste-desc" value={wasteTypeForm.description} onChange={event => setWasteTypeForm(prev => ({ ...prev, description: event.currentTarget.value }))} /></label>
+          <button type="submit" disabled={creating}>{creating ? "Creando..." : "Crear tipo de residuo"}</button>
+        </form>
+        <ul className="list" aria-label="Lista de tipos de residuo">
+          {wasteTypes.length === 0 ? (
+            <li className="empty-state">No hay tipos de residuo registrados.</li>
+          ) : wasteTypes.map(wt => (
+            <li key={wt.id} className="admin-list-item">
+              <div className="admin-list-main">
+                <strong>{wt.name}</strong>
+                <div className="admin-list-meta">{wt.category} · {wt.color}</div>
+              </div>
+              <div className="admin-list-actions">
+                <span className={`tag ${wt.color}`}>{wt.category}</span>
+                <button type="button" onClick={() => deleteWasteType(wt.id)} className="danger">Eliminar</button>
+              </div>
+            </li>
+          ))}
+        </ul>
       </section>
     </div>
   );

@@ -1,5 +1,26 @@
 # Changelog
 
+## 2026-08-07
+
+### Version 6.3 - Operaciones masivas extendidas y modulo transversal de residuos
+
+- **Backend - Bulk operations extendidas**: el endpoint `POST /api/admin/bulk-action` ahora soporta `update_status`, `assign_user`, `assign_truck`, `assign_zone` y `export` para 9 entidades.
+- **Backend - Modulo de residuos CRUD**: endpoints `GET/POST/PATCH/DELETE /api/waste-types` y `GET /api/waste-stats` con modelos Pydantic. Mutaciones restringidas a `admin`.
+- **Backend - Store en memoria**: `waste_types_store` con 4 tipos iniciales.
+- **Frontend - WasteSection componente**: panel reutilizable con metricas de contenedores, proximas recolecciones y guia de disposicion.
+- **Frontend - Integracion transversal**: WasteSection en los 7 dashboards.
+- **Frontend - Admin waste CRUD**: formulario de creacion y lista de tipos de residuo en `Admin.tsx`.
+- **Verificacion**: `pytest` 38/38, `vitest` 38/38.
+
+### Archivos modificados
+- `backend-python/app/main.py` — Bulk actions extendidas, CRUD waste-types, waste-stats, modelos Pydantic
+- `frontend/src/main.tsx` — Integracion WasteSection en dashboards, metricas de residuo
+- `frontend/src/components/Admin.tsx` — Seccion CRUD tipos de residuo
+- `frontend/src/components/WasteSection.tsx` — Componente reutilizable
+- `frontend/src/types.ts` — WasteType, WasteStats, WasteCategory
+- `frontend/src/api.ts` — Cliente API waste
+- `frontend/src/styles.css` — Estilos waste-section
+
 ## 2026-08-05
 
 ### Version 6.0 - Mejoras en registro y panel administrativo

@@ -789,6 +789,18 @@ textarea { min-height: 100px; resize: vertical; font-family: inherit; }
   gap: 8px;
 }
 
+.waste-section .metrics-grid {
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+}
+.waste-section .list .item {
+  padding: 10px 12px;
+}
+.waste-section h3 {
+  font-size: 0.95rem;
+  margin: 0 0 8px;
+  color: var(--ink);
+}
+
 /* Search & filter */
 .search-box {
   position: relative;

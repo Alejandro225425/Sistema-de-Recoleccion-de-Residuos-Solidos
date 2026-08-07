@@ -13,7 +13,8 @@ import "./styles.css";
 import Admin from "./components/Admin";
 import { AuthView } from "./components/AuthView";
 import Item, { Metric } from "./components/Item";
-import { request, proximityCheck } from "./api";
+import WasteSection from "./components/WasteSection";
+import { request, proximityCheck, getWasteStats } from "./api";
 import { shouldAutoLoginAsAdmin } from "./demoAuth";
 import {
   Bootstrap,
@@ -32,6 +33,7 @@ import {
   View,
   Zone,
   Role,
+  WasteStats,
 } from "./types";
 
 const apiBase = import.meta.env.VITE_API_URL ?? "/api";
@@ -607,6 +609,17 @@ export function Dashboard({ data, monitor, session, onConfirmCollection, health,
     return (Array.isArray(data.reports) ? data.reports : []).filter(r => String(r.zone ?? "").toLowerCase() === zoneLower);
   }, [isConductor, data.reports, session.zone]);
 
+  const wasteBreakdown = useMemo(() => {
+    const breakdown: Record<string, number> = {};
+    const schedules = Array.isArray(data.schedules) ? data.schedules : [];
+    schedules.forEach(s => {
+      extractWasteTypes(s.waste).forEach(t => {
+        breakdown[t] = (breakdown[t] ?? 0) + 1;
+      });
+    });
+    return breakdown;
+  }, [data.schedules]);
+
   const metrics = [
     ...(isCitizen
       ? [
@@ -621,6 +634,7 @@ export function Dashboard({ data, monitor, session, onConfirmCollection, health,
           [effectiveData.analytics.active_trucks, "Camiones en Ruta", "🚛"],
           [effectiveData.analytics.open_reports, "Alertas Pendientes", "🚨"],
           [`${effectiveData.analytics.confirmed_collections}/${effectiveData.collections.length}`, "Recolecciones", "✅"],
+          [Object.keys(wasteBreakdown).length, "Tipos de residuo", "♻️"],
           ...(monitor.performance ? [
             [monitor.performance.delayed_routes, "Rutas con retraso", "⏱️"],
             [`${monitor.performance.average_progress}%`, "Progreso medio", "📈"],
@@ -635,6 +649,7 @@ export function Dashboard({ data, monitor, session, onConfirmCollection, health,
           [myZoneCollections.filter(c => String(c.status ?? "").toLowerCase().includes("confirmada")).length, "Confirmadas", "✅"],
           [myZoneReports.length, "Incidencias en mi zona", "🚨"],
           [myZoneReports.filter(r => !String(r.status ?? "").toLowerCase().includes("resuelto")).length, "Incidencias abiertas", "🟡"],
+          [Object.keys(wasteBreakdown).length, "Tipos de residuo", "♻️"],
           ...(myTruck ? [
             [myZoneCollections.reduce((sum, c) => sum + (Number(c.kg) || 0), 0), "Kg recolectados hoy", "⚖️"],
             [`${myTruck.code} - ${myTruck.status}`, "Mi camión", "🚛"],
@@ -650,6 +665,7 @@ export function Dashboard({ data, monitor, session, onConfirmCollection, health,
           [effectiveData.analytics.active_trucks, "Camiones en Ruta", "🚛"],
           [effectiveData.analytics.open_reports, "Alertas Pendientes", "🚨"],
           [`${effectiveData.analytics.confirmed_collections}/${effectiveData.collections.length}`, "Recolecciones", "✅"],
+          [Object.keys(wasteBreakdown).length, "Tipos de residuo", "♻️"],
           ...(monitor.performance ? [
             [monitor.performance.delayed_routes, "Rutas con retraso", "⏱️"],
             [`${monitor.performance.average_progress}%`, "Progreso medio", "📈"],
@@ -1169,9 +1185,11 @@ export function Dashboard({ data, monitor, session, onConfirmCollection, health,
                  No hay alertas activas en este momento.
                </p>
              )}
-           </div>
-         </section>
-       )}
+            </div>
+          </section>
+        )}
+
+        <WasteSection data={data} monitor={monitor} session={session} compact onNavigateToWaste={() => setView("waste")} />
       </div>
     </>
   );
@@ -1234,6 +1252,18 @@ function Schedules({ schedules, citizenZone }: { schedules: Schedule[]; citizenZ
     const zone = String(citizenZone).toLowerCase();
     return schedules.filter(s => String(s.zone ?? "").toLowerCase() === zone);
   }, [schedules, citizenZone]);
+
+  const wasteStats = useMemo(() => {
+    const stats: Record<string, { count: number; zones: string[] }> = {};
+    schedules.forEach(s => {
+      extractWasteTypes(s.waste).forEach(t => {
+        if (!stats[t]) stats[t] = { count: 0, zones: [] };
+        stats[t].count++;
+        if (!stats[t].zones.includes(s.zone)) stats[t].zones.push(s.zone);
+      });
+    });
+    return stats;
+  }, [schedules]);
 
   function handleSort(field: "zone" | "day" | "time" | "waste") {
     if (sortBy === field) {
@@ -1401,6 +1431,17 @@ setSubmitting(true);
   const safeZones = useMemo(() => (Array.isArray(data.zones) ? data.zones : []), [data.zones]);
   const safeTrucks = useMemo(() => (Array.isArray(data.trucks) ? data.trucks : []), [data.trucks]);
 
+  const wasteBreakdown = useMemo(() => {
+    const breakdown: Record<string, number> = {};
+    const schedules = Array.isArray(data.schedules) ? data.schedules : [];
+    schedules.forEach(s => {
+      extractWasteTypes(s.waste).forEach(t => {
+        breakdown[t] = (breakdown[t] ?? 0) + 1;
+      });
+    });
+    return breakdown;
+  }, [data.schedules]);
+
   const filteredReports = useMemo(() => {
     const roleFilteredReports = isCitizen
       ? safeReports.filter(report => String(report.citizen ?? "").toLowerCase() === String(session.name ?? "").toLowerCase())
@@ -1492,7 +1533,7 @@ setSubmitting(true);
             <button key={status} type="button" className={`filter-btn ${filterStatus === status ? "active" : ""}`} onClick={() => setFilterStatus(status)} aria-pressed={filterStatus === status}>{status}</button>
           ))}
         </div>
-<ReportList reports={filteredReports} trucks={safeTrucks} showDriverFilter={!isCitizen} showResolve={canResolve} onResolveReport={onResolveReport} onViewDetail={setSelectedReport} />
+        <ReportList reports={filteredReports} trucks={safeTrucks} showDriverFilter={!isCitizen} showResolve={canResolve} onResolveReport={onResolveReport} onViewDetail={setSelectedReport} />
        </section>
 
        {showDetail && selectedReport && (
@@ -1515,9 +1556,9 @@ setSubmitting(true);
            </div>
          </div>
        )}
-     </div>
-   );
- }
+      </div>
+    );
+  }
 
 export function Waste({ data, monitor, session, onCreateReport }: { data: Bootstrap; monitor: Monitor; session?: Session | null; onCreateReport?: (report: Omit<Report, "id" | "status">) => Promise<void>; }) {
   const safeData = data ?? emptyBootstrap;
@@ -1644,11 +1685,16 @@ export function Waste({ data, monitor, session, onCreateReport }: { data: Bootst
         <section className="panel">
           <div className="panel-header">
             <h2>Guia de clasificacion por zona</h2>
-          {canReportProblem && (
-            <button type="button" className="export-btn" onClick={() => setReportingProblem(true)}>
-              Reportar problema de clasificacion
-            </button>
-          )}
+            {canReportProblem && (
+              <button type="button" className="export-btn" onClick={() => setReportingProblem(true)}>
+                Reportar problema de clasificacion
+              </button>
+            )}
+            {session?.role === "admin" && (
+              <button type="button" className="export-btn" onClick={() => setView("admin")}>
+                Administrar tipos de residuo
+              </button>
+            )}
           </div>
 
           {reportingProblem && (
@@ -1927,9 +1973,11 @@ useEffect(() => {
           </form>
         </section>
        )}
-     </>
-  );
-}
+
+       <WasteSection data={data} monitor={monitor} session={session} compact onNavigateToWaste={() => setView("waste")} />
+      </>
+    );
+  }
 
 export function Operations({ data, monitor, onOperationUpdate }: { data: Bootstrap; monitor: Monitor; onOperationUpdate: (payload: OperationUpdatePayload) => Promise<void>; }) {
   const effectiveData = { ...data, ...monitor } as Bootstrap;
@@ -2295,22 +2343,44 @@ function Analytics({ data, session, onConfirmCollection }: { data: Bootstrap; se
         </div>
 </section>
 
-       {Object.keys(wasteBreakdown).length > 0 && (
-         <section className="panel" style={{ marginBottom: "24px" }}>
-           <h2>Distribución por tipo de residuo</h2>
-           <ResponsiveContainer width="100%" height={300}>
-             <BarChart data={Object.entries(wasteBreakdown).map(([name, value]) => ({ name, value }))}>
-               <CartesianGrid strokeDasharray="3 3" />
-               <XAxis dataKey="name" />
-               <YAxis />
-               <Tooltip />
-               <Bar dataKey="value" fill="#0f8b8d" />
-             </BarChart>
-           </ResponsiveContainer>
-         </section>
-       )}
+        {Object.keys(wasteBreakdown).length > 0 && (
+          <section className="panel" style={{ marginBottom: "24px" }}>
+            <h2>Distribución por tipo de residuo</h2>
+            <ResponsiveContainer width="100%" height={300}>
+              <BarChart data={Object.entries(wasteBreakdown).map(([name, value]) => ({ name, value }))}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="name" />
+                <YAxis />
+                <Tooltip />
+                <Bar dataKey="value" fill="#0f8b8d" />
+              </BarChart>
+            </ResponsiveContainer>
+          </section>
+        )}
 
-       {filteredCollections.length > 0 && (
+        <section className="panel" style={{ marginBottom: "24px" }}>
+          <h2>Métricas de residuos</h2>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: "12px" }}>
+            <div style={{ padding: "12px", border: "1px solid var(--line)", borderRadius: "8px", textAlign: "center" }}>
+              <strong style={{ fontSize: "1.5rem", color: "var(--eco-primary)" }}>{Object.keys(wasteBreakdown).length}</strong>
+              <span style={{ display: "block", fontSize: "0.82rem", color: "var(--muted)", marginTop: "4px" }}>Tipos registrados</span>
+            </div>
+            <div style={{ padding: "12px", border: "1px solid var(--line)", borderRadius: "8px", textAlign: "center" }}>
+              <strong style={{ fontSize: "1.5rem", color: "var(--eco-primary)" }}>{(data.containers ?? []).length}</strong>
+              <span style={{ display: "block", fontSize: "0.82rem", color: "var(--muted)", marginTop: "4px" }}>Contenedores</span>
+            </div>
+            <div style={{ padding: "12px", border: "1px solid var(--line)", borderRadius: "8px", textAlign: "center" }}>
+              <strong style={{ fontSize: "1.5rem", color: "var(--eco-primary)" }}>{(data.containers ?? []).filter((c: any) => c.status === "Lleno").length}</strong>
+              <span style={{ display: "block", fontSize: "0.82rem", color: "var(--muted)", marginTop: "4px" }}>Contenedores llenos</span>
+            </div>
+            <div style={{ padding: "12px", border: "1px solid var(--line)", borderRadius: "8px", textAlign: "center" }}>
+              <strong style={{ fontSize: "1.5rem", color: "var(--eco-primary)" }}>{(() => { const total = (data.containers ?? []).length; const avg = total > 0 ? Math.round((data.containers ?? []).reduce((sum: number, c: any) => sum + (Number(c.fill_level) || 0), 0) / total) : 0; return `${avg}%`; })()}</strong>
+              <span style={{ display: "block", fontSize: "0.82rem", color: "var(--muted)", marginTop: "4px" }}>Llenado promedio</span>
+            </div>
+          </div>
+        </section>
+
+        {filteredCollections.length > 0 && (
          <section className="panel" style={{ marginBottom: "24px" }}>
            <h2>Recolecciones por día</h2>
            <ResponsiveContainer width="100%" height={300}>

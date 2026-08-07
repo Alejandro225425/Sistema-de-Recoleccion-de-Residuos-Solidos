@@ -174,6 +174,33 @@ class CollectionCreate(BaseModel):
     status: str = Field(default="Confirmada", min_length=2, max_length=60)
 
 
+class WasteStats(BaseModel):
+    total_schedules: int
+    waste_types: dict[str, int]
+    zones_count: int
+    containers_total: int
+    containers_full: int
+    containers_avg_fill: float
+
+
+class WasteTypeCreate(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True)
+
+    name: str = Field(min_length=2, max_length=120)
+    category: str = Field(min_length=2, max_length=40)
+    color: str = Field(default="green", min_length=3, max_length=20)
+    description: str = Field(default="", max_length=600)
+
+
+class WasteTypeUpdate(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True)
+
+    name: str | None = Field(default=None, min_length=2, max_length=120)
+    category: str | None = Field(default=None, min_length=2, max_length=40)
+    color: str | None = Field(default=None, min_length=3, max_length=20)
+    description: str | None = Field(default=None, max_length=600)
+
+
 class ProximityCheckRequest(BaseModel):
     latitude: float
     longitude: float
