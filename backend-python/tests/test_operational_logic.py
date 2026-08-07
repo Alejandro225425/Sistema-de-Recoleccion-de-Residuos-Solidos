@@ -332,3 +332,127 @@ def test_bulk_action_requires_admin_role():
 
     response = client.post("/api/admin/bulk-action", json={"resource": "zones", "action": "delete", "ids": [1]}, headers=headers)
     assert response.status_code == 403
+
+
+def test_bulk_update_status_users():
+    client = TestClient(app)
+    login = client.post("/api/auth/login", json={"email": "admin@ecocusco.pe", "password": "admin123"})
+    token = login.json()["token"]
+    headers = {"Authorization": f"Bearer {token}"}
+    response = client.post("/api/admin/bulk-action", json={"resource": "users", "action": "update_status", "ids": [2, 4], "data": {"status": "inactivo"}}, headers=headers)
+    assert response.status_code == 200
+    assert response.json()["count"] == 2
+
+
+def test_bulk_assign_user_to_zones():
+    client = TestClient(app)
+    login = client.post("/api/auth/login", json={"email": "admin@ecocusco.pe", "password": "admin123"})
+    token = login.json()["token"]
+    headers = {"Authorization": f"Bearer {token}"}
+    response = client.post("/api/admin/bulk-action", json={"resource": "zones", "action": "assign_user", "ids": [1, 2], "data": {"user_id": 2}}, headers=headers)
+    assert response.status_code == 200
+    assert response.json()["count"] == 2
+
+
+def test_bulk_assign_truck_to_routes():
+    client = TestClient(app)
+    login = client.post("/api/auth/login", json={"email": "admin@ecocusco.pe", "password": "admin123"})
+    token = login.json()["token"]
+    headers = {"Authorization": f"Bearer {token}"}
+    response = client.post("/api/admin/bulk-action", json={"resource": "routes", "action": "assign_truck", "ids": [1, 2], "data": {"truck_id": 1}}, headers=headers)
+    assert response.status_code == 200
+    assert response.json()["count"] == 2
+
+
+def test_bulk_assign_zone_to_trucks():
+    client = TestClient(app)
+    login = client.post("/api/auth/login", json={"email": "admin@ecocusco.pe", "password": "admin123"})
+    token = login.json()["token"]
+    headers = {"Authorization": f"Bearer {token}"}
+    response = client.post("/api/admin/bulk-action", json={"resource": "trucks", "action": "assign_zone", "ids": [1, 2], "data": {"zone_id": 1}}, headers=headers)
+    assert response.status_code == 200
+    assert response.json()["count"] == 2
+
+
+def test_bulk_export_users_csv():
+    client = TestClient(app)
+    login = client.post("/api/auth/login", json={"email": "admin@ecocusco.pe", "password": "admin123"})
+    token = login.json()["token"]
+    headers = {"Authorization": f"Bearer {token}"}
+    response = client.post("/api/admin/bulk-action", json={"resource": "users", "action": "export", "ids": [1]}, headers=headers)
+    assert response.status_code == 200
+    assert "text/csv" in response.headers["content-type"]
+
+
+def test_bulk_action_invalid_action():
+    client = TestClient(app)
+    login = client.post("/api/auth/login", json={"email": "admin@ecocusco.pe", "password": "admin123"})
+    token = login.json()["token"]
+    headers = {"Authorization": f"Bearer {token}"}
+    response = client.post("/api/admin/bulk-action", json={"resource": "zones", "action": "invalid", "ids": [1]}, headers=headers)
+    assert response.status_code == 400
+
+
+def test_bulk_action_missing_data():
+    client = TestClient(app)
+    login = client.post("/api/auth/login", json={"email": "admin@ecocusco.pe", "password": "admin123"})
+    token = login.json()["token"]
+    headers = {"Authorization": f"Bearer {token}"}
+    response = client.post("/api/admin/bulk-action", json={"resource": "zones", "action": "update_status", "ids": [1]}, headers=headers)
+    assert response.status_code == 400
+
+
+def test_bulk_change_role_users():
+    client = TestClient(app)
+    login = client.post("/api/auth/login", json={"email": "admin@ecocusco.pe", "password": "admin123"})
+    token = login.json()["token"]
+    headers = {"Authorization": f"Bearer {token}"}
+    response = client.post("/api/admin/bulk-action", json={"resource": "users", "action": "change_role", "ids": [5], "data": {"role": "conductor"}}, headers=headers)
+    assert response.status_code == 200
+    assert response.json()["role"] == "conductor"
+
+
+def test_new_crud_endpoints():
+    client = TestClient(app)
+    login = client.post("/api/auth/login", json={"email": "admin@ecocusco.pe", "password": "admin123"})
+    token = login.json()["token"]
+    headers = {"Authorization": f"Bearer {token}"}
+
+    route = client.post("/api/routes", json={"truck_id": 1, "zone_id": 1, "progress": 50, "eta": "10 min", "delay": "Sin retraso", "latitude": -13.5, "longitude": -71.9}, headers=headers)
+    assert route.status_code == 200
+
+    citizen_login = client.post("/api/auth/login", json={"email": "ciudadano@ecocusco.pe", "password": "Test12345!"})
+    citizen_token = citizen_login.json()["token"]
+    citizen_headers = {"Authorization": f"Bearer {citizen_token}"}
+    report = client.post("/api/reports", json={"citizen": "Ciudadano Demo", "zone": "Centro Historico", "type": "Prueba", "detail": "Detalle de prueba"}, headers=citizen_headers)
+    assert report.status_code == 200
+
+    container = client.post("/api/containers", json={"name": "Test Container", "zone_id": 1, "fill_level": 50, "status": "Operativo"}, headers=headers)
+    assert container.status_code == 200
+
+    collection = client.post("/api/collections", json={"truck_id": 1, "zone_id": 1, "kg": 100, "status": "Confirmada"}, headers=headers)
+    assert collection.status_code == 200
+
+    patch_route = client.patch(f"/api/routes/{route.json()['id']}", json={"progress": 80}, headers=headers)
+    assert patch_route.status_code == 200
+
+    patch_report = client.patch(f"/api/reports/{report.json()['id']}", json={"status": "Resuelto"}, headers=headers)
+    assert patch_report.status_code == 200
+
+    patch_container = client.patch(f"/api/containers/{container.json()['id']}", json={"fill_level": 90}, headers=headers)
+    assert patch_container.status_code == 200
+
+    patch_collection = client.patch(f"/api/collections/{collection.json()['id']}", json={"status": "Cancelada"}, headers=headers)
+    assert patch_collection.status_code == 200
+
+    delete_route = client.delete(f"/api/routes/{route.json()['id']}", headers=headers)
+    assert delete_route.status_code == 200
+
+    delete_report = client.delete(f"/api/reports/{report.json()['id']}", headers=headers)
+    assert delete_report.status_code == 200
+
+    delete_container = client.delete(f"/api/containers/{container.json()['id']}", headers=headers)
+    assert delete_container.status_code == 200
+
+    delete_collection = client.delete(f"/api/collections/{collection.json()['id']}", headers=headers)
+    assert delete_collection.status_code == 200

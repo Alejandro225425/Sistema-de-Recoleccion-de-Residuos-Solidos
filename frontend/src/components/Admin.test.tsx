@@ -192,7 +192,7 @@ render(
     await user.click(checkbox);
 
     expect(screen.getByText(/1 seleccionado/)).toBeInTheDocument();
-    expect(screen.getByText('Eliminar seleccionados')).toBeInTheDocument();
+    expect(screen.getByText('Aplicar')).toBeInTheDocument();
   });
 
   it('llama a la API de bulk-action al eliminar elementos seleccionados', async () => {
@@ -225,7 +225,7 @@ render(
 
     expect(screen.getByText(/2 seleccionado/)).toBeInTheDocument();
 
-    await user.click(screen.getByText('Eliminar seleccionados'));
+    await user.click(screen.getByText('Aplicar'));
 
     expect(confirmSpy).toHaveBeenCalledWith(expect.stringContaining('2'));
     expect(api.request).toHaveBeenCalledWith('/admin/bulk-action', expect.objectContaining({
@@ -259,7 +259,7 @@ render(
 
     confirmSpy.mockReturnValue(false);
 
-    await user.click(screen.getByText('Eliminar seleccionados'));
+    await user.click(screen.getByText('Aplicar'));
 
     expect(api.request).not.toHaveBeenCalled();
     expect(screen.getByText(/1 seleccionado/)).toBeInTheDocument();

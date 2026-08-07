@@ -16,7 +16,7 @@ except Exception:  # pragma: no cover - allows demo mode before installing DB de
 
 import bcrypt
 import jwt
-from fastapi import Depends, FastAPI, Header, HTTPException
+from fastapi import Depends, FastAPI, Header, HTTPException, Response
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 
@@ -101,6 +101,7 @@ class BulkActionRequest(BaseModel):
     resource: str = Field(min_length=1, max_length=40)
     action: str = Field(min_length=1, max_length=20)
     ids: list[int] = Field(default_factory=list)
+    data: dict | None = None
 
 
 class ZoneCreate(BaseModel):
@@ -172,6 +173,62 @@ class CollectionCreate(BaseModel):
     zone_id: int
     kg: int = Field(default=0, ge=0)
     status: str = Field(default="Confirmada", min_length=2, max_length=60)
+
+
+class RouteCreate(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True)
+
+    truck_id: int
+    zone_id: int
+    progress: int = Field(default=0, ge=0, le=100)
+    eta: str = Field(default="N/A", min_length=1, max_length=40)
+    delay: str = Field(default="Sin retraso", min_length=1, max_length=120)
+    latitude: float
+    longitude: float
+
+
+class RouteUpdate(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True)
+
+    progress: int | None = Field(default=None, ge=0, le=100)
+    eta: str | None = Field(default=None, min_length=1, max_length=40)
+    delay: str | None = Field(default=None, min_length=1, max_length=120)
+    status: str | None = Field(default=None, min_length=2, max_length=60)
+    truck_id: int | None = None
+    zone_id: int | None = None
+
+
+class ReportUpdate(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True)
+
+    status: str | None = Field(default=None, min_length=2, max_length=60)
+
+
+class ContainerCreate(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True)
+
+    name: str = Field(min_length=2, max_length=120)
+    zone_id: int
+    fill_level: int = Field(default=0, ge=0, le=100)
+    status: str = Field(default="Operativo", min_length=2, max_length=60)
+
+
+class ContainerUpdate(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True)
+
+    name: str | None = Field(default=None, min_length=2, max_length=120)
+    fill_level: int | None = Field(default=None, ge=0, le=100)
+    status: str | None = Field(default=None, min_length=2, max_length=60)
+    zone_id: int | None = None
+
+
+class CollectionUpdate(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True)
+
+    status: str | None = Field(default=None, min_length=2, max_length=60)
+    truck_id: int | None = None
+    zone_id: int | None = None
+    kg: int | None = Field(default=None, ge=0)
 
 
 class ProximityCheckRequest(BaseModel):
@@ -1170,6 +1227,251 @@ def delete_maintenance(maintenance_id: int) -> None:
         memory.maintenance = [item for item in memory.maintenance if item["id"] != maintenance_id]
 
 
+def build_route_payload(route: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "id": route.get("id"),
+        "truck": route.get("truck"),
+        "zone": route.get("zone"),
+        "progress": route.get("progress"),
+        "eta": route.get("eta"),
+        "delay": route.get("delay"),
+        "latitude": route.get("latitude"),
+        "longitude": route.get("longitude"),
+    }
+
+
+def create_route_record(payload: RouteCreate) -> dict[str, Any]:
+    truck_code = next((t.get("code") for t in memory.trucks if int(t.get("id", 0)) == int(payload.truck_id)), str(payload.truck_id))
+    zone_name = get_zone_name(payload.zone_id) or next((z.get("name") for z in memory.zones if int(z.get("id", 0)) == int(payload.zone_id)), str(payload.zone_id))
+    try:
+        row = execute_one(
+            "insert into routes (truck_id, zone_id, progress, eta, delay, latitude, longitude) values (%s, %s, %s, %s, %s, %s, %s) returning id, progress, eta, delay, latitude, longitude",
+            (payload.truck_id, payload.zone_id, payload.progress, payload.eta, payload.delay, payload.latitude, payload.longitude),
+        )
+        return build_route_payload({
+            "id": row.get("id"),
+            "truck": truck_code,
+            "zone": zone_name,
+            "progress": row.get("progress"),
+            "eta": row.get("eta"),
+            "delay": row.get("delay"),
+            "latitude": row.get("latitude"),
+            "longitude": row.get("longitude"),
+        })
+    except Exception:
+        new_id = max([r["id"] for r in memory.routes], default=0) + 1
+        route = {
+            "id": new_id,
+            "truck": truck_code,
+            "zone": zone_name,
+            "progress": payload.progress,
+            "eta": payload.eta,
+            "delay": payload.delay,
+            "latitude": payload.latitude,
+            "longitude": payload.longitude,
+        }
+        memory.routes.append(route)
+        return build_route_payload(route)
+
+
+def update_route(route_id: int, payload: RouteUpdate) -> dict[str, Any]:
+    try:
+        if payload.progress is not None:
+            execute_one("update routes set progress = %s where id = %s", (payload.progress, route_id))
+        if payload.eta is not None:
+            execute_one("update routes set eta = %s where id = %s", (payload.eta, route_id))
+        if payload.delay is not None:
+            execute_one("update routes set delay = %s where id = %s", (payload.delay, route_id))
+        if payload.status is not None:
+            execute_one("update routes set status = %s where id = %s", (payload.status, route_id))
+        if payload.truck_id is not None:
+            execute_one("update routes set truck_id = %s where id = %s", (payload.truck_id, route_id))
+        if payload.zone_id is not None:
+            execute_one("update routes set zone_id = %s where id = %s", (payload.zone_id, route_id))
+        row = execute_one("select id, progress, eta, delay, latitude, longitude from routes where id = %s", (route_id,))
+        truck = next((t.get("code") for t in memory.trucks if int(t.get("id", 0)) == int(row.get("truck_id", payload.truck_id or 0))), str(row.get("truck_id")))
+        zone = get_zone_name(row.get("zone_id")) or next((z.get("name") for z in memory.zones if int(z.get("id", 0)) == int(row.get("zone_id", payload.zone_id or 0))), str(row.get("zone_id")))
+        return build_route_payload({**row, "truck": truck, "zone": zone})
+    except Exception:
+        for route in memory.routes:
+            if route["id"] == route_id:
+                if payload.progress is not None:
+                    route["progress"] = payload.progress
+                if payload.eta is not None:
+                    route["eta"] = payload.eta
+                if payload.delay is not None:
+                    route["delay"] = payload.delay
+                if payload.status is not None:
+                    route["status"] = payload.status
+                if payload.truck_id is not None:
+                    route["truck"] = next((t.get("code") for t in memory.trucks if int(t.get("id", 0)) == int(payload.truck_id)), str(payload.truck_id))
+                if payload.zone_id is not None:
+                    route["zone"] = get_zone_name(payload.zone_id) or next((z.get("name") for z in memory.zones if int(z.get("id", 0)) == int(payload.zone_id)), str(payload.zone_id))
+                return build_route_payload(route)
+        raise HTTPException(status_code=404, detail="Ruta no encontrada")
+
+
+def delete_route(route_id: int) -> None:
+    try:
+        execute_one("delete from routes where id = %s", (route_id,))
+    except Exception:
+        memory.routes = [route for route in memory.routes if route["id"] != route_id]
+
+
+def build_report_payload(report: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "id": report.get("id"),
+        "citizen": report.get("citizen"),
+        "zone": report.get("zone"),
+        "type": report.get("type"),
+        "detail": report.get("detail"),
+        "status": report.get("status"),
+    }
+
+
+def update_report(report_id: int, payload: ReportUpdate) -> dict[str, Any]:
+    try:
+        if payload.status is not None:
+            execute_one("update reports set status = %s where id = %s", (payload.status, report_id))
+        row = execute_one("select id, citizen, zone, type, detail, status from reports where id = %s", (report_id,))
+        return build_report_payload(row)
+    except Exception:
+        for report in memory.reports:
+            if report["id"] == report_id:
+                if payload.status is not None:
+                    report["status"] = payload.status
+                return build_report_payload(report)
+        raise HTTPException(status_code=404, detail="Reporte no encontrado")
+
+
+def delete_report(report_id: int) -> None:
+    try:
+        execute_one("delete from reports where id = %s", (report_id,))
+    except Exception:
+        memory.reports = [report for report in memory.reports if report["id"] != report_id]
+
+
+def build_container_payload(container: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "id": container.get("id"),
+        "zone_id": container.get("zone_id"),
+        "name": container.get("name"),
+        "fill_level": container.get("fill_level"),
+        "status": container.get("status"),
+        "updated_at": container.get("updated_at"),
+    }
+
+
+def create_container_record(payload: ContainerCreate) -> dict[str, Any]:
+    zone_name = get_zone_name(payload.zone_id) or next((z.get("name") for z in memory.zones if int(z.get("id", 0)) == int(payload.zone_id)), str(payload.zone_id))
+    try:
+        row = execute_one(
+            "insert into containers (zone_id, name, fill_level, status, updated_at) values (%s, %s, %s, %s, %s) returning id, zone_id, name, fill_level, status, updated_at",
+            (payload.zone_id, payload.name, payload.fill_level, payload.status, datetime.now(timezone.utc)),
+        )
+        return build_container_payload({**row, "zone_name": zone_name})
+    except Exception:
+        new_id = max([c["id"] for c in memory.containers], default=0) + 1
+        container = {
+            "id": new_id,
+            "zone_id": payload.zone_id,
+            "name": payload.name,
+            "fill_level": payload.fill_level,
+            "status": payload.status,
+            "updated_at": datetime.now(timezone.utc).isoformat(),
+        }
+        memory.containers.append(container)
+        return build_container_payload(container)
+
+
+def update_container(container_id: int, payload: ContainerUpdate) -> dict[str, Any]:
+    try:
+        if payload.name is not None:
+            execute_one("update containers set name = %s where id = %s", (payload.name, container_id))
+        if payload.fill_level is not None:
+            execute_one("update containers set fill_level = %s where id = %s", (payload.fill_level, container_id))
+        if payload.status is not None:
+            execute_one("update containers set status = %s where id = %s", (payload.status, container_id))
+        if payload.zone_id is not None:
+            execute_one("update containers set zone_id = %s where id = %s", (payload.zone_id, container_id))
+        execute_one("update containers set updated_at = %s where id = %s", (datetime.now(timezone.utc), container_id))
+        row = execute_one("select id, zone_id, name, fill_level, status, updated_at from containers where id = %s", (container_id,))
+        return build_container_payload(row)
+    except Exception:
+        for container in memory.containers:
+            if container["id"] == container_id:
+                if payload.name is not None:
+                    container["name"] = payload.name
+                if payload.fill_level is not None:
+                    container["fill_level"] = payload.fill_level
+                if payload.status is not None:
+                    container["status"] = payload.status
+                if payload.zone_id is not None:
+                    container["zone_id"] = payload.zone_id
+                container["updated_at"] = datetime.now(timezone.utc).isoformat()
+                return build_container_payload(container)
+        raise HTTPException(status_code=404, detail="Contenedor no encontrado")
+
+
+def delete_container(container_id: int) -> None:
+    try:
+        execute_one("delete from containers where id = %s", (container_id,))
+    except Exception:
+        memory.containers = [container for container in memory.containers if container["id"] != container_id]
+
+
+def build_collection_payload(collection: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "id": collection.get("id"),
+        "zone": collection.get("zone"),
+        "truck": collection.get("truck"),
+        "kg": collection.get("kg"),
+        "status": collection.get("status"),
+        "date": collection.get("date"),
+    }
+
+
+def update_collection(collection_id: int, payload: CollectionUpdate) -> dict[str, Any]:
+    try:
+        if payload.status is not None:
+            execute_one("update collections set status = %s where id = %s", (payload.status, collection_id))
+        if payload.truck_id is not None:
+            execute_one("update collections set truck_id = %s where id = %s", (payload.truck_id, collection_id))
+        if payload.zone_id is not None:
+            execute_one("update collections set zone_id = %s where id = %s", (payload.zone_id, collection_id))
+        if payload.kg is not None:
+            execute_one("update collections set kg = %s where id = %s", (payload.kg, collection_id))
+        row = execute_one("select id, kg, status, date, truck_id, zone_id from collections where id = %s", (collection_id,))
+        return {
+            "id": row.get("id"),
+            "zone": get_zone_name(row.get("zone_id")),
+            "truck": next((t.get("code") for t in bootstrap().get("trucks", []) if int(t.get("id", 0)) == int(row.get("truck_id", 0))), str(row.get("truck_id"))),
+            "kg": row.get("kg"),
+            "status": row.get("status"),
+            "date": row.get("date"),
+        }
+    except Exception:
+        for collection in memory.collections:
+            if collection["id"] == collection_id:
+                if payload.status is not None:
+                    collection["status"] = payload.status
+                if payload.truck_id is not None:
+                    collection["truck"] = next((t.get("code") for t in memory.trucks if int(t.get("id", 0)) == int(payload.truck_id)), str(payload.truck_id))
+                if payload.zone_id is not None:
+                    collection["zone"] = get_zone_name(payload.zone_id) or next((z.get("name") for z in memory.zones if int(z.get("id", 0)) == int(payload.zone_id)), str(payload.zone_id))
+                if payload.kg is not None:
+                    collection["kg"] = payload.kg
+                return build_collection_payload(collection)
+        raise HTTPException(status_code=404, detail="Recolección no encontrada")
+
+
+def delete_collection(collection_id: int) -> None:
+    try:
+        execute_one("delete from collections where id = %s", (collection_id,))
+    except Exception:
+        memory.collections = [collection for collection in memory.collections if collection["id"] != collection_id]
+
+
 def bulk_delete(resource: str, ids: list[int]) -> dict[str, Any]:
     """Eliminar múltiples registros de un recurso en una sola operación."""
     deleted = []
@@ -1179,6 +1481,10 @@ def bulk_delete(resource: str, ids: list[int]) -> dict[str, Any]:
         "schedules": "schedules",
         "trucks": "trucks",
         "maintenance": "maintenance_records",
+        "routes": "routes",
+        "reports": "reports",
+        "containers": "containers",
+        "collections": "collections",
     }
     memory_attr_map: dict[str, str] = {
         "users": "users",
@@ -1186,6 +1492,10 @@ def bulk_delete(resource: str, ids: list[int]) -> dict[str, Any]:
         "schedules": "schedules",
         "trucks": "trucks",
         "maintenance": "maintenance",
+        "routes": "routes",
+        "reports": "reports",
+        "containers": "containers",
+        "collections": "collections",
     }
     table = table_map.get(resource)
     attr = memory_attr_map.get(resource)
@@ -1207,6 +1517,181 @@ def bulk_delete(resource: str, ids: list[int]) -> dict[str, Any]:
         deleted = safe_ids
 
     return {"deleted": deleted, "count": len(deleted), "resource": resource}
+
+
+def bulk_update_status(resource: str, ids: list[int], status: str) -> dict[str, Any]:
+    safe_ids = [int(i) for i in ids if i is not None]
+    if not safe_ids:
+        raise HTTPException(status_code=400, detail="Debe proporcionar al menos un ID.")
+    status_field = "status"
+    table_map: dict[str, str] = {
+        "users": "users",
+        "zones": "zones",
+        "schedules": "schedules",
+        "trucks": "trucks",
+        "maintenance": "maintenance_records",
+        "routes": "routes",
+        "reports": "reports",
+        "containers": "containers",
+        "collections": "collections",
+    }
+    memory_attr_map: dict[str, str] = {
+        "users": "users",
+        "zones": "zones",
+        "schedules": "schedules",
+        "trucks": "trucks",
+        "maintenance": "maintenance",
+        "routes": "routes",
+        "reports": "reports",
+        "containers": "containers",
+        "collections": "collections",
+    }
+    table = table_map.get(resource)
+    attr = memory_attr_map.get(resource)
+    if table is None or attr is None:
+        raise HTTPException(status_code=400, detail=f"Recurso no soportado: {resource}")
+    try:
+        execute_one(f"update {table} set {status_field} = %s where id = any(%s)", (status, tuple(safe_ids)))
+    except Exception:
+        current = getattr(memory, attr, [])
+        for item in current:
+            if int(item.get("id", 0)) in safe_ids:
+                item[status_field] = status
+    return {"updated": safe_ids, "count": len(safe_ids), "resource": resource, "status": status}
+
+
+def bulk_assign_user(resource: str, ids: list[int], user_id: int) -> dict[str, Any]:
+    safe_ids = [int(i) for i in ids if i is not None]
+    if not safe_ids:
+        raise HTTPException(status_code=400, detail="Debe proporcionar al menos un ID.")
+    user = None
+    for u in memory.users:
+        if u["id"] == user_id:
+            user = build_user_payload(u)
+            break
+    if user is None:
+        try:
+            row = execute_one("select id, name, email, role, zone, created_at from users where id = %s", (user_id,))
+            if row is None:
+                raise HTTPException(status_code=404, detail="Usuario no encontrado")
+            user = build_user_payload(row)
+        except HTTPException:
+            raise
+        except Exception:
+            raise HTTPException(status_code=404, detail="Usuario no encontrado")
+    if resource != "zones":
+        raise HTTPException(status_code=400, detail=f"Asignación de usuario no soportada para {resource}")
+    try:
+        execute_one("update zones set user_id = %s where id = any(%s)", (user_id, tuple(safe_ids)))
+    except Exception:
+        for zone in memory.zones:
+            if zone["id"] in safe_ids:
+                zone["user_id"] = user_id
+    return {"updated": safe_ids, "count": len(safe_ids), "resource": resource, "user_id": user_id}
+
+
+def bulk_assign_truck(resource: str, ids: list[int], truck_id: int) -> dict[str, Any]:
+    safe_ids = [int(i) for i in ids if i is not None]
+    if not safe_ids:
+        raise HTTPException(status_code=400, detail="Debe proporcionar al menos un ID.")
+    truck = next((t for t in memory.trucks if t["id"] == truck_id), None)
+    if truck is None:
+        try:
+            truck_row = execute_one("select id, code from trucks where id = %s", (truck_id,))
+            if truck_row is None:
+                raise HTTPException(status_code=404, detail="Camión no encontrado")
+        except HTTPException:
+            raise
+        except Exception:
+            raise HTTPException(status_code=404, detail="Camión no encontrado")
+    if resource not in ("routes", "collections"):
+        raise HTTPException(status_code=400, detail=f"Asignación de camión no soportada para {resource}")
+    table = "routes" if resource == "routes" else "collections"
+    try:
+        execute_one(f"update {table} set truck_id = %s where id = any(%s)", (truck_id, tuple(safe_ids)))
+    except Exception:
+        current = getattr(memory, resource, [])
+        for item in current:
+            if item["id"] in safe_ids:
+                item["truck_id"] = truck_id
+                if resource == "routes":
+                    item["truck"] = truck.get("code", str(truck_id))
+    return {"updated": safe_ids, "count": len(safe_ids), "resource": resource, "truck_id": truck_id}
+
+
+def bulk_assign_zone(resource: str, ids: list[int], zone_id: int) -> dict[str, Any]:
+    safe_ids = [int(i) for i in ids if i is not None]
+    if not safe_ids:
+        raise HTTPException(status_code=400, detail="Debe proporcionar al menos un ID.")
+    zone = get_zone_name(zone_id)
+    if zone is None:
+        for z in memory.zones:
+            if z["id"] == zone_id:
+                zone = z["name"]
+                break
+    if zone is None:
+        raise HTTPException(status_code=404, detail="Zona no encontrada")
+    if resource not in ("trucks", "routes", "containers", "collections"):
+        raise HTTPException(status_code=400, detail=f"Asignación de zona no soportada para {resource}")
+    try:
+        if resource == "trucks":
+            execute_one("update trucks set zone_id = %s where id = any(%s)", (zone_id, tuple(safe_ids)))
+        elif resource == "routes":
+            execute_one("update routes set zone_id = %s where id = any(%s)", (zone_id, tuple(safe_ids)))
+        elif resource == "containers":
+            execute_one("update containers set zone_id = %s where id = any(%s)", (zone_id, tuple(safe_ids)))
+        elif resource == "collections":
+            execute_one("update collections set zone_id = %s where id = any(%s)", (zone_id, tuple(safe_ids)))
+    except Exception:
+        current = getattr(memory, resource, [])
+        for item in current:
+            if item["id"] in safe_ids:
+                if resource == "trucks":
+                    item["zone_id"] = zone_id
+                    item["zone"] = zone
+                elif resource == "routes":
+                    item["zone_id"] = zone_id
+                    item["zone"] = zone
+                elif resource == "containers":
+                    item["zone_id"] = zone_id
+                elif resource == "collections":
+                    item["zone_id"] = zone_id
+                    item["zone"] = zone
+    return {"updated": safe_ids, "count": len(safe_ids), "resource": resource, "zone_id": zone_id}
+
+
+def bulk_export(resource: str, ids: list[int]) -> Response:
+    import csv
+    import io
+
+    table_map: dict[str, str] = {
+        "users": "users",
+        "zones": "zones",
+        "schedules": "schedules",
+        "trucks": "trucks",
+        "maintenance": "maintenance_records",
+        "routes": "routes",
+        "reports": "reports",
+        "containers": "containers",
+        "collections": "collections",
+    }
+    table = table_map.get(resource)
+    if table is None:
+        raise HTTPException(status_code=400, detail=f"Recurso no soportado para exportación: {resource}")
+    try:
+        rows = fetch_all(f"select * from {table} order by id")
+    except Exception:
+        rows = list(getattr(memory, {"maintenance": "maintenance"}.get(resource, resource), []))
+    if ids:
+        rows = [r for r in rows if r.get("id") in ids]
+    output = io.StringIO()
+    if rows:
+        writer = csv.DictWriter(output, fieldnames=list(rows[0].keys()))
+        writer.writeheader()
+        writer.writerows(rows)
+    content = output.getvalue()
+    filename = f"{resource}_{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')}.csv"
+    return Response(content=content, media_type="text/csv", headers={"Content-Disposition": f"attachment; filename={filename}"})
 
 
 def create_collection_record(payload: CollectionCreate, created_by: dict[str, Any] | None = None) -> dict[str, Any]:
@@ -1613,15 +2098,141 @@ def remove_maintenance(maintenance_id: int) -> dict[str, Any]:
     return {"ok": "true", "message": "Registro de mantenimiento eliminado"}
 
 
-@app.post("/api/admin/bulk-action", dependencies=[Depends(require_role({"admin"}))])
-def bulk_action(payload: BulkActionRequest) -> dict[str, Any]:
-    """Operación masiva: permite eliminar múltiples registros de un recurso en una sola petición."""
-    if payload.action != "delete":
-        raise HTTPException(status_code=400, detail=f"Acción no soportada: {payload.action}. Use 'delete'.")
+@app.get("/api/routes")
+def get_routes() -> list[dict[str, Any]]:
+    return bootstrap()["routes"]
+
+
+@app.post("/api/routes", dependencies=[Depends(require_role({"admin"}))])
+def create_route(payload: RouteCreate) -> dict[str, Any]:
+    return create_route_record(payload)
+
+
+@app.patch("/api/routes/{route_id}", dependencies=[Depends(require_role({"admin"}))])
+def patch_route(route_id: int, payload: RouteUpdate) -> dict[str, Any]:
+    return update_route(route_id, payload)
+
+
+@app.delete("/api/routes/{route_id}", dependencies=[Depends(require_role({"admin"}))])
+def remove_route(route_id: int) -> dict[str, Any]:
+    delete_route(route_id)
+    return {"ok": "true", "message": "Ruta eliminada"}
+
+
+@app.get("/api/reports")
+def get_reports(current_user: dict[str, Any] = Depends(require_current_user)) -> list[dict[str, Any]]:
+    reports = bootstrap()["reports"]
+    role = normalize_role(str(current_user.get("role", "ciudadano")))
+    if role == "ciudadano":
+        return [report for report in reports if report.get("citizen", "").lower() == str(current_user.get("name", "")).lower()]
+    return reports
+
+
+@app.patch("/api/reports/{report_id}", dependencies=[Depends(require_role({"admin"}))])
+def patch_report(report_id: int, payload: ReportUpdate) -> dict[str, Any]:
+    return update_report(report_id, payload)
+
+
+@app.delete("/api/reports/{report_id}", dependencies=[Depends(require_role({"admin"}))])
+def remove_report(report_id: int) -> dict[str, Any]:
+    delete_report(report_id)
+    return {"ok": "true", "message": "Reporte eliminado"}
+
+
+@app.get("/api/containers")
+def get_containers() -> list[dict[str, Any]]:
+    return bootstrap()["containers"]
+
+
+@app.post("/api/containers", dependencies=[Depends(require_role({"admin"}))])
+def create_container(payload: ContainerCreate) -> dict[str, Any]:
+    return create_container_record(payload)
+
+
+@app.patch("/api/containers/{container_id}", dependencies=[Depends(require_role({"admin"}))])
+def patch_container(container_id: int, payload: ContainerUpdate) -> dict[str, Any]:
+    return update_container(container_id, payload)
+
+
+@app.delete("/api/containers/{container_id}", dependencies=[Depends(require_role({"admin"}))])
+def remove_container(container_id: int) -> dict[str, Any]:
+    delete_container(container_id)
+    return {"ok": "true", "message": "Contenedor eliminado"}
+
+
+@app.get("/api/collections")
+def get_collections(current_user: dict[str, Any] = Depends(require_current_user)) -> list[dict[str, Any]]:
+    collections = bootstrap()["collections"]
+    role = normalize_role(str(current_user.get("role", "ciudadano")))
+    if role == "ciudadano":
+        citizen_zone = str(current_user.get("zone", "")).strip().lower()
+        return [
+            col for col in collections
+            if not citizen_zone or str(col.get("zone", "")).strip().lower() == citizen_zone
+        ]
+    return collections
+
+
+@app.patch("/api/collections/{collection_id}", dependencies=[Depends(require_role({"admin"}))])
+def patch_collection(collection_id: int, payload: CollectionUpdate) -> dict[str, Any]:
+    return update_collection(collection_id, payload)
+
+
+@app.delete("/api/collections/{collection_id}", dependencies=[Depends(require_role({"admin"}))])
+def remove_collection(collection_id: int) -> dict[str, Any]:
+    delete_collection(collection_id)
+    return {"ok": "true", "message": "Recolección eliminada"}
+
+
+@app.post("/api/admin/bulk-action", dependencies=[Depends(require_role({"admin"}))], response_model=None)
+def bulk_action(payload: BulkActionRequest) -> dict[str, Any] | Response:
+    """Operación masiva: permite eliminar, actualizar, asignar y exportar múltiples registros."""
+    allowed_actions = {
+        "users": {"delete", "update_status", "change_role", "export"},
+        "zones": {"delete", "update_status", "assign_user", "export"},
+        "schedules": {"delete", "update_status", "export"},
+        "trucks": {"delete", "update_status", "assign_zone", "export"},
+        "maintenance": {"delete", "update_status", "export"},
+        "routes": {"delete", "update_status", "assign_truck", "assign_zone", "export"},
+        "reports": {"delete", "update_status", "export"},
+        "containers": {"delete", "update_status", "assign_zone", "export"},
+        "collections": {"delete", "update_status", "assign_truck", "assign_zone", "export"},
+    }
+    resource_actions = allowed_actions.get(payload.resource)
+    if resource_actions is None:
+        raise HTTPException(status_code=400, detail=f"Recurso no soportado: {payload.resource}")
+    if payload.action not in resource_actions:
+        raise HTTPException(status_code=400, detail=f"Acción no soportada para {payload.resource}: {payload.action}")
     if not payload.ids:
         raise HTTPException(status_code=400, detail="Debe proporcionar al menos un ID.")
-    result = bulk_delete(payload.resource, payload.ids)
-    return result
+    if payload.action == "delete":
+        return bulk_delete(payload.resource, payload.ids)
+    if payload.action == "update_status":
+        if not payload.data or "status" not in payload.data:
+            raise HTTPException(status_code=400, detail="Se requiere 'status' en data para update_status")
+        return bulk_update_status(payload.resource, payload.ids, str(payload.data["status"]))
+    if payload.action == "assign_user":
+        if not payload.data or "user_id" not in payload.data:
+            raise HTTPException(status_code=400, detail="Se requiere 'user_id' en data para assign_user")
+        return bulk_assign_user(payload.resource, payload.ids, int(payload.data["user_id"]))
+    if payload.action == "assign_truck":
+        if not payload.data or "truck_id" not in payload.data:
+            raise HTTPException(status_code=400, detail="Se requiere 'truck_id' en data para assign_truck")
+        return bulk_assign_truck(payload.resource, payload.ids, int(payload.data["truck_id"]))
+    if payload.action == "assign_zone":
+        if not payload.data or "zone_id" not in payload.data:
+            raise HTTPException(status_code=400, detail="Se requiere 'zone_id' en data para assign_zone")
+        return bulk_assign_zone(payload.resource, payload.ids, int(payload.data["zone_id"]))
+    if payload.action == "export":
+        return bulk_export(payload.resource, payload.ids)
+    if payload.action == "change_role":
+        if not payload.data or "role" not in payload.data:
+            raise HTTPException(status_code=400, detail="Se requiere 'role' en data para change_role")
+        safe_ids = [int(i) for i in payload.ids if i is not None]
+        for uid in safe_ids:
+            update_user(uid, UserUpdate(role=str(payload.data["role"])))
+        return {"updated": safe_ids, "count": len(safe_ids), "resource": payload.resource, "role": payload.data["role"]}
+    raise HTTPException(status_code=400, detail=f"Acción no soportada: {payload.action}")
 
 
 @app.get("/truck-locations")

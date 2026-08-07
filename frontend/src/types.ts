@@ -4,6 +4,7 @@ export type View = "dashboard" | "schedules" | "reports" | "waste" | "routes" | 
 export type Zone = { id: number; name: string; latitude: number; longitude: number; criticality: string };
 export type Schedule = { id: number; zone: string; zone_id?: number; day: string; time: string; waste: string };
 export type Truck = { id: number; code: string; driver: string; status: string; zone: string; zone_id?: number; latitude: number; longitude: number };
+export type Container = { id: number; zone_id: number; name: string; fill_level: number; status: string; updated_at: string };
 export type Route = { id: number; truck: string; zone: string; progress: number; eta: string; delay: string; latitude: number; longitude: number };
 export type Report = { id: number; citizen: string; zone: string; type: string; detail: string; status: ReportStatus; driver?: string };
 export type Collection = { id: number; zone: string; truck: string; kg: number; status: string; date: string };

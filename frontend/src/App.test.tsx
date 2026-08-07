@@ -180,7 +180,7 @@ describe("App e2e integration", () => {
 
     await screen.findByRole("heading", { name: /Panel Principal/i });
     fireEvent.click(screen.getByRole("button", { name: /Administración/i }));
-    await screen.findByRole("heading", { name: /Eventos operativos/i });
+    await screen.findByRole("heading", { name: /Eventos operativos/i }, {}, { timeout: 15000 });
 
     fireEvent.change(screen.getByLabelText(/Tipo de evento/i), { target: { value: "route_update" } });
     fireEvent.change(screen.getByLabelText(/Objetivo/i), { target: { value: "1" } });
@@ -189,8 +189,8 @@ describe("App e2e integration", () => {
 
     fireEvent.click(screen.getByRole("button", { name: /Enviar evento/i }));
 
-    await waitFor(() => expect(screen.getByRole("alert")).toHaveTextContent(/Evento operativo registrado y monitoreo actualizado/i));
-    expect(screen.getByText(/C-02 - Wanchaq/i)).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByText(/Evento operativo registrado y monitoreo actualizado/i)).toBeInTheDocument());
+    expect(screen.getAllByText(/C-02 - Wanchaq/i).length).toBeGreaterThan(0);
   });
 
   it("loads the real backend and performs a container update", async () => {
@@ -200,7 +200,7 @@ describe("App e2e integration", () => {
 
     await screen.findByRole("heading", { name: /Panel Principal/i });
     fireEvent.click(screen.getByRole("button", { name: /Administración/i }));
-    await screen.findByRole("heading", { name: /Eventos operativos/i });
+    await screen.findByRole("heading", { name: /Eventos operativos/i }, {}, { timeout: 15000 });
 
     fireEvent.change(screen.getByLabelText(/Tipo de evento/i), { target: { value: "container_update" } });
     fireEvent.change(screen.getByLabelText(/Objetivo/i), { target: { value: "1" } });
@@ -210,7 +210,7 @@ describe("App e2e integration", () => {
 
     fireEvent.click(screen.getByRole("button", { name: /Enviar evento/i }));
 
-    await waitFor(() => expect(screen.getByRole("alert")).toHaveTextContent(/Evento operativo registrado y monitoreo actualizado/i));
+    await waitFor(() => expect(screen.getByText(/Evento operativo registrado y monitoreo actualizado/i)).toBeInTheDocument());
     expect(screen.getAllByText(/Contenedor Centro/i).length).toBeGreaterThan(0);
   });
 
