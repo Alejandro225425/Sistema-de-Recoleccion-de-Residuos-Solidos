@@ -1895,7 +1895,7 @@ useEffect(() => {
    return (
     <>
        <div className="two-col">
-          <section className="panel"><h2>Mapa operativo OpenStreetMap</h2><Map zones={data.zones ?? []} trucks={safeTrucks} routes={routes} prioritizedZones={prioritizedZones} citizenProximity={proximityAlerts} citizenZone={conductorZone} /></section>
+           {isConductor && conductorZone && (<section className="panel"><h2>Mapa operativo OpenStreetMap</h2><Map zones={data.zones ?? []} trucks={safeTrucks} routes={routes} prioritizedZones={prioritizedZones} citizenProximity={proximityAlerts} citizenZone={conductorZone} /></section>)}
           <section className="panel">
             <h2>Seguimiento GPS</h2>
             {geoError && <p className="hint error">El servicio de alertas geo no está disponible. Los datos pueden estar desactualizados.</p>}
@@ -2363,7 +2363,7 @@ function Analytics({ data, session, onConfirmCollection }: { data: Bootstrap; se
    );
  }
 
-function Map({ zones, trucks, routes, prioritizedZones, citizenProximity, citizenZone }: { zones: Zone[]; trucks: Truck[]; routes: Route[]; prioritizedZones: Array<{ id: number; name: string; priority_score: number; criticality: string; latitude?: number; longitude?: number }>; citizenProximity?: ProximityAlert[]; citizenZone?: Zone; }) {
+function Map({ zones, trucks, routes, prioritizedZones, citizenProximity, citizenZone }: { zones: Zone[]; trucks: Truck[]; routes: Route[]; prioritizedZones: Array<{ id: number; name: string; priority_score: number; criticality: string; latitude?: number; longitude?: number }>; citizenProximity?: ProximityAlert[]; citizenZone: Zone | null | undefined; }) {
   const ref = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<L.Map | null>(null);
   const layerRef = useRef<L.LayerGroup | null>(null);
@@ -2397,6 +2397,20 @@ function Map({ zones, trucks, routes, prioritizedZones, citizenProximity, citize
   };
 
   useEffect(() => {
+    if (!citizenZone) {
+      if (mapRef.current) {
+        try {
+          mapRef.current.remove();
+        } catch (error) {
+          if (import.meta.env.DEV) {
+            console.error("Error removing map:", error);
+          }
+        }
+        mapRef.current = null;
+        layerRef.current = null;
+      }
+      return;
+    }
     if (signatureRef.current === signature) return;
     signatureRef.current = signature;
     if (!ref.current || mapRef.current) return;
@@ -2415,9 +2429,10 @@ function Map({ zones, trucks, routes, prioritizedZones, citizenProximity, citize
         console.error("Error initializing map:", error);
       }
     }
-  }, [signature]);
+  }, [signature, citizenZone]);
 
   useEffect(() => {
+    if (!citizenZone) return;
     if (!mapRef.current || !layerRef.current) return;
     if (signatureRef.current !== signature) return;
     if (typeof L === "undefined") return;
@@ -2476,6 +2491,10 @@ function Map({ zones, trucks, routes, prioritizedZones, citizenProximity, citize
       }
     };
   }, []);
+
+  if (!citizenZone) {
+    return <div className="map" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--muted)', fontSize: '0.95rem' }}>Inicia sesión para ver el mapa operativo</div>;
+  }
 
   return <div className="map" ref={ref} />;
 }
