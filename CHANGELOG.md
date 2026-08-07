@@ -805,3 +805,18 @@ Después del despliegue de v4.5.1, el ErrorBoundary atrapó un error en runtime:
 ### Próximos pasos
 - ~~Validar accesibilidad y experiencia móvil en el panel administrativo~~ Completado el 2026-07-30.
 - ~~Despliegue en producción con variables de entorno seguras~~ Completado el 2026-07-30. Backend en Render, frontend en Vercel. Ver `docs/DESPLIEGUE.md`.
+
+## 2026-08-07 - Eliminación del rol Operador
+
+### Cambios
+- Se eliminó completamente el rol `operador` del sistema.
+- **Frontend**: se removió `operador` del tipo `Role`, de `roleRoutes` y de todas las condicionales de navegación. Las vistas de operador ahora pertenecen a `admin`.
+- **Backend**: se eliminó `operador` de `normalize_role()`, del MemoryStore y de los endpoints protegidos. `POST /api/operations/update` y `PATCH /api/reports/{id}/resolve` requieren `admin`. `POST /api/collections` ya no acepta `operador`.
+- **Base de datos**: se eliminó el usuario demo `operador@ecocusco.pe` de `seed.sql`.
+- **Tests**: se reemplazó el test del operador por una prueba equivalente para `admin`.
+- **Documentación**: se actualizaron `README.md`, `AGENTS.md`, `VERSION.md`, `docs/DESPLIEGUE.md` y `docs/entrega-2.md`.
+
+### Roles actuales
+- `ciudadano`
+- `admin`
+- `conductor`

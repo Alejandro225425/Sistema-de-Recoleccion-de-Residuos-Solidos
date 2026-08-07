@@ -56,9 +56,9 @@ def test_ciudadano_no_puede_registrar_recoleccion():
     assert response.status_code == 403
 
 
-def test_operador_puede_registrar_recoleccion_para_cualquier_camion():
+def test_admin_puede_registrar_recoleccion_para_cualquier_camion():
     client = TestClient(app)
-    login = client.post("/api/auth/login", json={"email": "operador@ecocusco.pe", "password": "Test12345!"})
+    login = client.post("/api/auth/login", json={"email": "admin@ecocusco.pe", "password": "admin123"})
     assert login.status_code == 200
     token = login.json()["token"]
     headers = {"Authorization": f"Bearer {token}"}

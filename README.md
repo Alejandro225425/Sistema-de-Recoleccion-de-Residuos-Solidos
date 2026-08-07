@@ -21,8 +21,8 @@ Sistema inteligente para la recoleccion de residuos solidos segregados en la ciu
 - Filtros administrativos avanzados, incluyendo búsqueda por conductor en el listado de camiones y dentro de los reportes en administración.
 - Módulo operativo con alertas automáticas, monitoreo de contenedores, mantenimiento y notificaciones.
 - Registro de recolecciones por conductor y confirmación de recolección por ciudadano: endpoints API y formularios en la UI para registro y verificación de recolectas.
-- Gestión de incidentes activa para operadores y administradores desde la vista de reportes.
-- Gestión de incidentes activa para operadores y administradores, con resolución de reportes desde la vista de reportes.
+- Gestión de incidentes activa para administradores desde la vista de reportes.
+- Gestión de incidentes activa para administradores, con resolución de reportes desde la vista de reportes.
 - Módulo de priorización de zonas críticas y optimización de rutas para apoyar decisiones operativas.
 - Plan de intervención automático para guiar la acción operativa hacia la zona y ruta más urgentes.
 - Tablero de despacho integrado en el dashboard para secuencias horarias y simulación de intervención en tiempo real.
@@ -48,7 +48,7 @@ Sistema inteligente para la recoleccion de residuos solidos segregados en la ciu
 ### 1. Seguridad y gestión de usuarios
 - Registro real con contraseña protegida con bcrypt.
 - Login con verificación de credenciales y emisión de JWT.
-- Protección de endpoints por rol: `ciudadano`, `operador`, `admin` y `conductor`.
+- Protección de endpoints por rol: `ciudadano`, `admin` y `conductor`.
 - Recuperación de contraseña con flujo completo (solicitud de token y restablecimiento desde la interfaz) y persistencia de tokens con soporte para PostgreSQL.
 - Panel de administración de usuarios con listado de usuarios, creación de cuentas y cambio de roles desde el frontend, protegido para administradores.
 - Panel de administración operativa con formularios de creación, edición, eliminación y listado para zonas, horarios, camiones y mantenimiento, con filtros y ayudas contextuales para mejorar la experiencia, incluyendo búsqueda por conductor y filtros de reporte por estado y zona.
@@ -152,7 +152,7 @@ cd backend-python
 
 ## Funcionalidades pendientes
 - Continuar con mejoras de experiencia avanzada en la administración, como filtros adicionales por estado, búsquedas por conductor y validaciones dinámicas por entidad.
-- Gestión de incidencias desde la vista de operador.
+- Gestión de incidencias desde la vista de administrador.
 - Ampliar analytics y reportes en la interfaz.
 - Notificación de cambio de horario y alertas de proximidad en el servicio geo.
 - ~~Validar backup/restore de PostgreSQL usando los scripts incluidos~~ Completado el 2026-07-30.
@@ -264,7 +264,6 @@ Para iniciar sesión en modo demo:
 |-----|-------|----------|------|
 | Admin | `admin@ecocusco.pe` | `admin123` | Centro Historico |
 | Ciudadano | `ciudadano@ecocusco.pe` | `Test12345!` | Centro Historico |
-| Operador | `operador@ecocusco.pe` | `Test12345!` | Wanchaq |
 | Conductor | `conductor@ecocusco.pe` | `Test12345!` | Santiago |
 | Admin | `admin2@ecocusco.pe` | `Test12345!` | San Sebastian |
 
@@ -277,7 +276,7 @@ El bloque inicial de seguridad quedó habilitado con:
 
 - Registro real con contraseña protegida con bcrypt.
 - Login con verificación de credenciales y JWT.
-- Protección de endpoints por rol (`ciudadano`, `operador`, `admin`, `conductor`).
+- Protección de endpoints por rol (`ciudadano`, `admin`, `conductor`).
 - Recuperación de contraseña con token temporal.
 - Esquema ampliado para usuarios, reset de contraseñas, mantenimiento, contenedores y notificaciones.
 

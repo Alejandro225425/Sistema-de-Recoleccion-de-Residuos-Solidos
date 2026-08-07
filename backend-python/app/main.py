@@ -249,15 +249,6 @@ class MemoryStore:
                 "created_at": datetime.now(timezone.utc).isoformat(),
             },
             {
-                "id": 3,
-                "name": "Operador Municipal",
-                "email": "operador@ecocusco.pe",
-                "role": "operador",
-                "zone": "Wanchaq",
-                "password_hash": hash_password("Test12345!"),
-                "created_at": datetime.now(timezone.utc).isoformat(),
-            },
-            {
                 "id": 4,
                 "name": "Elena Condori",
                 "email": "conductor@ecocusco.pe",
@@ -490,7 +481,7 @@ def analytics_from(rows: dict[str, list[dict[str, Any]]]) -> dict[str, Any]:
 
 def normalize_role(role: str) -> str:
     role_value = (role or "ciudadano").strip().lower()
-    return role_value if role_value in {"ciudadano", "operador", "admin", "conductor"} else "ciudadano"
+    return role_value if role_value in {"ciudadano", "admin", "conductor"} else "ciudadano"
 
 
 def build_alerts(routes: list[dict[str, Any]], containers: list[dict[str, Any]] | None = None) -> list[str]:
@@ -699,7 +690,7 @@ def build_proximity_alerts(
                         "eta": "N/A",
                     })
 
-    if role in {"admin", "operador"} and active_trucks:
+    if role == "admin" and active_trucks:
         for truck in active_trucks:
             t_lat = float(truck.get("latitude", 0) or 0)
             t_lon = float(truck.get("longitude", 0) or 0)
@@ -1704,7 +1695,7 @@ def get_monitor(current_user: dict[str, Any] | None = Depends(get_current_user_o
 
 
 @app.post("/api/operations/update")
-def update_operation(payload: OperationUpdateRequest, current_user: dict[str, Any] = Depends(require_role({"operador", "admin"}))) -> dict[str, Any]:
+def update_operation(payload: OperationUpdateRequest, current_user: dict[str, Any] = Depends(require_role({"admin"}))) -> dict[str, Any]:
     data = bootstrap()
     if payload.type == "route_update":
         updated = False
@@ -1913,8 +1904,8 @@ def create_report(payload: ReportCreate, current_user: dict[str, Any] = Depends(
 
 @app.patch("/api/reports/{report_id}/resolve")
 def resolve_report(report_id: int, current_user: dict[str, Any] = Depends(require_current_user)) -> dict[str, Any]:
-    if normalize_role(str(current_user.get("role", "ciudadano"))) not in {"operador", "admin"}:
-        raise HTTPException(status_code=403, detail="Solo operadores o administradores pueden resolver reportes")
+    if normalize_role(str(current_user.get("role", "ciudadano"))) != "admin":
+        raise HTTPException(status_code=403, detail="Solo administradores pueden resolver reportes")
     try:
         return execute_one(
             "update reports set status = 'Resuelto' where id = %s returning id, citizen, zone, type, detail, status",
@@ -1943,7 +1934,7 @@ def get_collections(current_user: dict[str, Any] = Depends(require_current_user)
     return collections
 
 
-@app.post("/api/collections", dependencies=[Depends(require_role({"conductor", "operador"}))])
+@app.post("/api/collections", dependencies=[Depends(require_role({"conductor", "admin"}))])
 def register_collection(payload: CollectionCreate, current_user: dict[str, Any] = Depends(require_current_user)) -> dict[str, Any]:
     role = normalize_role(str(current_user.get("role", "ciudadano")))
     # Un conductor solo puede registrar recolecciones para su camión asignado
@@ -1962,7 +1953,7 @@ def register_collection(payload: CollectionCreate, current_user: dict[str, Any] 
                 status_code=403,
                 detail=f"El camión {assigned_truck.get('code')} está asignado a otro conductor ({assigned_truck.get('driver')}).",
             )
-    # Permitimos que un conductor u operador registre la recolección realizada
+    # Permitimos que un conductor o administrador registre la recolección realizada
     created = create_collection_record(payload, created_by=current_user)
     return created
 

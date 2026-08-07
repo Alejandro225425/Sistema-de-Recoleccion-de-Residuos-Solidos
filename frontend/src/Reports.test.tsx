@@ -34,12 +34,12 @@ describe('Reports view', () => {
     expect(screen.queryByText('Fuga de agua')).not.toBeInTheDocument();
   });
 
-  it('permite resolver un reporte desde la vista de operador', async () => {
+  it('permite resolver un reporte desde la vista de administrador', async () => {
     const user = userEvent.setup();
     const onResolveReport = vi.fn().mockResolvedValue(undefined);
-    const operatorSession: Session = { id: 20, name: 'Operador', email: 'op@example.com', role: 'operador', zone: 'Centro Historico' };
+    const adminSession: Session = { id: 20, name: 'Admin', email: 'admin@example.com', role: 'admin', zone: 'Centro Historico' };
 
-    render(<Reports data={baseData} session={operatorSession} onCreateReport={vi.fn()} onResolveReport={onResolveReport} />);
+    render(<Reports data={baseData} session={adminSession} onCreateReport={vi.fn()} onResolveReport={onResolveReport} />);
 
     await user.click(screen.getAllByRole('button', { name: /resolver reporte/i })[0]);
 

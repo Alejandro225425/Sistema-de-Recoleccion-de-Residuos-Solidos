@@ -547,7 +547,6 @@ async function deleteMaintenance(item: MaintenanceRecord) {
               setFormValues(prev => ({ ...prev, role: value }));
             }}>
             <option value="ciudadano">Ciudadano</option>
-            <option value="operador">Operador</option>
             <option value="admin">Administrador</option>
             <option value="conductor">Conductor</option>
           </select></label>
@@ -596,7 +595,6 @@ async function deleteMaintenance(item: MaintenanceRecord) {
                     setUserRoleDrafts(prev => ({ ...prev, [user.id ?? 0]: value }));
                   }} aria-label={`Rol de ${user.name}`}>
                     <option value="ciudadano">Ciudadano</option>
-                    <option value="operador">Operador</option>
                     <option value="admin">Administrador</option>
                     <option value="conductor">Conductor</option>
                   </select>

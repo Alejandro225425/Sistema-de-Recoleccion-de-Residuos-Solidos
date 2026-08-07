@@ -1,4 +1,4 @@
-export type Role = "ciudadano" | "operador" | "admin" | "conductor";
+export type Role = "ciudadano" | "admin" | "conductor";
 export type View = "dashboard" | "schedules" | "reports" | "waste" | "routes" | "admin" | "analytics";
 
 export type Zone = { id: number; name: string; latitude: number; longitude: number; criticality: string };

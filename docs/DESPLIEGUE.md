@@ -450,7 +450,6 @@ Repetir para `sir-cusco-geo`:
 
 - [ ] `/api/health` devuelve `"status": "ok"`, `"database": "postgresql"`, `"connected": true` y `"mode": "production"`.
 - [ ] Login con `admin@ecocusco.pe` / `admin123` funciona correctamente.
-- [ ] Login con `operador@ecocusco.pe` / `Test12345!` funciona correctamente.
 - [ ] Registrar un nuevo usuario y recargar la página confirma que persiste (no se pierde al reiniciar).
 - [ ] Frontend carga el dashboard, mapa y paneles sin errores.
 - [ ] Panel administrativo carga zones, horarios, camiones y mantenimiento.

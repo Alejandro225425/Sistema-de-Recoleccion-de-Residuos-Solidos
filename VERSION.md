@@ -412,4 +412,19 @@ Esta es la **versión 4.5.1** del Sistema Inteligente de Recolección de Residuo
 | **4.5.0** | `main`, `version-4.5` | Corrección visual del panel de administración y mejoras de UX |
 | **3.0.0** | `main`, `version-3` | Proyecto organizado y documentación consolidada |
 | 2.0.0 | `main`, `v2.0.0` | Configuración de despliegue lista para producción |
+
+## Versión 6.1.0 - Eliminación del rol Operador
+
+### Cambios destacados
+
+- **Frontend**: se eliminó el rol `operador` del tipo `Role` y de la configuración de rutas por rol. Las vistas que antes eran exclusivas del operador (`dashboard`, `reports`, `routes`, `analytics`) ahora son accesibles para `admin`. El componente `Analytics` fusionó las métricas específicas del operador en las métricas del administrador.
+- **Backend**: se eliminó `operador` de `normalize_role()` y del MemoryStore. El endpoint `POST /api/operations/update` ahora requiere rol `admin`. La resolución de reportes (`PATCH /api/reports/{id}/resolve`) también está restringida a `admin`. El endpoint `POST /api/collections` ya no acepta el rol `operador`.
+- **Base de datos**: se eliminó el usuario demo `operador@ecocusco.pe` de `seed.sql`.
+- **Tests**: se actualizaron tests eliminando referencias al rol `operador` y agregando validaciones equivalentes para `admin`.
+- **Documentación**: se actualizó `README.md`, `AGENTS.md`, `docs/DESPLIEGUE.md` y `docs/entrega-2.md` para reflejar los roles actuales: `ciudadano`, `admin`, `conductor`.
+
+### Roles actuales del sistema
+- `ciudadano`
+- `admin`
+- `conductor`
 | 1.0.0 | `version-1-proyecto` | Estructura base del proyecto |

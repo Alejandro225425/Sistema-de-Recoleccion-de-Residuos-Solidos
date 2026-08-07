@@ -231,7 +231,6 @@ export function App() {
   const [lastSync, setLastSync] = useState("");
   const roleViews: Record<Role, View[]> = {
     admin: views,
-    operador: ["dashboard", "reports", "routes", "analytics"],
     conductor: ["dashboard", "routes", "analytics"],
     ciudadano: ["dashboard", "reports", "schedules", "waste", "analytics"],
   };
@@ -1360,9 +1359,8 @@ setSubmitting(true);
     }
   }
   const isCitizen = session.role === "ciudadano";
-  const isOperator = session.role === "operador";
   const isAdmin = session.role === "admin";
-  const canResolve = isOperator || isAdmin;
+  const canResolve = isAdmin;
   const canCreateReport = isCitizen;
   const isForeignZone = isCitizen && formZone && session.zone && String(formZone).trim().toLowerCase() !== String(session.zone).trim().toLowerCase();
 
@@ -1449,7 +1447,7 @@ setSubmitting(true);
               <button type="submit" disabled={submitting}>{submitting ? "Enviando..." : "Enviar reporte"}</button>
            </form>
          ) : (
-           <p className="hint">Solo los ciudadanos pueden registrar incidencias. Los operadores y administradores pueden resolverlas desde la lista de seguimiento.</p>
+            <p className="hint">Solo los ciudadanos pueden registrar incidencias. Los administradores pueden resolverlas desde la lista de seguimiento.</p>
          )}
        </section>
       <section className="panel">
@@ -1507,7 +1505,7 @@ export function Waste({ data, monitor, session, onCreateReport }: { data: Bootst
   const safeContainers = useMemo(() => (Array.isArray(monitor.containers) ? monitor.containers : Array.isArray(safeData.containers) ? safeData.containers : []), [monitor.containers, safeData.containers]);
   const safeZones = useMemo(() => (Array.isArray(safeData.zones) ? safeData.zones : []), [safeData.zones]);
   const isCitizen = session?.role === "ciudadano";
-  const canReportProblem = isCitizen || session?.role === "operador" || session?.role === "admin";
+  const canReportProblem = isCitizen || session?.role === "admin";
   const citizenZone = session?.zone ?? "";
 
   const [searchQuery, setSearchQuery] = useState("");
@@ -1753,8 +1751,8 @@ function Routes({ data, monitor, session, onCreateCollection, proximityAlerts }:
   const [collectionMessage, setCollectionMessage] = useState("");
   const [collectionError, setCollectionError] = useState("");
   const isConductor = session?.role === "conductor";
-  const isOperatorOrAdmin = session?.role === "operador" || session?.role === "admin";
-  const canRegisterCollection = isConductor || isOperatorOrAdmin || false;
+  const isAdmin = session?.role === "admin";
+  const canRegisterCollection = isConductor || isAdmin || false;
   const trucks = monitor.trucks ?? data.trucks ?? [];
   const routes = monitor.optimized_routes ?? data.routes ?? [];
   const prioritizedZones = monitor.prioritized_zones ?? data.prioritized_zones ?? [];
@@ -2058,7 +2056,7 @@ export function Operations({ data, monitor, onOperationUpdate }: { data: Bootstr
 function Analytics({ data, session, onConfirmCollection }: { data: Bootstrap; session?: Session | null; onConfirmCollection?: (id: number) => Promise<void>; }) {
   const performance = data.performance;
   const isCitizen = session?.role === "ciudadano";
-  const isOperator = session?.role === "operador";
+  const isAdmin = session?.role === "admin";
   const isConductor = session?.role === "conductor";
   const conductorZone = isConductor ? String(session?.zone ?? "").toLowerCase() : null;
 
@@ -2127,7 +2125,6 @@ function Analytics({ data, session, onConfirmCollection }: { data: Bootstrap; se
     return acc;
   }, {} as Record<string, number>);
   const analytics = data?.analytics ?? emptyBootstrap.analytics;
-  const isAdmin = session?.role === "admin";
   const metricsCSV = isCitizen
     ? [
         { nombre: "Mis reportes pendientes", valor: reportCounts.Pendiente },
@@ -2181,19 +2178,6 @@ function Analytics({ data, session, onConfirmCollection }: { data: Bootstrap; se
             <Metric value={`${collectionCounts["Confirmada"] ?? 0}/${safeCollections.length}`} label="Recolectas confirmadas" />
             <Metric value={safeReports.length} label="Total mis reportes" />
           </>
-        ) : isOperator ? (
-          <>
-            <Metric value={`${analytics.total_kg} kg`} label="Residuos registrados" />
-            <Metric value={`${analytics.compliance}%`} label="Cumplimiento de rutas" />
-            <Metric value={`${analytics.open_reports}`} label="Reportes abiertos" />
-            <Metric value={`${analytics.active_trucks}`} label="Camiones activos" />
-            <Metric value={`${performance?.delayed_routes ?? 0}`} label="Rutas con retraso" />
-            <Metric value={`${performance?.average_progress ?? 0}%`} label="Progreso medio" />
-            <Metric value={`${performance?.average_container_fill ?? 0}%`} label="Llenado promedio" />
-            <Metric value={`${collectionCounts["Confirmada"] ?? 0}/${safeCollections.length}`} label="Recolectas confirmadas" />
-            <Metric value={`${performance?.total_routes ?? 0}`} label="Rutas monitoreadas" />
-            <Metric value={`${performance?.compliance_estimate ?? 0}%`} label="Índice de cumplimiento" />
-          </>
         ) : isConductor ? (
           <>
             <Metric value={`${myZoneCollections.reduce((sum, c) => sum + (Number(c.kg) || 0), 0)} kg`} label="Kg recolectados en zona" />
@@ -2215,6 +2199,8 @@ function Analytics({ data, session, onConfirmCollection }: { data: Bootstrap; se
             <Metric value={`${performance?.average_progress ?? 0}%`} label="Progreso medio" />
             <Metric value={`${performance?.average_container_fill ?? 0}%`} label="Llenado promedio" />
             <Metric value={`${collectionCounts["Confirmada"] ?? 0}/${safeCollections.length}`} label="Recolectas confirmadas" />
+            <Metric value={`${performance?.total_routes ?? 0}`} label="Rutas monitoreadas" />
+            <Metric value={`${performance?.compliance_estimate ?? 0}%`} label="Índice de cumplimiento" />
           </>
         )}
       </div>

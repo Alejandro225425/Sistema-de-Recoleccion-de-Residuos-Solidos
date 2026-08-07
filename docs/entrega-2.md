@@ -14,11 +14,11 @@
 - Visualizar rutas, camiones y alertas operativas.
 - Brindar herramientas de administración para zonas, horarios, camiones y mantenimiento.
 
-**Alcance:** MVP funcional con frontend React/TypeScript, backend FastAPI en Python, servicio auxiliar TypeScript y soporte opcional PostgreSQL. Cubre procesos de ciudadano, operador y administrador mediante API REST.
+**Alcance:** MVP funcional con frontend React/TypeScript, backend FastAPI en Python, servicio auxiliar TypeScript y soporte opcional PostgreSQL. Cubre procesos de ciudadano, administrador y conductor mediante API REST.
 
 **Tecnologías:** React, TypeScript, Vite, Python, FastAPI, PostgreSQL, OpenStreetMap, Leaflet, JWT, bcrypt.
 
-**Usuarios objetivo:** Ciudadanos, operadores municipales, administradores y conductores.
+**Usuarios objetivo:** Ciudadanos, administradores y conductores.
 
 ## II. Arquitectura
 
@@ -63,7 +63,7 @@ flowchart LR
 - Registro e inicio de sesión con rol.
 - CRUD de zonas, horarios, camiones y mantenimiento.
 - Administración de usuarios con cambio de roles.
-- Reportes ciudadanos y resolución de incidencias desde la vista de reportes para operadores y administradores.
+- Reportes ciudadanos y resolución de incidencias desde la vista de reportes para administradores.
 - Exportación de reportes y métricas a CSV desde la interfaz para facilitar la entrega de información.
 - Monitor operativo con alertas y sugerencias de despacho.
 - Mapa con rutas y posiciones de camiones.
@@ -83,7 +83,7 @@ flowchart LR
 ## VI. Seguridad y accesibilidad
 
 - JWT para validación de sesiones.
-- Roles protegidos por endpoint (`admin`, `operador`, `conductor`, `ciudadano`).
+- Roles protegidos por endpoint (`admin`, `conductor`, `ciudadano`).
 - Recuperación de contraseña segura.
 - Interfaz responsive y contrastes legibles.
 
@@ -106,7 +106,7 @@ El proyecto ya dispone de:
 ## IX. Próximos pasos
 
 - Añadir recolecciones confirmadas por conductor.
-- Extender gestión de incidencias desde el operador.
+- Extender gestión de incidencias desde la vista de administrador.
 - ~~Validar el flujo de backup/restore de PostgreSQL con los scripts incluidos~~ Completado el 2026-07-30.
 - ~~Validar accesibilidad completa y experiencia móvil~~ Completado el 2026-07-30.
 - ~~Desplegar en producción con variables de entorno seguras para `JWT_SECRET` y `DATABASE_URL`~~ Completado el 2026-07-30. Backend en Render, frontend en Vercel. Ver `docs/DESPLIEGUE.md`.
